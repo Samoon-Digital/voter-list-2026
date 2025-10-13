@@ -9,7 +9,7 @@ class NativeBannerAd extends StatefulWidget {
   final String? adUnitId;
 
   static const String defaultAdUnitId = 'ca-app-pub-1638673809508848/1911979598';
-  static const double _fixedHeight = 220;
+  static const double _fixedHeight = 195;
 
   @override
   State<NativeBannerAd> createState() => _NativeBannerAdState();

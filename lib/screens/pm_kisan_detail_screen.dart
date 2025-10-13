@@ -104,7 +104,7 @@ class PmKisanDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            padding: const EdgeInsets.fromLTRB(12, 9, 12, 0),
             decoration: const BoxDecoration(
               color: Color(0xFF3674B5),
             ),
@@ -120,7 +120,7 @@ class PmKisanDetailScreen extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: 0),
                 NativeBannerAd(),
               ],
             ),

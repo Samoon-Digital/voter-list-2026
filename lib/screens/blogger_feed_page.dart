@@ -1,10 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:yojna_plus/services/favorite_blog_store.dart';
+import 'package:yojna_plus/widgets/movie_ticket_native_ad.dart';
+import 'package:yojna_plus/screens/webview_screen.dart';
+import 'package:html/parser.dart' as html_parser;
+import 'package:html/dom.dart' as dom;
 
 const List<String> _hindiMonths = <String>[
   'जनवरी',
@@ -33,6 +38,272 @@ class BloggerFeedConfig {
   final String apiKey;
   final String label;
   final String title;
+}
+
+class _BlogRichParagraph extends StatelessWidget {
+  const _BlogRichParagraph({
+    required this.html,
+    required this.onTapLink,
+    required this.registerRecognizer,
+    required this.linkColor,
+    this.baseStyle,
+  });
+
+  final String html;
+  final void Function(String url) onTapLink;
+  final void Function(TapGestureRecognizer recognizer) registerRecognizer;
+  final Color linkColor;
+  final TextStyle? baseStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final defaultStyle = baseStyle ?? DefaultTextStyle.of(context).style;
+    final doc = html_parser.parseFragment(html);
+    final spans = _parseNodes(doc.nodes, defaultStyle);
+    return RichText(
+      text: TextSpan(children: spans, style: defaultStyle),
+      textAlign: TextAlign.start,
+    );
+  }
+
+  List<InlineSpan> _linkifyText(String text, TextStyle style) {
+    final spans = <InlineSpan>[];
+    final regex = RegExp(
+      r'''((https?:\/\/)|(www\.))[\w\-.~:\/?#%\[\]@!$&'"()*+,;=]+''',
+      caseSensitive: false,
+    );
+    var start = 0;
+    for (final match in regex.allMatches(text)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: text.substring(start, match.start), style: style));
+      }
+      var raw = match.group(0) ?? '';
+      if (raw.isEmpty) {
+        start = match.end;
+        continue;
+      }
+      final trimmed = raw.replaceFirst(RegExp(r'[\)\]\.,;!?]+$'), '');
+      final trailing = raw.substring(trimmed.length);
+      final normalized = RegExp(r'^https?://', caseSensitive: false).hasMatch(trimmed)
+          ? trimmed
+          : 'https://$trimmed';
+      final recognizer = TapGestureRecognizer()..onTap = () => onTapLink(normalized);
+      registerRecognizer(recognizer);
+      spans.add(TextSpan(
+        text: trimmed,
+        style: style.merge(TextStyle(
+          color: linkColor,
+          decoration: TextDecoration.underline,
+        )),
+        recognizer: recognizer,
+      ));
+      if (trailing.isNotEmpty) {
+        spans.add(TextSpan(text: trailing, style: style));
+      }
+      start = match.end;
+    }
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start), style: style));
+    }
+    return spans;
+  }
+
+  List<InlineSpan> _parseNodes(List<dom.Node> nodes, TextStyle style) {
+    final spans = <InlineSpan>[];
+    for (final node in nodes) {
+      if (node.nodeType == dom.Node.TEXT_NODE) {
+        final text = node.text ?? '';
+        if (text.isEmpty) {
+          continue;
+        }
+        final linkified = _linkifyText(text, style);
+        if (linkified.isEmpty) {
+          spans.add(TextSpan(text: text, style: style));
+        } else {
+          spans.addAll(linkified);
+        }
+      } else if (node is dom.Element) {
+        final element = node;
+        final name = element.localName?.toLowerCase() ?? '';
+        var childStyle = style;
+
+        if (name == 'strong' || name == 'b') {
+          childStyle = childStyle.merge(const TextStyle(fontWeight: FontWeight.w700));
+        } else if (name == 'em' || name == 'i') {
+          childStyle = childStyle.merge(const TextStyle(fontStyle: FontStyle.italic));
+        } else if (name == 'u') {
+          childStyle = childStyle.merge(const TextStyle(decoration: TextDecoration.underline));
+        }
+
+        childStyle = _applyInlineColor(childStyle, element);
+
+        if (name == 'a') {
+          final href = element.attributes['href']?.trim() ?? '';
+          final childSpans = _parseNodes(
+            element.nodes,
+            childStyle.merge(const TextStyle(decoration: TextDecoration.underline)),
+          );
+          if (href.isNotEmpty) {
+            final normalized = _normalizeUrl(href);
+            final hasInline = _hasInlineColor(element);
+            final recognizer = TapGestureRecognizer()
+              ..onTap = () => onTapLink(normalized);
+            registerRecognizer(recognizer);
+            final linkStyle = childStyle.merge(TextStyle(
+              decoration: TextDecoration.underline,
+              color: hasInline ? (childStyle.color ?? linkColor) : linkColor,
+            ));
+            if (childSpans.isEmpty) {
+              final t = element.text.trim();
+              final displayText = t.isNotEmpty ? t : normalized;
+              spans.add(TextSpan(text: displayText, style: linkStyle, recognizer: recognizer));
+            } else {
+              // Force blue color on all descendants if no inline color on <a>
+              final decorated = _decorateLinkChildren(
+                childSpans,
+                recognizer,
+                forceColor: hasInline ? null : linkColor,
+              );
+              spans.add(TextSpan(children: decorated, style: linkStyle, recognizer: recognizer));
+            }
+          } else {
+            spans.addAll(childSpans);
+          }
+        } else {
+          spans.addAll(_parseNodes(element.nodes, childStyle));
+        }
+      }
+    }
+    return spans;
+  }
+
+  bool _hasInlineColor(dom.Element element) {
+    final styleAttr = element.attributes['style'] ?? '';
+    if (RegExp(r'color\s*:', caseSensitive: false).hasMatch(styleAttr)) return true;
+    final colorAttr = element.attributes['color'];
+    if (colorAttr != null && colorAttr.trim().isNotEmpty) return true;
+    return false;
+  }
+
+  List<InlineSpan> _decorateLinkChildren(
+    List<InlineSpan> children,
+    TapGestureRecognizer recognizer, {
+    Color? forceColor,
+  }) {
+    InlineSpan mapSpan(InlineSpan span) {
+      if (span is TextSpan) {
+        final TextStyle base = span.style ?? const TextStyle();
+        TextStyle updated = base.merge(const TextStyle(decoration: TextDecoration.underline));
+        if (forceColor != null) {
+          updated = updated.copyWith(color: forceColor);
+        }
+        final newChildren = span.children?.map(mapSpan).toList();
+        return TextSpan(
+          text: span.text,
+          children: newChildren,
+          style: updated,
+          recognizer: span.recognizer ?? recognizer,
+        );
+      }
+      return span;
+    }
+
+    return children.map(mapSpan).toList();
+  }
+
+  TextStyle _applyInlineColor(TextStyle style, dom.Element element) {
+    final styleAttr = element.attributes['style'];
+    final colorAttr = element.attributes['color'];
+    final detected = _extractColor(styleAttr ?? '') ?? _extractNamedColor(colorAttr);
+    if (detected != null) {
+      style = style.merge(TextStyle(color: detected));
+    }
+    return style;
+  }
+
+  Color? _extractNamedColor(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final normalized = value.trim().toLowerCase();
+    try {
+      if (normalized.startsWith('#')) {
+        return _colorFromHex(normalized.substring(1));
+      }
+      if (normalized.startsWith('rgb')) {
+        return _extractColor('color:$normalized');
+      }
+      switch (normalized) {
+        case 'red':
+          return Colors.red;
+        case 'blue':
+          return Colors.blue;
+        case 'green':
+          return Colors.green;
+        case 'black':
+          return Colors.black;
+        case 'white':
+          return Colors.white;
+        case 'yellow':
+          return Colors.yellow;
+        case 'orange':
+          return Colors.orange;
+        case 'purple':
+          return Colors.purple;
+        case 'pink':
+          return Colors.pink;
+        case 'brown':
+          return Colors.brown;
+        case 'gray':
+        case 'grey':
+          return Colors.grey;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  Color? _extractColor(String style) {
+    final regexHex = RegExp(r'color\s*:\s*#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})');
+    final matchHex = regexHex.firstMatch(style);
+    if (matchHex != null) {
+      return _colorFromHex(matchHex.group(1)!);
+    }
+
+    final regexRgb = RegExp(r'color\s*:\s*rgb\s*\(([^\)]+)\)');
+    final matchRgb = regexRgb.firstMatch(style);
+    if (matchRgb != null) {
+      final parts = matchRgb.group(1)!
+          .split(',')
+          .map((e) => e.trim())
+          .map((e) => e.endsWith('%')
+              ? (255 * double.parse(e.replaceAll('%', '')) / 100).round()
+              : int.tryParse(e) ?? 0)
+          .toList();
+      if (parts.length >= 3) {
+        return Color.fromARGB(255, parts[0].clamp(0, 255), parts[1].clamp(0, 255), parts[2].clamp(0, 255));
+      }
+    }
+    return null;
+  }
+
+  Color _colorFromHex(String hex) {
+    final clean = hex.length == 3
+        ? hex.split('').map((c) => '$c$c').join()
+        : hex;
+    return Color(int.parse('0xFF$clean'));
+  }
+
+  String _normalizeUrl(String href) {
+    if (href.isEmpty) return href;
+    final trimmed = href.trim();
+    if (RegExp(r'^https?://', caseSensitive: false).hasMatch(trimmed)) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('www.')) {
+      return 'https://$trimmed';
+    }
+    return 'https://$trimmed';
+  }
 }
 
 class BloggerFeedPage extends StatefulWidget {
@@ -414,6 +685,7 @@ class _BloggerPostDetailPage extends StatefulWidget {
 class _BloggerPostDetailPageState extends State<_BloggerPostDetailPage> {
   bool _isFavorite = false;
   bool _loadingFavorite = true;
+  final List<TapGestureRecognizer> _linkRecognizers = [];
 
   @override
   void initState() {
@@ -456,7 +728,42 @@ class _BloggerPostDetailPageState extends State<_BloggerPostDetailPage> {
   }
 
   @override
+  void dispose() {
+    _resetLinkRecognizers();
+    super.dispose();
+  }
+
+  void _resetLinkRecognizers() {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    _linkRecognizers.clear();
+  }
+
+  void _openLink(String rawUrl) {
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) return;
+    Uri? uri = Uri.tryParse(trimmed);
+    if (uri == null) {
+      uri = Uri.tryParse('https://$trimmed');
+    } else if (!uri.hasScheme) {
+      uri = Uri.tryParse('https://$trimmed');
+    }
+    if (uri == null) return;
+    final hostTitle = uri.host.isNotEmpty ? uri.host : 'वेब पृष्ठ';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => InAppWebViewPage(
+          title: hostTitle,
+          initialUrl: uri.toString(),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    _resetLinkRecognizers();
     final theme = Theme.of(context);
     final paragraphs = widget.post.bodyParagraphs;
     return Scaffold(
@@ -521,15 +828,31 @@ class _BloggerPostDetailPageState extends State<_BloggerPostDetailPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.post.title,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: 1.2,
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 0),
+              decoration: const BoxDecoration(
+                color: Color(0xFF3674B5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: const [
+                  Text(
+                    'विज्ञापन',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 19,
+                      color: Colors.white,
+                    ),
+                  ),
+                  NativeBannerAd(
+                    adUnitId: 'ca-app-pub-1638673809508848/5037239330',
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
@@ -561,17 +884,18 @@ class _BloggerPostDetailPageState extends State<_BloggerPostDetailPage> {
                 ),
               )
             else
-              ...[
-                for (var i = 0; i < paragraphs.length; i++) ...[
-                  Text(
-                    paragraphs[i],
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      height: 1.5,
-                    ),
+              for (var i = 0; i < paragraphs.length; i++) ...[
+                _BlogRichParagraph(
+                  html: paragraphs[i],
+                  baseStyle: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
                   ),
-                  if (i != paragraphs.length - 1) const SizedBox(height: 18),
-                ],
+                  linkColor: Colors.blue,
+                  onTapLink: _openLink,
+                  registerRecognizer: _linkRecognizers.add,
+                ),
+                if (i != paragraphs.length - 1) const SizedBox(height: 18),
               ],
           ],
         ),
@@ -585,27 +909,71 @@ List<String> _htmlToParagraphs(String html) {
     return const <String>[];
   }
 
-  var working = html
-      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
-      .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n')
-      .replaceAll(RegExp(r'</div>', caseSensitive: false), '\n')
-      .replaceAll(RegExp(r'</h[1-6]>', caseSensitive: false), '\n')
-      .replaceAll(RegExp(r'</li>', caseSensitive: false), '\n')
-      .replaceAll(RegExp(r'<li[^>]*>', caseSensitive: false), '• ');
+  final frag = html_parser.parseFragment(html);
+  final paragraphs = <String>[];
+  final sb = StringBuffer();
 
-  working = working.replaceAll(RegExp(r'<[^>]+>'), '');
-  working = working.replaceAll(RegExp(r'&nbsp;', caseSensitive: false), ' ');
-  working = working.replaceAll(RegExp(r'&amp;', caseSensitive: false), '&');
-  working = working.replaceAll(RegExp(r'&quot;', caseSensitive: false), '"');
-  working = working.replaceAll(RegExp(r'&#39;'), "'");
-  working = working.replaceAll(RegExp(r'&rsquo;', caseSensitive: false), "'");
-  working = working.replaceAll(RegExp(r'&lsquo;', caseSensitive: false), "'");
-  working = working.replaceAll(RegExp(r'&ldquo;', caseSensitive: false), '"');
-  working = working.replaceAll(RegExp(r'&rdquo;', caseSensitive: false), '"');
+  bool isBlockName(String name) {
+    return name == 'p' ||
+        name == 'div' ||
+        name == 'section' ||
+        name == 'article' ||
+        name == 'blockquote' ||
+        name == 'li' ||
+        name == 'ul' ||
+        name == 'ol' ||
+        name.startsWith('h');
+  }
 
-  return working
-      .split(RegExp(r'\n+'))
-      .map((line) => line.replaceAll(RegExp(r'[ \t]+'), ' ').trim())
-      .where((line) => line.isNotEmpty)
-      .toList();
+  void flush() {
+    if (sb.isEmpty) return;
+    final htmlStr = sb.toString().trim();
+    if (htmlStr.isNotEmpty) paragraphs.add(htmlStr);
+    sb.clear();
+  }
+
+  String nodeOuter(dom.Node node) {
+    if (node is dom.Element) {
+      return node.outerHtml;
+    }
+    return node.text ?? '';
+  }
+
+  void collectInnerHtml(dom.Element el, StringBuffer into) {
+    for (final child in el.nodes) {
+      into.write(nodeOuter(child));
+    }
+  }
+
+  void walk(List<dom.Node> nodes) {
+    for (final node in nodes) {
+      if (node.nodeType == dom.Node.TEXT_NODE) {
+        sb.write(node.text ?? '');
+        continue;
+      }
+      if (node is dom.Element) {
+        final name = node.localName?.toLowerCase() ?? '';
+        if (name == 'br') {
+          flush();
+          continue;
+        }
+        if (isBlockName(name)) {
+          // flush current inline buffer as its own paragraph
+          flush();
+          // push this block's inner HTML as a paragraph
+          final inner = StringBuffer();
+          collectInnerHtml(node, inner);
+          final s = inner.toString().trim();
+          if (s.isNotEmpty) paragraphs.add(s);
+          continue;
+        }
+        // Inline element: append its full HTML
+        sb.write(node.outerHtml);
+      }
+    }
+  }
+
+  walk(frag.nodes);
+  flush();
+  return paragraphs;
 }
