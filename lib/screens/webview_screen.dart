@@ -1,19 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:printing/printing.dart';
-import 'package:pdf/pdf.dart' as pw;
-import 'package:pdf/widgets.dart' as pww;
-import 'package:share_plus/share_plus.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/downloads_store.dart';
 
 const MethodChannel _downloadChannel = MethodChannel(
@@ -25,6 +21,36 @@ const String kDesktopChromeUserAgent =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.82 Safari/537.36';
 const String kIPhoneSafariUserAgent =
     'Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Mobile/15E148 Safari/604.1';
+final List<ContentBlocker> kDefaultContentBlockers = <ContentBlocker>[
+  ContentBlocker(
+    trigger: ContentBlockerTrigger(
+      urlFilter: '.*(doubleclick\\.net).*',
+      unlessDomain: ['upbhulekh.gov.in'],
+    ),
+    action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
+  ),
+  ContentBlocker(
+    trigger: ContentBlockerTrigger(
+      urlFilter: '.*(googletagmanager\\.com).*',
+      unlessDomain: ['upbhulekh.gov.in'],
+    ),
+    action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
+  ),
+  ContentBlocker(
+    trigger: ContentBlockerTrigger(
+      urlFilter: '.*(google-analytics\\.com).*',
+      unlessDomain: ['upbhulekh.gov.in'],
+    ),
+    action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
+  ),
+  ContentBlocker(
+    trigger: ContentBlockerTrigger(
+      urlFilter: '.*(googlesyndication\\.com).*',
+      unlessDomain: ['upbhulekh.gov.in'],
+    ),
+    action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
+  ),
+];
 
 class InAppWebViewPage extends StatefulWidget {
   const InAppWebViewPage({
@@ -37,12 +63,15 @@ class InAppWebViewPage extends StatefulWidget {
     this.initialHeaders,
     this.nextUrlHeaders,
     this.nextUrlViaJavascript = false,
-    this.nextUrlDelay = const Duration(milliseconds: 350),
+    this.nextUrlDelay = const Duration(milliseconds: 700),
     this.forceMobileMode = false,
     this.popupWindowId,
     this.downloadReferer,
     this.automationProfile,
     this.automationDelay = const Duration(milliseconds: 700),
+    this.disableViewportFix = false,
+    this.disableContentBlockers = false,
+    this.initialLoadDelay = const Duration(milliseconds: 600),
   });
 
   final String title;
@@ -64,6 +93,10 @@ class InAppWebViewPage extends StatefulWidget {
   // Optional automation profile (e.g., 'npci_base') to run page-specific JS flows.
   final String? automationProfile;
   final Duration automationDelay;
+  final bool disableViewportFix;
+  final bool disableContentBlockers;
+  // Delay before the very first load to let WebView initialize and cookies attach reliably
+  final Duration initialLoadDelay;
 
   @override
   State<InAppWebViewPage> createState() => _InAppWebViewPageState();
@@ -90,18 +123,69 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
   bool _isSearching = false;
   int _loadCount = 0; // counts completed loads
   bool _didOpenNext = false; // ensure nextUrl is opened only once
-  bool _savingPdf = false;
   String? _currentUrl;
   final Map<String, int> _rationRetryCount = {};
   bool _uaFallbackTried = false;
   // Automation state
   bool _npciStage1Done = false; // clicked Customer and then BASE link
   bool _npciStage2Done = false; // redirected from rid page to homepage
+  bool _vaadVarasatApplyTriggered = false;
+  bool _vaadVarasatStatusTriggered = false;
+  bool _vaadChainStep1Done = false;
+  bool _vaadChainStep2Done = false;
+  bool _vaadChainVisitedHome = false;
 
   @override
   void initState() {
     super.initState();
     _ensureLocationPermission();
+  }
+
+  Future<void> _applyBhulekhTweaks(InAppWebViewController controller) async {
+    try {
+      final url = await controller.getUrl();
+      final host = url?.host.toLowerCase() ?? '';
+      if (!host.contains('upbhulekh.gov.in')) {
+        return;
+      }
+      await controller.evaluateJavascript(
+        source: r'''
+        (function(){
+          try {
+            var body = document.body;
+            if (body) {
+              body.style.removeProperty('height');
+              body.style.removeProperty('overflow');
+              body.style.visibility = 'visible';
+              body.style.opacity = '1';
+            }
+            var overlayContainer = document.querySelector('.cdk-overlay-container');
+            if (overlayContainer) {
+              overlayContainer.style.overflow = 'visible';
+            }
+            var overlays = document.querySelectorAll('.cdk-overlay-pane, .mat-select-panel, .mat-autocomplete-panel');
+            overlays.forEach(function(el){
+              try {
+                el.style.maxHeight = 'calc(100vh - 80px)';
+                el.style.overflowY = 'auto';
+                el.style.overflowX = 'hidden';
+              } catch (_) {}
+            });
+            setTimeout(function(){
+              try {
+                var overlaysLate = document.querySelectorAll('.cdk-overlay-pane, .mat-select-panel, .mat-autocomplete-panel');
+                overlaysLate.forEach(function(el){
+                  el.style.maxHeight = 'calc(100vh - 80px)';
+                  el.style.overflowY = 'auto';
+                  el.style.overflowX = 'hidden';
+                });
+              } catch (_) {}
+            }, 400);
+          } catch (_) {}
+        })();
+        ''' ,
+      );
+    } catch (_) {}
   }
 
   bool _isNpciHost(String host) {
@@ -379,6 +463,188 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
         } catch (_) {}
       }
     }
+
+    if (profile == 'vaad_varasat') {
+      final Uri? initUri = Uri.tryParse(widget.initialUrl);
+      final Uri? curUri = Uri.tryParse(current);
+      final flow = (curUri?.queryParameters['flow'] ??
+              initUri?.queryParameters['flow'] ??
+              '')
+          .toLowerCase();
+      final bool isStatus = flow == 'status';
+      final bool alreadyTriggered = isStatus
+          ? _vaadVarasatStatusTriggered
+          : _vaadVarasatApplyTriggered;
+      if (!alreadyTriggered && host.contains('vaad.up.nic.in')) {
+        final lowerCurrent = current.toLowerCase();
+        if (lowerCurrent.contains('index2.html') ||
+            lowerCurrent.endsWith('vaad.up.nic.in') ||
+            lowerCurrent.endsWith('vaad.up.nic.in/')) {
+          final target = isStatus
+              ? 'search_p11_application.aspx'
+              : 'khapu/pakha11user.aspx';
+          try {
+            final result = await controller.callAsyncJavaScript(
+              functionBody: r'''
+                const target = (arguments['target'] || '').toLowerCase();
+                return new Promise((resolve) => {
+                  let attempts = 0;
+                  const maxAttempts = 12;
+                  const attempt = () => {
+                    attempts++;
+                    const links = Array.from(document.querySelectorAll('a'));
+                    for (const link of links) {
+                      const href = (link.getAttribute('href') || '').toLowerCase();
+                      if (href && href.includes(target)) {
+                        try { link.target = '_self'; } catch (_) {}
+                        try {
+                          link.click();
+                          resolve('clicked');
+                          return;
+                        } catch (_) {}
+                        try {
+                          if (link.href) {
+                            window.location.href = link.href;
+                            resolve('navigated');
+                            return;
+                          }
+                        } catch (_) {}
+                      }
+                    }
+                    if (attempts >= maxAttempts) {
+                      resolve('not_found');
+                    } else {
+                      setTimeout(attempt, 250);
+                    }
+                  };
+                  attempt();
+                });
+              ''',
+              arguments: {'target': target},
+            );
+            final value = result?.value;
+            if (value == 'clicked' || value == 'navigated') {
+              if (isStatus) {
+                _vaadVarasatStatusTriggered = true;
+              } else {
+                _vaadVarasatApplyTriggered = true;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (profile == 'vaad_varasat_chain') {
+      if (host.contains('vaad.up.nic.in')) {
+        final uri = Uri.tryParse(current);
+        final path = (uri?.path ?? '').toLowerCase();
+        final lowerCurrent = current.toLowerCase();
+
+        // Step 0: If we started directly on index2, go to homepage once to set cookies, then continue chain
+        if (!_vaadChainVisitedHome && lowerCurrent.contains('index2.html') && !_vaadChainStep1Done) {
+          try {
+            await Future.delayed(widget.nextUrlDelay);
+            await controller.loadUrl(
+              urlRequest: URLRequest(
+                url: WebUri('https://vaad.up.nic.in/'),
+                headers: { 'Referer': 'https://vaad.up.nic.in/index2.html' },
+              ),
+            );
+            _vaadChainVisitedHome = true;
+            return;
+          } catch (_) {}
+        }
+
+        // Step 1: On homepage -> go to index2.html via in-page click, fallback to loadUrl with Referer
+        if (!_vaadChainStep1Done && (path.isEmpty || path == '/' || path == '/index.html' || path == '/default.aspx')) {
+          try {
+            final result = await controller.callAsyncJavaScript(
+              functionBody: r'''
+                return new Promise((resolve)=>{
+                  try{
+                    const tryClick = () => {
+                      const links = Array.from(document.querySelectorAll('a'));
+                      for (const a of links) {
+                        const href = (a.getAttribute('href') || '').toLowerCase();
+                        if (href.includes('index2.html')) {
+                          try { a.target = '_self'; } catch(_){}
+                          try { a.click(); resolve('clicked'); return; } catch(_){ }
+                          try { if (a.href) { window.location.href = a.href; resolve('navigated'); return; } } catch(_){}
+                        }
+                      }
+                      resolve('not_found');
+                    };
+                    setTimeout(tryClick, 300);
+                  }catch(_){ resolve('error'); }
+                });
+              ''',
+            );
+            final value = result?.value;
+            if (value == 'clicked' || value == 'navigated') {
+              _vaadChainStep1Done = true;
+            } else if (value == 'not_found') {
+              try {
+                await Future.delayed(widget.nextUrlDelay);
+                await controller.loadUrl(
+                  urlRequest: URLRequest(
+                    url: WebUri('https://vaad.up.nic.in/index2.html'),
+                    headers: { 'Referer': 'https://vaad.up.nic.in/' },
+                  ),
+                );
+                _vaadChainStep1Done = true;
+              } catch (_) {}
+            }
+          } catch (_) {}
+        }
+
+        // Step 2: On index2.html -> go to final KhaPu page via in-page click, fallback to loadUrl with Referer
+        if (!_vaadChainStep2Done && lowerCurrent.contains('index2.html')) {
+          try {
+            final result = await controller.callAsyncJavaScript(
+              functionBody: r'''
+                return new Promise((resolve)=>{
+                  try{
+                    let attempts = 0;
+                    const MAX = 12;
+                    const tick = () => {
+                      attempts++;
+                      const links = Array.from(document.querySelectorAll('a'));
+                      for (const a of links) {
+                        const href = (a.getAttribute('href') || '').toLowerCase();
+                        if (href.includes('khapu/pakha11user.aspx')) {
+                          try { a.target = '_self'; } catch(_){}
+                          try { a.click(); resolve('clicked'); return; } catch(_){ }
+                          try { if (a.href) { window.location.href = a.href; resolve('navigated'); return; } } catch(_){}
+                        }
+                      }
+                      if (attempts >= MAX) { resolve('not_found'); }
+                      else { setTimeout(tick, 250); }
+                    };
+                    setTimeout(tick, 350);
+                  }catch(_){ resolve('error'); }
+                });
+              ''',
+            );
+            final value = result?.value;
+            if (value == 'clicked' || value == 'navigated') {
+              _vaadChainStep2Done = true;
+            } else if (value == 'not_found') {
+              try {
+                await Future.delayed(widget.nextUrlDelay);
+                await controller.loadUrl(
+                  urlRequest: URLRequest(
+                    url: WebUri('https://vaad.up.nic.in/KhaPu/pakha11User.aspx'),
+                    headers: { 'Referer': 'https://vaad.up.nic.in/index2.html' },
+                  ),
+                );
+                _vaadChainStep2Done = true;
+              } catch (_) {}
+            }
+          } catch (_) {}
+        }
+      }
+    }
   }
 
   Future<String?> _getAbhaAuthHeader() async {
@@ -546,14 +812,8 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
           actions: [
             IconButton(
               tooltip: 'पेज को PDF में सहेजें',
-              icon: _savingPdf
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.picture_as_pdf_outlined),
-              onPressed: _savingPdf ? null : _saveCurrentPageAsPdf,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              onPressed: _saveCurrentPageAsPdf,
             ),
             if (!_isSearching)
               IconButton(
@@ -591,8 +851,7 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                   windowId: widget.popupWindowId,
                   initialUrlRequest: widget.popupWindowId == null
                       ? URLRequest(
-                          url: WebUri(widget.initialUrl),
-                          headers: widget.initialHeaders,
+                          url: WebUri('about:blank'),
                         )
                       : null,
                   initialSettings: InAppWebViewSettings(
@@ -608,6 +867,8 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                     databaseEnabled: true,
                     cacheEnabled: true,
                     clearCache: false,
+                    loadWithOverviewMode: true,
+                    cacheMode: CacheMode.LOAD_CACHE_ELSE_NETWORK,
                     loadsImagesAutomatically: true,
                     useWideViewPort: true,
                     builtInZoomControls: true,
@@ -617,6 +878,9 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                     thirdPartyCookiesEnabled: true,
                     geolocationEnabled: true,
                     useHybridComposition: true,
+                    contentBlockers: widget.disableContentBlockers
+                        ? <ContentBlocker>[]
+                        : kDefaultContentBlockers,
                     userAgent:
                         widget.overrideUserAgent ?? kMobileChromeUserAgent,
                     preferredContentMode: widget.forceMobileMode
@@ -629,6 +893,20 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                   ),
                   onWebViewCreated: (controller) {
                     _controller = controller;
+                    // Delayed initial load for stability
+                    if (widget.popupWindowId == null) {
+                      Future.delayed(widget.initialLoadDelay, () async {
+                        if (!mounted) return;
+                        try {
+                          await controller.loadUrl(
+                            urlRequest: URLRequest(
+                              url: WebUri(widget.initialUrl),
+                              headers: widget.initialHeaders,
+                            ),
+                          );
+                        } catch (_) {}
+                      });
+                    }
                   },
                   onConsoleMessage: (controller, consoleMessage) {
                     if (kDebugMode) {
@@ -651,31 +929,36 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                     });
                     _loadCount++;
                     // Always ensure a reasonable mobile viewport for better rendering on small screens.
-                    await controller.evaluateJavascript(
-                      source: r'''
-                      (function() {
-                        try {
-                          var existing = document.querySelector('meta[name="viewport"]');
-                          if (!existing) {
-                            existing = document.createElement('meta');
-                            existing.name = 'viewport';
-                            existing.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-                            document.head.appendChild(existing);
-                          }
+                    if (!widget.disableViewportFix) {
+                      await controller.evaluateJavascript(
+                        source: r'''
+                        (function() {
                           try {
-                            var b = document.body;
-                            if (b) {
-                              b.style.visibility = 'visible';
-                              b.style.opacity = '1';
-                              if (getComputedStyle(b).display === 'none') {
-                                b.style.display = 'block';
-                              }
+                            var existing = document.querySelector('meta[name="viewport"]');
+                            if (!existing) {
+                              existing = document.createElement('meta');
+                              existing.name = 'viewport';
+                              existing.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                              document.head.appendChild(existing);
                             }
+                            try {
+                              var b = document.body;
+                              if (b) {
+                                b.style.visibility = 'visible';
+                                b.style.opacity = '1';
+                                if (getComputedStyle(b).display === 'none') {
+                                  b.style.display = 'block';
+                                }
+                                b.style.removeProperty('height');
+                                b.style.removeProperty('overflow');
+                              }
+                            } catch (_) {}
                           } catch (_) {}
-                        } catch (_) {}
-                      })();
-                    ''',
-                    );
+                        })();
+                      ''',
+                      );
+                    }
+                    await _applyBhulekhTweaks(controller);
                     // Capture last form POST (ASP.NET WebForms) so we can reproduce downloads requiring POST/VIEWSTATE
                     try {
                       await controller.evaluateJavascript(
@@ -761,16 +1044,24 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                     } catch (_) {}
                     if (!_didOpenNext && widget.nextUrl != null) {
                       final currentStr = url?.toString() ?? _currentUrl ?? '';
-                      final curHost = Uri.tryParse(currentStr)?.host.toLowerCase() ?? '';
-                      final initHost = Uri.tryParse(widget.initialUrl)?.host.toLowerCase() ?? '';
+                      final curHost =
+                          Uri.tryParse(currentStr)?.host.toLowerCase() ?? '';
+                      final initHost =
+                          Uri.tryParse(widget.initialUrl)?.host.toLowerCase() ??
+                          '';
                       // Only trigger the nextUrl when we are on the initial host (e.g., fcs.up.gov.in)
                       if (initHost.isEmpty || curHost == initHost) {
                         _didOpenNext = true;
                         if (widget.nextUrlViaJavascript) {
-                          final escapedUrl = widget.nextUrl!.replaceAll("'", r"\'");
-                          final delayMs = widget.nextUrlDelay.inMilliseconds.clamp(0, 10000);
+                          final escapedUrl = widget.nextUrl!.replaceAll(
+                            "'",
+                            r"\'",
+                          );
+                          final delayMs = widget.nextUrlDelay.inMilliseconds
+                              .clamp(0, 10000);
                           await controller.evaluateJavascript(
-                            source: '''
+                            source:
+                                '''
                           setTimeout(function(){
                             try{
                               var a=document.createElement('a');
@@ -787,8 +1078,10 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                         } else {
                           final headers = <String, String>{
                             'Referer': widget.initialUrl,
-                            if (widget.nextUrlHeaders != null) ...widget.nextUrlHeaders!,
+                            if (widget.nextUrlHeaders != null)
+                              ...widget.nextUrlHeaders!,
                           };
+                          await Future.delayed(widget.nextUrlDelay);
                           await controller.loadUrl(
                             urlRequest: URLRequest(
                               url: WebUri(widget.nextUrl!),
@@ -804,51 +1097,89 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                   onProgressChanged: (controller, progress) {
                     setState(() => _progress = progress);
                   },
-                  shouldOverrideUrlLoading:
-                      (controller, navigationAction) async {
-                        final uri = navigationAction.request.url;
-                        if (uri == null) return NavigationActionPolicy.CANCEL;
-                        final scheme = uri.scheme.toLowerCase();
-                        // NFSA root guard: if portal bounces to root, force the intended page
-                        try {
-                          final host = uri.host.toLowerCase();
-                          final path = uri.path.toLowerCase();
-                          final profile = (widget.automationProfile ?? '').toLowerCase();
-                          if (host.contains('nfsa.up.gov.in') && (path == '/' || path == '/food/' || path == '/food')) {
-                            if (profile == 'nfsa_up_citizen' || profile == 'fcs_to_nfsa_citizen') {
-                              await controller.loadUrl(
-                                urlRequest: URLRequest(
-                                  url: WebUri('https://nfsa.up.gov.in/Food/citizen/Default.aspx?AspxAutoDetectCookieSupport=1'),
-                                  headers: {'Referer': _currentUrl ?? widget.initialUrl},
-                                ),
-                              );
-                              return NavigationActionPolicy.CANCEL;
-                            } else if (profile == 'nfsa_up_nfsarcsearch' || profile == 'fcs_to_nfsa_search') {
-                              await controller.loadUrl(
-                                urlRequest: URLRequest(
-                                  url: WebUri('https://nfsa.up.gov.in/Food/TrackingRationCard/NFSARCSearch.aspx?AspxAutoDetectCookieSupport=1'),
-                                  headers: {'Referer': _currentUrl ?? widget.initialUrl},
-                                ),
+                  shouldOverrideUrlLoading: (controller, navigationAction) async {
+                    final uri = navigationAction.request.url;
+                    if (uri == null) return NavigationActionPolicy.CANCEL;
+                    final scheme = uri.scheme.toLowerCase();
+                    // NFSA root guard: if portal bounces to root, force the intended page
+                    try {
+                      final host = uri.host.toLowerCase();
+                      final path = uri.path.toLowerCase();
+                      final profile = (widget.automationProfile ?? '')
+                          .toLowerCase();
+                      if (host.contains('nfsa.up.gov.in') &&
+                          (path == '/' ||
+                              path == '/food/' ||
+                              path == '/food')) {
+                        if (profile == 'nfsa_up_citizen' ||
+                            profile == 'fcs_to_nfsa_citizen') {
+                          await Future.delayed(widget.nextUrlDelay);
+                          await controller.loadUrl(
+                            urlRequest: URLRequest(
+                              url: WebUri(
+                                'https://nfsa.up.gov.in/Food/citizen/Default.aspx?AspxAutoDetectCookieSupport=1',
+                              ),
+                              headers: {
+                                'Referer': _currentUrl ?? widget.initialUrl,
+                              },
+                            ),
+                          );
+                          return NavigationActionPolicy.CANCEL;
+                        } else if (profile == 'nfsa_up_nfsarcsearch' ||
+                            profile == 'fcs_to_nfsa_search') {
+                          await Future.delayed(widget.nextUrlDelay);
+                          await controller.loadUrl(
+                            urlRequest: URLRequest(
+                              url: WebUri(
+                                'https://nfsa.up.gov.in/Food/TrackingRationCard/NFSARCSearch.aspx?AspxAutoDetectCookieSupport=1',
+                              ),
+                              headers: {
+                                'Referer': _currentUrl ?? widget.initialUrl,
+                              },
+                            ),
+                          );
+                          return NavigationActionPolicy.CANCEL;
+                        }
+                      }
+                    } catch (_) {}
+                    if (scheme == 'http' ||
+                        scheme == 'https' ||
+                        scheme == 'about' ||
+                        scheme == 'blob' ||
+                        scheme == 'data' ||
+                        scheme == 'javascript') {
+                      if (scheme == 'http' || scheme == 'https') {
+                        final host = uri.host.toLowerCase();
+                        const secDownloadPaths = [
+                          '/site/download',
+                          '/site/downloadfile',
+                          '/site/downloadhandler',
+                          '/site/voterlistdownload',
+                        ];
+                        if (host.endsWith('sec.up.nic.in')) {
+                          final pathLower = uri.path.toLowerCase();
+                          if (pathLower.endsWith('.pdf') ||
+                              pathLower.contains('/download') ||
+                              secDownloadPaths.any(pathLower.startsWith)) {
+                            final opened = await _launchExternalUrl(uri);
+                            if (opened) {
+                              _showSnack(
+                                'फाइल सिस्टम ब्राउज़र में खोली गई है।',
                               );
                               return NavigationActionPolicy.CANCEL;
                             }
                           }
-                        } catch (_) {}
-                        if (scheme == 'http' ||
-                            scheme == 'https' ||
-                            scheme == 'about' ||
-                            scheme == 'blob' ||
-                            scheme == 'data' ||
-                            scheme == 'javascript') {
-                          return NavigationActionPolicy.ALLOW;
                         }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('यह लिंक ऐप में समर्थित नहीं है'),
-                          ),
-                        );
-                        return NavigationActionPolicy.CANCEL;
-                      },
+                      }
+                      return NavigationActionPolicy.ALLOW;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('यह लिंक ऐप में समर्थित नहीं है'),
+                      ),
+                    );
+                    return NavigationActionPolicy.CANCEL;
+                  },
                   onCreateWindow: (controller, createWindowRequest) async {
                     // Open popups in another in-app WebView that is linked via windowId
                     await Navigator.of(context).push(
@@ -891,27 +1222,15 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                     await controller.reload();
                   },
                   onReceivedError: (controller, request, error) {
-                    final bool isMain = request.isForMainFrame ?? true;
-                    if (!isMain) {
+                    final bool isMainFrame = request.isForMainFrame ?? true;
+                    if (!isMainFrame) {
                       return;
                     }
-                    setState(
-                      () => _lastError = SimpleWebError(
-                        code: (() {
-                          try {
-                            final dynamic e = error;
-                            final c = e.errorCode;
-                            if (c is int) return c;
-                          } catch (_) {}
-                          return -1;
-                        })(),
-                        description: error.description,
-                        url: request.url.toString(),
-                      ),
-                    );
-                    // Retry logic for ration card related hosts on transient errors
+                    final scheme = request.url.scheme.toLowerCase();
+                    if (scheme == 'about' || scheme == 'data' || scheme == 'javascript' || scheme.isEmpty) {
+                      return;
+                    }
                     final host = request.url.host.toLowerCase();
-                    final isRationHost = _isRationHost(host);
                     final int code = (() {
                       try {
                         final dynamic e = error;
@@ -920,10 +1239,31 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                       } catch (_) {}
                       return -1;
                     })();
-                    final isTransient =
+                    final bool isTransient =
                         code == -6 /* ERROR_HOST_LOOKUP */ ||
                         code == -7 /* ERROR_CONNECT */ ||
-                        code == -8 /* ERROR_TIMEOUT */;
+                        code == -8 /* ERROR_TIMEOUT */ ||
+                        code == -2 /* ERROR_UNKNOWN */;
+                    final bool isGovNic =
+                        host == 'gov.in' ||
+                        host == 'nic.in' ||
+                        host.endsWith('.gov.in') ||
+                        host.endsWith('.nic.in') ||
+                        host.contains('rhreporting.nic.in');
+
+                    if (isGovNic && isTransient) {
+                      _rationRetryCount[host] =
+                          (_rationRetryCount[host] ?? 0) + 1;
+                      if (_rationRetryCount[host]! <= 2) {
+                        controller.reload();
+                        return;
+                      }
+                      // Allow user to continue without closing WebView
+                      return;
+                    }
+
+                    // Retry logic for ration card related hosts on transient errors
+                    final isRationHost = _isRationHost(host);
                     if (isRationHost && isTransient) {
                       _rationRetryCount[host] =
                           (_rationRetryCount[host] ?? 0) + 1;
@@ -932,16 +1272,55 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                         return;
                       }
                     }
+
+                    setState(
+                      () => _lastError = SimpleWebError(
+                        code: code,
+                        description: error.description,
+                        url: request.url.toString(),
+                      ),
+                    );
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('लोड करने में समस्या: $code')),
                     );
                   },
-                  onReceivedHttpError: (controller, request, response) {
+                  onReceivedHttpError: (controller, request, response) async {
                     final bool isMain = request.isForMainFrame ?? true;
                     if (!isMain) {
                       return;
                     }
                     final statusCode = response.statusCode ?? -1;
+                    final host = request.url.host.toLowerCase();
+                    final bool isGovNic =
+                        host == 'gov.in' ||
+                        host == 'nic.in' ||
+                        host.endsWith('.gov.in') ||
+                        host.endsWith('.nic.in') ||
+                        host.contains('rhreporting.nic.in');
+                    if (isGovNic &&
+                        (statusCode == 404 ||
+                            statusCode == 500 ||
+                            statusCode == 503)) {
+                      // For rhreporting.nic.in specifically, auto recover by visiting Home then retry nextUrl
+                      if (host.contains('rhreporting.nic.in')) {
+                        try {
+                          _didOpenNext =
+                              false; // allow nextUrl to trigger again after Home
+                          await controller.loadUrl(
+                            urlRequest: URLRequest(
+                              url: WebUri(
+                                'https://rhreporting.nic.in/netiay/Home.aspx',
+                              ),
+                              headers: {
+                                'Referer': _currentUrl ?? widget.initialUrl,
+                              },
+                            ),
+                          );
+                        } catch (_) {}
+                      }
+                      // Suppress error overlay; many NIC/GOV sites briefly return errors before redirecting
+                      return;
+                    }
                     setState(
                       () => _lastError = SimpleWebError(
                         code: statusCode,
@@ -961,9 +1340,15 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
                       final isMain = req.isForMainFrame ?? true;
                       if (!isMain) return null;
                       final host = url.host.toLowerCase();
-                      // IMPORTANT: Do not intercept UP government domains; these portals
-                      // rely on native WebView navigation, cookies and headers.
-                      if (host.endsWith('up.nic.in') || host.endsWith('up.gov.in')) {
+                      // IMPORTANT: Do not intercept government/NIC domains; these portals
+                      // rely on native WebView navigation, cookies, headers and ASP.NET postbacks.
+                      if (host == 'gov.in' ||
+                          host == 'nic.in' ||
+                          host.endsWith('.gov.in') ||
+                          host.endsWith('.nic.in') ||
+                          host.endsWith('up.nic.in') ||
+                          host.endsWith('up.gov.in') ||
+                          host.contains('rhreporting.nic.in')) {
                         return null;
                       }
 
@@ -1087,169 +1472,34 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
   }
 
   Future<void> _saveCurrentPageAsPdf() async {
-    if (_savingPdf) return;
-    setState(() => _savingPdf = true);
-
-    Uint8List? pdfBytes;
-
-    try {
-      pdfBytes = await _generateCurrentPagePdf();
-    } catch (e) {
-      if (mounted) {
-        _showSnack('PDF तैयार करने में समस्या: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _savingPdf = false);
-      }
-    }
-
-    if (!mounted || pdfBytes == null || pdfBytes.isEmpty) {
-      return;
-    }
-
-    await _presentPdfActions(pdfBytes);
-  }
-
-  Future<Uint8List?> _generateCurrentPagePdf() async {
     final controller = _controller;
     if (controller == null) {
       _showSnack('वेब पेज अभी लोड नहीं हुआ है।');
-      return null;
-    }
-
-    final currentUrl = await controller.getUrl();
-    final dynamic htmlResult = await controller.evaluateJavascript(
-      source: "(() => document.documentElement.outerHTML)();",
-    );
-    final htmlContent = htmlResult is String
-        ? htmlResult
-        : htmlResult?.toString();
-    if (htmlContent == null || htmlContent.isEmpty) {
-      _showSnack('वेब पेज की सामग्री नहीं मिली।');
-      return null;
-    }
-
-    try {
-      // ignore: deprecated_member_use
-      final pdfBytes = await Printing.convertHtml(
-        format: pw.PdfPageFormat.a4,
-        html: htmlContent,
-        baseUrl: currentUrl?.toString(),
-      ).timeout(const Duration(seconds: 12));
-
-      if (pdfBytes.isEmpty) {
-        _showSnack('PDF तैयार नहीं हो पाया।');
-        return null;
-      }
-      return pdfBytes;
-    } on TimeoutException {
-      // Fallback: capture a screenshot and wrap into a single-page PDF.
-      final fallback = await _pdfFromScreenshot(controller);
-      if (fallback == null) {
-        _showSnack('PDF बनाने में अधिक समय लग रहा है। कृपया पुनः प्रयास करें।');
-      }
-      return fallback;
-    } catch (_) {
-      // Any other failure -> fallback
-      final fallback = await _pdfFromScreenshot(controller);
-      return fallback;
-    }
-  }
-
-  Future<Uint8List?> _pdfFromScreenshot(
-    InAppWebViewController controller,
-  ) async {
-    try {
-      final shot = await controller.takeScreenshot();
-      if (shot == null || shot.isEmpty) return null;
-      final doc = pww.Document();
-      final img = pww.MemoryImage(shot);
-      doc.addPage(
-        pww.Page(
-          pageFormat: pw.PdfPageFormat.a4,
-          build: (context) => pww.Padding(
-            padding: const pww.EdgeInsets.all(12),
-            child: pww.Center(child: pww.Image(img, fit: pww.BoxFit.contain)),
-          ),
-        ),
-      );
-      return doc.save();
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<void> _presentPdfActions(Uint8List pdfBytes) async {
-    if (!mounted) return;
-
-    final title = widget.title.isNotEmpty ? widget.title : 'वेब पेज';
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.download_rounded),
-                title: const Text('PDF डाउनलोड करें'),
-                onTap: () => Navigator.of(context).pop('download'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.share_rounded),
-                title: const Text('PDF साझा करें'),
-                onTap: () => Navigator.of(context).pop('share'),
-              ),
-              const SizedBox(height: 4),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (!mounted || action == null) return;
-
-    switch (action) {
-      case 'download':
-        await _handlePdfDownload(pdfBytes, title);
-        break;
-      case 'share':
-        await _handlePdfShare(pdfBytes, title);
-        break;
-    }
-  }
-
-  Future<void> _handlePdfDownload(Uint8List bytes, String title) async {
-    final safeName = _sanitizeFileName(title.isNotEmpty ? title : 'webpage');
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final suggested = '$safeName-$timestamp';
-
-    // Try to save directly to Downloads using MediaStore (no runtime permission).
-    try {
-      await FileSaver.instance.saveFile(
-        name: suggested,
-        bytes: bytes,
-        fileExtension: 'pdf',
-        mimeType: MimeType.pdf,
-      );
-      _showSnack('PDF “Downloads” में सहेजा गया');
       return;
-    } catch (_) {
-      // Fallback to app-specific storage if MediaStore save fails.
     }
+    try {
+      await controller.printCurrentPage();
+    } catch (e) {
+      _showSnack('प्रिंट विकल्प खोलने में समस्या: $e');
+    }
+  }
 
-    final baseDir =
-        await getExternalStorageDirectory() ??
-        await getApplicationDocumentsDirectory();
-    final folder = Directory(p.join(baseDir.path, 'Online Yojna'));
-    if (!await folder.exists()) {
-      await folder.create(recursive: true);
+  Future<bool> _launchExternalForDownload(DownloadStartRequest request) async {
+    final raw = request.url.toString();
+    if (raw.isEmpty) return false;
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return false;
+    return _launchExternalUrl(uri);
+  }
+
+  Future<bool> _launchExternalUrl(Uri uri) async {
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') return false;
+    try {
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
     }
-    final file = File(p.join(folder.path, '$suggested.pdf'));
-    await file.writeAsBytes(bytes, flush: true);
-    _showSnack('PDF सहेजा गया: ${file.path}');
   }
 
   Future<void> _handleDownloadRequest(DownloadStartRequest request) async {
@@ -1267,6 +1517,13 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
 
     // For SEC up.nic.in, first try JS GET (same URL) with credentials, then try reproducing last form POST.
     if (!isAbha && isUpNic) {
+      final openedExternally = await _launchExternalForDownload(request);
+      if (openedExternally) {
+        messenger?.hideCurrentSnackBar();
+        if (!mounted) return;
+        _showSnack('फाइल सिस्टम ब्राउज़र में खोली गई है।');
+        return;
+      }
       messenger?.showSnackBar(
         const SnackBar(
           content: Row(
@@ -1595,11 +1852,17 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
       targetFileName,
       defaultExt: ext,
     );
-    final effectiveMime = request.mimeType ?? _mimeFromExtension(ext);
+    final String effectiveMime = request.mimeType ?? _mimeFromExtension(ext);
 
+    final lowerEffMime = (effectiveMime ?? '').toLowerCase();
+    final bool expectPdfHeader =
+        lowerEffMime.contains('pdf') ||
+        p.extension(targetFileName).toLowerCase() == '.pdf' ||
+        ext.toLowerCase() == 'pdf';
     final headers = <String, String>{
-      HttpHeaders.acceptHeader:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      HttpHeaders.acceptHeader: expectPdfHeader
+          ? 'application/pdf,application/octet-stream,*/*;q=0.9'
+          : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
       'Cache-Control': 'no-cache',
       'Pragma': 'no-cache',
       'Sec-Fetch-Site': 'same-origin',
@@ -1768,6 +2031,12 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
       return null;
     }
 
+    final guessedName = _resolveFileName(request);
+    final resolvedExt = _resolveExtension(guessedName, request.mimeType);
+    final bool expectPdfHeader =
+        (request.mimeType?.toLowerCase().contains('pdf') ?? false) ||
+        resolvedExt.toLowerCase() == 'pdf';
+
     final client = HttpClient();
     client.badCertificateCallback = (cert, host, port) => true;
 
@@ -1776,7 +2045,9 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
 
     httpRequest.headers.set(
       HttpHeaders.acceptHeader,
-      'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      expectPdfHeader
+          ? 'application/pdf,application/octet-stream,*/*;q=0.9'
+          : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     );
     httpRequest.headers.set(
       'Accept-Language',
@@ -1970,9 +2241,16 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
       client.badCertificateCallback = (c, h, p) => true;
       final httpReq = await client.openUrl('POST', uri);
       httpReq.followRedirects = true;
+      final requestedName = _resolveFileName(request);
+      final requestedExt = _resolveExtension(requestedName, request.mimeType);
+      final bool expectPdfHeader =
+          (request.mimeType?.toLowerCase().contains('pdf') ?? false) ||
+          requestedExt.toLowerCase() == 'pdf';
       httpReq.headers.set(
         HttpHeaders.acceptHeader,
-        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        expectPdfHeader
+            ? 'application/pdf,application/octet-stream,*/*;q=0.9'
+            : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
       );
       httpReq.headers.set(
         HttpHeaders.contentTypeHeader,
@@ -2261,28 +2539,6 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
       default:
         return 'application/octet-stream';
     }
-  }
-
-  Future<void> _handlePdfShare(Uint8List bytes, String title) async {
-    final tempDir = await getTemporaryDirectory();
-    final safeName = _sanitizeFileName(title);
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final tempPath = p.join(tempDir.path, '$safeName-$timestamp.pdf');
-    final tempFile = File(tempPath);
-    await tempFile.writeAsBytes(bytes, flush: true);
-
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [
-          XFile(
-            tempFile.path,
-            mimeType: 'application/pdf',
-            name: '$safeName.pdf',
-          ),
-        ],
-        text: '$title — PDF साझा करें',
-      ),
-    );
   }
 
   // Removed _resolveDownloadDirectory: SAF/app-specific storage is used instead.

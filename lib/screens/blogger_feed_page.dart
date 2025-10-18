@@ -40,6 +40,18 @@ class BloggerFeedConfig {
   final String title;
 }
 
+class _BloggerPage {
+  const _BloggerPage({required this.posts, this.nextPageToken});
+
+  final List<_BloggerPost> posts;
+  final String? nextPageToken;
+
+  static const _BloggerPage empty = _BloggerPage(
+    posts: <_BloggerPost>[],
+    nextPageToken: null,
+  );
+}
+
 class _BlogRichParagraph extends StatelessWidget {
   const _BlogRichParagraph({
     required this.html,
@@ -75,7 +87,9 @@ class _BlogRichParagraph extends StatelessWidget {
     var start = 0;
     for (final match in regex.allMatches(text)) {
       if (match.start > start) {
-        spans.add(TextSpan(text: text.substring(start, match.start), style: style));
+        spans.add(
+          TextSpan(text: text.substring(start, match.start), style: style),
+        );
       }
       var raw = match.group(0) ?? '';
       if (raw.isEmpty) {
@@ -84,19 +98,22 @@ class _BlogRichParagraph extends StatelessWidget {
       }
       final trimmed = raw.replaceFirst(RegExp(r'[\)\]\.,;!?]+$'), '');
       final trailing = raw.substring(trimmed.length);
-      final normalized = RegExp(r'^https?://', caseSensitive: false).hasMatch(trimmed)
+      final normalized =
+          RegExp(r'^https?://', caseSensitive: false).hasMatch(trimmed)
           ? trimmed
           : 'https://$trimmed';
-      final recognizer = TapGestureRecognizer()..onTap = () => onTapLink(normalized);
+      final recognizer = TapGestureRecognizer()
+        ..onTap = () => onTapLink(normalized);
       registerRecognizer(recognizer);
-      spans.add(TextSpan(
-        text: trimmed,
-        style: style.merge(TextStyle(
-          color: linkColor,
-          decoration: TextDecoration.underline,
-        )),
-        recognizer: recognizer,
-      ));
+      spans.add(
+        TextSpan(
+          text: trimmed,
+          style: style.merge(
+            TextStyle(color: linkColor, decoration: TextDecoration.underline),
+          ),
+          recognizer: recognizer,
+        ),
+      );
       if (trailing.isNotEmpty) {
         spans.add(TextSpan(text: trailing, style: style));
       }
@@ -128,11 +145,17 @@ class _BlogRichParagraph extends StatelessWidget {
         var childStyle = style;
 
         if (name == 'strong' || name == 'b') {
-          childStyle = childStyle.merge(const TextStyle(fontWeight: FontWeight.w700));
+          childStyle = childStyle.merge(
+            const TextStyle(fontWeight: FontWeight.w700),
+          );
         } else if (name == 'em' || name == 'i') {
-          childStyle = childStyle.merge(const TextStyle(fontStyle: FontStyle.italic));
+          childStyle = childStyle.merge(
+            const TextStyle(fontStyle: FontStyle.italic),
+          );
         } else if (name == 'u') {
-          childStyle = childStyle.merge(const TextStyle(decoration: TextDecoration.underline));
+          childStyle = childStyle.merge(
+            const TextStyle(decoration: TextDecoration.underline),
+          );
         }
 
         childStyle = _applyInlineColor(childStyle, element);
@@ -141,7 +164,9 @@ class _BlogRichParagraph extends StatelessWidget {
           final href = element.attributes['href']?.trim() ?? '';
           final childSpans = _parseNodes(
             element.nodes,
-            childStyle.merge(const TextStyle(decoration: TextDecoration.underline)),
+            childStyle.merge(
+              const TextStyle(decoration: TextDecoration.underline),
+            ),
           );
           if (href.isNotEmpty) {
             final normalized = _normalizeUrl(href);
@@ -149,14 +174,22 @@ class _BlogRichParagraph extends StatelessWidget {
             final recognizer = TapGestureRecognizer()
               ..onTap = () => onTapLink(normalized);
             registerRecognizer(recognizer);
-            final linkStyle = childStyle.merge(TextStyle(
-              decoration: TextDecoration.underline,
-              color: hasInline ? (childStyle.color ?? linkColor) : linkColor,
-            ));
+            final linkStyle = childStyle.merge(
+              TextStyle(
+                decoration: TextDecoration.underline,
+                color: hasInline ? (childStyle.color ?? linkColor) : linkColor,
+              ),
+            );
             if (childSpans.isEmpty) {
               final t = element.text.trim();
               final displayText = t.isNotEmpty ? t : normalized;
-              spans.add(TextSpan(text: displayText, style: linkStyle, recognizer: recognizer));
+              spans.add(
+                TextSpan(
+                  text: displayText,
+                  style: linkStyle,
+                  recognizer: recognizer,
+                ),
+              );
             } else {
               // Force blue color on all descendants if no inline color on <a>
               final decorated = _decorateLinkChildren(
@@ -164,7 +197,13 @@ class _BlogRichParagraph extends StatelessWidget {
                 recognizer,
                 forceColor: hasInline ? null : linkColor,
               );
-              spans.add(TextSpan(children: decorated, style: linkStyle, recognizer: recognizer));
+              spans.add(
+                TextSpan(
+                  children: decorated,
+                  style: linkStyle,
+                  recognizer: recognizer,
+                ),
+              );
             }
           } else {
             spans.addAll(childSpans);
@@ -179,7 +218,9 @@ class _BlogRichParagraph extends StatelessWidget {
 
   bool _hasInlineColor(dom.Element element) {
     final styleAttr = element.attributes['style'] ?? '';
-    if (RegExp(r'color\s*:', caseSensitive: false).hasMatch(styleAttr)) return true;
+    if (RegExp(r'color\s*:', caseSensitive: false).hasMatch(styleAttr)) {
+      return true;
+    }
     final colorAttr = element.attributes['color'];
     if (colorAttr != null && colorAttr.trim().isNotEmpty) return true;
     return false;
@@ -193,7 +234,9 @@ class _BlogRichParagraph extends StatelessWidget {
     InlineSpan mapSpan(InlineSpan span) {
       if (span is TextSpan) {
         final TextStyle base = span.style ?? const TextStyle();
-        TextStyle updated = base.merge(const TextStyle(decoration: TextDecoration.underline));
+        TextStyle updated = base.merge(
+          const TextStyle(decoration: TextDecoration.underline),
+        );
         if (forceColor != null) {
           updated = updated.copyWith(color: forceColor);
         }
@@ -214,7 +257,8 @@ class _BlogRichParagraph extends StatelessWidget {
   TextStyle _applyInlineColor(TextStyle style, dom.Element element) {
     final styleAttr = element.attributes['style'];
     final colorAttr = element.attributes['color'];
-    final detected = _extractColor(styleAttr ?? '') ?? _extractNamedColor(colorAttr);
+    final detected =
+        _extractColor(styleAttr ?? '') ?? _extractNamedColor(colorAttr);
     if (detected != null) {
       style = style.merge(TextStyle(color: detected));
     }
@@ -272,15 +316,23 @@ class _BlogRichParagraph extends StatelessWidget {
     final regexRgb = RegExp(r'color\s*:\s*rgb\s*\(([^\)]+)\)');
     final matchRgb = regexRgb.firstMatch(style);
     if (matchRgb != null) {
-      final parts = matchRgb.group(1)!
+      final parts = matchRgb
+          .group(1)!
           .split(',')
           .map((e) => e.trim())
-          .map((e) => e.endsWith('%')
-              ? (255 * double.parse(e.replaceAll('%', '')) / 100).round()
-              : int.tryParse(e) ?? 0)
+          .map(
+            (e) => e.endsWith('%')
+                ? (255 * double.parse(e.replaceAll('%', '')) / 100).round()
+                : int.tryParse(e) ?? 0,
+          )
           .toList();
       if (parts.length >= 3) {
-        return Color.fromARGB(255, parts[0].clamp(0, 255), parts[1].clamp(0, 255), parts[2].clamp(0, 255));
+        return Color.fromARGB(
+          255,
+          parts[0].clamp(0, 255),
+          parts[1].clamp(0, 255),
+          parts[2].clamp(0, 255),
+        );
       }
     }
     return null;
@@ -307,11 +359,7 @@ class _BlogRichParagraph extends StatelessWidget {
 }
 
 class BloggerFeedPage extends StatefulWidget {
-  const BloggerFeedPage({
-    super.key,
-    required this.config,
-    this.initialPostId,
-  });
+  const BloggerFeedPage({super.key, required this.config, this.initialPostId});
 
   final BloggerFeedConfig config;
   final String? initialPostId;
@@ -324,7 +372,12 @@ class _BloggerFeedState extends State<BloggerFeedPage> {
   static const String _authority = 'www.googleapis.com';
 
   http.Client? _httpClient;
-  late Future<List<_BloggerPost>> _postsFuture;
+  final ScrollController _scrollController = ScrollController();
+  List<_BloggerPost> _posts = [];
+  String? _nextPageToken;
+  String? _errorMessage;
+  bool _loadingInitial = true;
+  bool _loadingMore = false;
   String? _pendingInitialPostId;
   bool _initialNavigationPending = false;
 
@@ -332,7 +385,8 @@ class _BloggerFeedState extends State<BloggerFeedPage> {
   void initState() {
     super.initState();
     _httpClient = http.Client();
-    _postsFuture = _fetchPosts();
+    _scrollController.addListener(_onScroll);
+    _loadInitial();
     _pendingInitialPostId = widget.initialPostId;
     _initialNavigationPending = widget.initialPostId != null;
   }
@@ -340,12 +394,14 @@ class _BloggerFeedState extends State<BloggerFeedPage> {
   @override
   void dispose() {
     _httpClient?.close();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
-  Future<List<_BloggerPost>> _fetchPosts() async {
+  Future<_BloggerPage> _fetchPostsPage({String? pageToken}) async {
     final client = _httpClient;
-    if (client == null) return const [];
+    if (client == null) return _BloggerPage.empty;
 
     final queryParameters = <String, String>{
       'key': widget.config.apiKey,
@@ -356,6 +412,9 @@ class _BloggerFeedState extends State<BloggerFeedPage> {
       'maxResults': '30',
       'fetchBodies': 'true',
     };
+    if (pageToken != null && pageToken.isNotEmpty) {
+      queryParameters['pageToken'] = pageToken;
+    }
     final uri = Uri.https(
       _authority,
       '/blogger/v3/blogs/${widget.config.blogId}/posts',
@@ -371,33 +430,104 @@ class _BloggerFeedState extends State<BloggerFeedPage> {
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final items = body['items'] as List<dynamic>?;
-    if (items == null) return const [];
-
-    return items
+    final items = body['items'] as List<dynamic>? ?? const [];
+    final posts = items
         .map((item) => _BloggerPost.fromJson(item as Map<String, dynamic>))
         .where((post) => post.title.isNotEmpty)
         .toList();
+    final nextToken = body['nextPageToken'] as String?;
+    return _BloggerPage(posts: posts, nextPageToken: nextToken);
   }
 
-  Future<void> _handleRefresh() async {
-    final posts = await _fetchPosts();
-    if (!mounted) return;
+  Future<void> _loadInitial() async {
     setState(() {
-      _postsFuture = Future.value(posts);
-      if (_pendingInitialPostId != null) {
-        _initialNavigationPending = true;
+      _loadingInitial = true;
+      _errorMessage = null;
+      _nextPageToken = null;
+    });
+    try {
+      final page = await _fetchPostsPage();
+      if (!mounted) return;
+      setState(() {
+        _posts = page.posts;
+        _nextPageToken = page.nextPageToken;
+        _loadingInitial = false;
+      });
+      _tryOpenPendingPost();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingInitial = false;
+        if (_posts.isEmpty) {
+          _errorMessage = e.toString();
+        }
+      });
+      if (_posts.isNotEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('लोड करने में दिक्कत: $e')));
       }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || _loadingInitial) return;
+    final token = _nextPageToken;
+    if (token == null || token.isEmpty) return;
+    setState(() {
+      _loadingMore = true;
+    });
+    try {
+      final page = await _fetchPostsPage(pageToken: token);
+      if (!mounted) return;
+      setState(() {
+        _posts = [..._posts, ...page.posts];
+        _nextPageToken = page.nextPageToken;
+        _loadingMore = false;
+      });
+      _tryOpenPendingPost();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingMore = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('और पोस्ट लोड करने में दिक्कत: $e')),
+      );
+    }
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients || _loadingMore || _loadingInitial) {
+      return;
+    }
+    final position = _scrollController.position;
+    if (position.maxScrollExtent - position.pixels <= 240) {
+      _loadMore();
+    }
+  }
+
+  void _tryOpenPendingPost() {
+    if (!_initialNavigationPending || _pendingInitialPostId == null) return;
+    final target = _posts.firstWhere(
+      (post) => post.id == _pendingInitialPostId,
+      orElse: () => _BloggerPost.empty,
+    );
+    if (target == _BloggerPost.empty) {
+      return;
+    }
+    _initialNavigationPending = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openPost(target);
     });
   }
 
   void _openPost(_BloggerPost post) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _BloggerPostDetailPage(
-          post: post,
-          label: widget.config.label,
-        ),
+        builder: (_) =>
+            _BloggerPostDetailPage(post: post, label: widget.config.label),
       ),
     );
   }
@@ -405,77 +535,56 @@ class _BloggerFeedState extends State<BloggerFeedPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.config.title),
+      appBar: AppBar(title: Text(widget.config.title)),
+      body: RefreshIndicator(
+        onRefresh: _loadInitial,
+        child: _buildFeedContent(),
       ),
-      body: FutureBuilder<List<_BloggerPost>>(
-        future: _postsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    );
+  }
 
-          if (snapshot.hasError) {
-            final message = snapshot.error?.toString() ?? 'अज्ञात त्रुटि';
-            return _BloggerFeedMessage(
-              icon: Icons.wifi_off,
-              title: 'डेटा लोड करने में दिक्कत',
-              message: message,
-              onRefresh: _handleRefresh,
-            );
-          }
+  Widget _buildFeedContent() {
+    if (_loadingInitial && _posts.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 120),
+        children: const [Center(child: CircularProgressIndicator())],
+      );
+    }
 
-          final posts = snapshot.data ?? const [];
-          if (posts.isEmpty) {
-            return _BloggerFeedMessage(
-              icon: Icons.article_outlined,
-              title: 'यहाँ अभी कुछ नहीं है',
-              message: 'जैसे ही नया अपडेट आएगा, वह यहाँ दिखाई देगा।',
-              onRefresh: _handleRefresh,
-            );
-          }
+    if (_posts.isEmpty) {
+      final hasError = _errorMessage != null && _errorMessage!.isNotEmpty;
+      return _BloggerFeedMessage(
+        icon: hasError ? Icons.wifi_off : Icons.article_outlined,
+        title: hasError ? 'डेटा लोड करने में दिक्कत' : 'यहाँ अभी कुछ नहीं है',
+        message: hasError
+            ? _errorMessage!
+            : 'जैसे ही नया अपडेट आएगा, वह यहाँ दिखाई देगा।',
+      );
+    }
 
-          if (_initialNavigationPending && _pendingInitialPostId != null) {
-            final target = posts.firstWhere(
-              (post) => post.id == _pendingInitialPostId,
-              orElse: () => _BloggerPost.empty,
-            );
-            if (target != _BloggerPost.empty) {
-              _initialNavigationPending = false;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                _openPost(target);
-              });
-            }
-          }
-
-          return RefreshIndicator(
-            onRefresh: _handleRefresh,
-            child: ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 16, bottom: 32),
-              itemCount: posts.length,
-              itemBuilder: (context, index) {
-                final post = posts[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _BloggerPostTile(
-                    post: post,
-                    onOpen: _openPost,
-                  ),
-                );
-              },
-              separatorBuilder: (context, index) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Container(
-                  height: 1,
-                  color: Colors.blueGrey.shade100,
-                ),
+    return ListView.separated(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: _posts.length + (_loadingMore ? 1 : 0),
+      separatorBuilder: (context, index) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        if (index >= _posts.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
               ),
             ),
           );
-        },
-      ),
+        }
+        final post = _posts[index];
+        return _BloggerPostTile(post: post, onOpen: _openPost);
+      },
     );
   }
 }
@@ -501,10 +610,13 @@ class _BloggerPost {
       id: json['id'] as String? ?? '',
       title: (json['title'] as String?)?.trim() ?? '',
       summary: _truncateWords(
-        effectiveParagraphs.isNotEmpty ? effectiveParagraphs.join(' ') : cleaned,
+        effectiveParagraphs.isNotEmpty
+            ? effectiveParagraphs.join(' ')
+            : cleaned,
         15,
       ),
-      published: DateTime.tryParse(json['published'] as String? ?? '')?.toUtc() ??
+      published:
+          DateTime.tryParse(json['published'] as String? ?? '')?.toUtc() ??
           DateTime.now().toUtc(),
       url: json['url'] as String? ?? (json['link'] as String? ?? ''),
       bodyParagraphs: effectiveParagraphs,
@@ -518,7 +630,8 @@ class _BloggerPost {
   final String url;
   final List<String> bodyParagraphs;
 
-  DateTime get publishedIst => published.add(const Duration(hours: 5, minutes: 30));
+  DateTime get publishedIst =>
+      published.add(const Duration(hours: 5, minutes: 30));
 
   static final _BloggerPost empty = _BloggerPost(
     id: '',
@@ -531,10 +644,7 @@ class _BloggerPost {
 }
 
 class _BloggerPostTile extends StatelessWidget {
-  const _BloggerPostTile({
-    required this.post,
-    required this.onOpen,
-  });
+  const _BloggerPostTile({required this.post, required this.onOpen});
 
   final _BloggerPost post;
   final void Function(_BloggerPost post) onOpen;
@@ -542,57 +652,28 @@ class _BloggerPostTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final background = theme.colorScheme.surface;
-    final borderColor = theme.colorScheme.primary.withOpacity(0.18);
-    final textColor = theme.colorScheme.onSurface;
     final dateColor = theme.colorScheme.primary;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () {
-          onOpen(post);
-        },
-        child: Ink(
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(theme.brightness == Brightness.dark ? 0.12 : 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-            border: Border.all(color: borderColor, width: 1.1),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  post.title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    color: textColor,
-                    height: 1.28,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _formatIndianDate(post.publishedIst),
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: dateColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return ListTile(
+      onTap: () => onOpen(post),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      title: Text(
+        post.title,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        _formatIndianDate(post.publishedIst),
+        style: theme.textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: dateColor,
         ),
       ),
+      dense: true,
+      horizontalTitleGap: 8,
     );
   }
 }
@@ -602,44 +683,44 @@ class _BloggerFeedMessage extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.message,
-    required this.onRefresh,
   });
 
   final IconData icon;
   final String title;
   final String message;
-  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-        children: [
-          Icon(icon, size: 64, color: theme.colorScheme.primary),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            textAlign: TextAlign.center,
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      children: [
+        Icon(icon, size: 64, color: theme.colorScheme.primary),
+        const SizedBox(height: 16),
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
           ),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            style: theme.textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          style: theme.textTheme.bodyMedium,
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
 
 String _truncateWords(String text, int maxWords) {
-  final words = text.split(RegExp(r'\s+')).where((w) => w.trim().isNotEmpty).toList();
+  final words = text
+      .split(RegExp(r'\s+'))
+      .where((w) => w.trim().isNotEmpty)
+      .toList();
   if (words.length <= maxWords) {
     return text.trim();
   }
@@ -722,9 +803,9 @@ class _BloggerPostDetailPageState extends State<_BloggerPostDetailPage> {
       _loadingFavorite = false;
     });
     final message = added ? 'पसंदीदा में जोड़ा गया' : 'पसंदीदा से हटाया गया';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -753,10 +834,8 @@ class _BloggerPostDetailPageState extends State<_BloggerPostDetailPage> {
     final hostTitle = uri.host.isNotEmpty ? uri.host : 'वेब पृष्ठ';
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => InAppWebViewPage(
-          title: hostTitle,
-          initialUrl: uri.toString(),
-        ),
+        builder: (_) =>
+            InAppWebViewPage(title: hostTitle, initialUrl: uri.toString()),
       ),
     );
   }
@@ -818,10 +897,7 @@ class _BloggerPostDetailPageState extends State<_BloggerPostDetailPage> {
                     'https://play.google.com/store/apps/details?id=com.samoondigital.yojnaplus&pcampaignid=web_share',
                   );
 
-                Share.share(
-                  buffer.toString(),
-                  subject: post.title,
-                );
+                Share.share(buffer.toString(), subject: post.title);
               },
             ),
           ),
@@ -833,10 +909,8 @@ class _BloggerPostDetailPageState extends State<_BloggerPostDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(12, 9, 12, 0),
-              decoration: const BoxDecoration(
-                color: Color(0xFF3674B5),
-              ),
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
+              decoration: const BoxDecoration(color: Color(0xFF3674B5)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: const [

@@ -1,60 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:yojna_plus/screens/webview_screen.dart';
-import 'package:yojna_plus/tts/highlight_text.dart';
-import 'package:yojna_plus/tts/tts_reader.dart';
-import 'package:yojna_plus/widgets/native_ad_banner_section.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class AwasCardScreen extends StatefulWidget {
+class AwasCardScreen extends StatelessWidget {
   const AwasCardScreen({super.key});
 
   @override
-  State<AwasCardScreen> createState() => _AwasCardScreenState();
-}
-
-class _AwasCardScreenState extends State<AwasCardScreen> {
-  final TtsReaderController _tts = TtsReaderController();
-
-  late final List<String> _segments = [
-    'प्रधानमंत्री आवास योजना (शहरी) का आवास कार्ड लाभार्थियों को स्वीकृति, किश्त और आकलन की स्थिति एक जगह देखने की सुविधा देता है।',
-    'कार्ड उन्हीं परिवारों को मिलता है जिनकी वार्षिक आय शहरी क्षेत्रों में ₹3 लाख (ईडब्ल्यूएस) या ₹6 लाख (एलआईजी) से कम है तथा परिवार के पास पक्का घर नहीं होना चाहिए।',
-    'आवेदन के लिए आधार कार्ड, परिवार के सभी सदस्यों की पहचान, बैंक पासबुक, मोबाइल नंबर, आय प्रमाणपत्र और निवास प्रमाणपत्र तैयार रखें।',
-    'आधिकारिक पोर्टल पर लॉगिन करें, फॉर्म में पारिवारिक विवरण भरें, दस्तावेज़ अपलोड करें और अंतिम सबमिशन से पहले पूर्वावलोकन अवश्य जाँचें।',
-    'सबमिशन के बाद आवास कार्ड डाउनलोड करें; इसमें आवेदन आईडी, स्वीकृति चरण और किस्त की जानकारी शामिल होती है।',
-    'यदि ऑनलाइन आवेदन संभव नहीं है तो नगर पालिका या सीएससी सेंटर पर जाकर बायोमेट्रिक सत्यापन के साथ फॉर्म भरें।',
-    'कार्ड की स्थिति 30 से 45 दिनों के अंतराल पर जाँचते रहें; यदि अपडेट न मिले तो स्थानीय आवास मिशन कार्यालय से संपर्क करें।',
-    'नीचे दिए गए लिंक से आप आधिकारिक वेबसाइट पर सीधे कार्ड की स्थिति देख सकते हैं।',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _tts.setSegments(_segments);
-  }
-
-  @override
-  void dispose() {
-    _tts.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('प्रधानमंत्री आवास कार्ड'),
-        actions: [
-          AnimatedBuilder(
-            animation: _tts,
-            builder: (context, _) {
-              final color = _tts.isSpeaking ? Theme.of(context).colorScheme.secondary : null;
-              return IconButton(
-                tooltip: 'आवाज़',
-                icon: Icon(Icons.volume_up_rounded, color: color),
-                onPressed: _tts.toggleSpeak,
-              );
-            },
-          ),
-        ],
+        title: const Text('आवास योजना 2025-26'),
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
@@ -70,149 +25,154 @@ class _AwasCardScreenState extends State<AwasCardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionHeader(context, Icons.info_outline, 'आवास कार्ड क्या है?'),
-                  const SizedBox(height: 8),
-                  HighlightableText(
-                    controller: _tts,
-                    segmentIndex: 0,
-                    text:
-                        'प्रधानमंत्री आवास योजना (शहरी) का आवास कार्ड लाभार्थियों को स्वीकृति, किश्त और आकलन की स्थिति एक जगह देखने की सुविधा देता है।',
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const NativeAdBannerSection(
-            adUnitId: 'ca-app-pub-1638673809508848/1708799616',
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionHeader(context, Icons.verified_user_outlined, 'पात्रता और आवश्यक दस्तावेज़'),
-                  const SizedBox(height: 8),
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(Icons.check_circle_outline, color: Theme.of(context).colorScheme.primary, size: 18),
+                      Icon(
+                        Icons.ondemand_video,
+                        color: theme.colorScheme.primary,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: HighlightableText(
-                          controller: _tts,
-                          segmentIndex: 1,
-                          text:
-                              'कार्ड उन्हीं परिवारों को मिलता है जिनकी वार्षिक आय शहरी क्षेत्रों में ₹3 लाख (ईडब्ल्यूएस) या ₹6 लाख (एलआईजी) से कम है तथा परिवार के पास पक्का घर नहीं होना चाहिए।',
+                        child: Text(
+                          'आवास योजना वीडियो गाइड',
+                          style: theme.textTheme.titleMedium,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.assignment_outlined, color: Theme.of(context).colorScheme.primary, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: HighlightableText(
-                          controller: _tts,
-                          segmentIndex: 2,
-                          text:
-                              'आवेदन के लिए आधार कार्ड, परिवार के सभी सदस्यों की पहचान, बैंक पासबुक, मोबाइल नंबर, आय प्रमाणपत्र और निवास प्रमाणपत्र तैयार रखें।',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionHeader(context, Icons.laptop_chromebook, 'ऑनलाइन आवेदन प्रक्रिया'),
                   const SizedBox(height: 8),
-                  HighlightableText(
-                    controller: _tts,
-                    segmentIndex: 3,
-                    text:
-                        'आधिकारिक पोर्टल पर लॉगिन करें, फॉर्म में पारिवारिक विवरण भरें, दस्तावेज़ अपलोड करें और अंतिम सबमिशन से पहले पूर्वावलोकन अवश्य जाँचें।',
+                  Text(
+                    'आवास सूची में अपना नाम कैसे देखें? पूरी वीडियो देखें और समझें।',
+                    style: theme.textTheme.bodyLarge?.copyWith(height: 1.4),
                   ),
-                  const SizedBox(height: 6),
-                  HighlightableText(
-                    controller: _tts,
-                    segmentIndex: 4,
-                    text:
-                        'सबमिशन के बाद आवास कार्ड डाउनलोड करें; इसमें आवेदन आईडी, स्वीकृति चरण और किस्त की जानकारी शामिल होती है।',
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionHeader(context, Icons.support_agent, 'ऑफ़लाइन सहायता और ट्रैकिंग'),
-                  const SizedBox(height: 8),
-                  HighlightableText(
-                    controller: _tts,
-                    segmentIndex: 5,
-                    text:
-                        'यदि ऑनलाइन आवेदन संभव नहीं है तो नगर पालिका या सीएससी सेंटर पर जाकर बायोमेट्रिक सत्यापन के साथ फॉर्म भरें।',
-                  ),
-                  const SizedBox(height: 6),
-                  HighlightableText(
-                    controller: _tts,
-                    segmentIndex: 6,
-                    text:
-                        'कार्ड की स्थिति 30 से 45 दिनों के अंतराल पर जाँचते रहें; यदि अपडेट न मिले तो स्थानीय आवास मिशन कार्यालय से संपर्क करें।',
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionHeader(context, Icons.public, 'आधिकारिक वेबसाइट पर जाएँ'),
-                  const SizedBox(height: 8),
-                  HighlightableText(
-                    controller: _tts,
-                    segmentIndex: 7,
-                    text:
-                        'नीचे दिए गए लिंक से आप आधिकारिक वेबसाइट पर सीधे कार्ड की स्थिति देख सकते हैं।',
-                  ),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerLeft,
+                  const SizedBox(height: 12),
+                  Center(
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const InAppWebViewPage(
-                              title: 'PMAY कार्ड स्थिति',
-                              initialUrl: 'https://pmaymis.gov.in/',
-                            ),
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('वीडियो लिंक जल्द जोड़ा जाएगा।'),
                           ),
                         );
                       },
+                      icon: const Icon(Icons.play_circle_fill_outlined),
+                      label: const Text('वीडियो देखें'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.fact_check_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'आवास सूची देखें ग्रामीण',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'यहां से आप अपना नाम सूची में देख सकते हैं।',
+                    style: theme.textTheme.bodyLarge?.copyWith(height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final uris = [
+                          Uri.parse('https://rhreporting.nic.in/netiay/EFMSReport/BenAccountFrozenReport.aspx'),
+                          Uri.parse('https://rhreporting.nic.in/netiay/Home.aspx'),
+                        ];
+                        bool launched = false;
+                        for (final uri in uris) {
+                          if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                            launched = true;
+                            break;
+                          }
+                        }
+                        if (!launched) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('लिंक नहीं खुल पाया, कृपया कुछ देर बाद पुनः प्रयास करें।'),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.link_outlined),
+                      label: const Text('सूची देखें'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.list_alt_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'आवास प्लस सूची',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'जिन लाभार्थियों का आवेदन आवास प्लस ऐप के द्वारा हुआ है वो लोग अपना सूची में नाम यहां से देखें।',
+                    style: theme.textTheme.bodyLarge?.copyWith(height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final uri = Uri.parse(
+                          'https://rhreporting.nic.in/netiay/AwaasPlus2018Reports/AwaasPlusCategoryWiseVerReport.aspx',
+                        );
+                        if (!await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        )) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('लिंक नहीं खुल पाया, कृपया कुछ देर बाद पुनः प्रयास करें।'),
+                            ),
+                          );
+                        }
+                      },
                       icon: const Icon(Icons.open_in_new),
-                      label: const Text('वेबसाइट खोलें'),
+                      label: const Text('सूची में देखें'),
                     ),
                   ),
                 ],
@@ -225,14 +185,3 @@ class _AwasCardScreenState extends State<AwasCardScreen> {
   }
 }
 
-Widget _sectionHeader(BuildContext context, IconData icon, String title) {
-  final theme = Theme.of(context);
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Icon(icon, color: theme.colorScheme.primary),
-      const SizedBox(width: 8),
-      Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
-    ],
-  );
-}

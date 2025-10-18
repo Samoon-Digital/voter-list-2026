@@ -282,7 +282,7 @@ class _UttarPradeshPageState extends State<UttarPradeshPage>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.32),
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.32),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
@@ -374,7 +374,7 @@ class _UttarPradeshPageState extends State<UttarPradeshPage>
         Container(
           height: _blogCardHeight,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
             borderRadius: BorderRadius.circular(20),
           ),
           alignment: Alignment.center,
