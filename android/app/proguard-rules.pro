@@ -9,12 +9,6 @@
 -keep class com.google.android.gms.ads.identifier.** { *; }
 -keep class com.google.android.gms.measurement.** { *; }
 
-# Keep Firebase messaging/analytics initialization and models
--keep class com.google.firebase.** { *; }
--keep class com.google.firebase.messaging.** { *; }
--keep class com.google.firebase.analytics.** { *; }
--keep class com.google.firebase.installations.** { *; }
-
 # Keep flutter_inappwebview (uses reflection extensively)
 -keep class com.pichillilorenzo.flutter_inappwebview.** { *; }
 -dontwarn com.pichillilorenzo.flutter_inappwebview.**
@@ -28,7 +22,6 @@
 # Don't warn about Flutter/JNI generated symbols
 -dontwarn io.flutter.**
 -dontwarn androidx.lifecycle.**
--dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
 
 
