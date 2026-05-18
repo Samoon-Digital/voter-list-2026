@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.Bundle
+import android.content.res.Configuration
 import android.provider.MediaStore
 import android.content.ContentValues
 import android.util.Base64
@@ -17,27 +19,29 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import com.google.android.gms.ads.nativead.MediaView
-import com.google.android.gms.ads.nativead.NativeAd
-import com.google.android.gms.ads.nativead.NativeAdView
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugins.googlemobileads.GoogleMobileAdsPlugin
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : FlutterActivity() {
-    private val nativeBannerFactoryId = "nativeBanner"
     private val downloadChannelName = "com.samoondigital.yojnaplus/downloads"
     private var downloadChannel: MethodChannel? = null
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Enable edge-to-edge without using deprecated setters
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.isAppearanceLightStatusBars = !isNight
+        controller.isAppearanceLightNavigationBars = !isNight
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        GoogleMobileAdsPlugin.registerNativeAdFactory(
-            flutterEngine,
-            nativeBannerFactoryId,
-            NativeBannerAdFactory(layoutInflater)
-        )
 
         downloadChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, downloadChannelName).apply {
             setMethodCallHandler(::handleDownloadMethod)
@@ -45,7 +49,6 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
-        GoogleMobileAdsPlugin.unregisterNativeAdFactory(flutterEngine, nativeBannerFactoryId)
         downloadChannel?.setMethodCallHandler(null)
         downloadChannel = null
         super.cleanUpFlutterEngine(flutterEngine)
@@ -96,6 +99,8 @@ class MainActivity : FlutterActivity() {
                 }
                 try {
                     val bytes = Base64.decode(base64, Base64.DEFAULT)
+                    var uriString: String? = null
+                    
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val values = ContentValues().apply {
                             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
@@ -111,15 +116,21 @@ class MainActivity : FlutterActivity() {
                             os.write(bytes)
                             os.flush()
                         }
-                        result.success(uri.toString())
+                        uriString = uri.toString()
                     } else {
                         // Pre-Android Q fallback: write to public Downloads directory
                         val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                         if (!dir.exists()) dir.mkdirs()
                         val target = java.io.File(dir, fileName)
                         target.outputStream().use { it.write(bytes) }
-                        result.success(target.absolutePath)
+                        uriString = target.absolutePath
                     }
+                    
+                    // Show Notification
+                    showDownloadNotification(fileName, mimeType)
+                    
+                    result.success(uriString)
+                    
                 } catch (e: Exception) {
                     result.error("save_failed", e.localizedMessage, null)
                 }
@@ -185,6 +196,44 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun showDownloadNotification(fileName: String, mimeType: String?) {
+        val channelId = "downloads_channel"
+        val notificationId = System.currentTimeMillis().toInt()
+
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                channelId,
+                "Downloads",
+                android.app.NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Download completions"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            this, 
+            0, 
+            intent, 
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = androidx.core.app.NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done) // Use system icon or your own
+            .setContentTitle("Download Complete")
+            .setContentText(fileName)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        notificationManager.notify(notificationId, builder.build())
+    }
+
     private fun handleEnqueueDownload(call: MethodCall, result: MethodChannel.Result) {
         val arguments = call.arguments as? Map<*, *>
         if (arguments == null) {
@@ -238,51 +287,6 @@ class MainActivity : FlutterActivity() {
         } catch (ex: Exception) {
             result.error("download_error", ex.localizedMessage, null)
         }
-    }
-}
-
-private class NativeBannerAdFactory(private val layoutInflater: LayoutInflater) : GoogleMobileAdsPlugin.NativeAdFactory {
-    override fun createNativeAd(nativeAd: NativeAd, customOptions: MutableMap<String, Any>?): NativeAdView {
-        val adView = layoutInflater.inflate(R.layout.native_banner, null) as NativeAdView
-
-        val headlineView = adView.findViewById<TextView>(R.id.ad_headline).apply {
-            text = nativeAd.headline
-            visibility = View.VISIBLE
-        }
-        adView.headlineView = headlineView
-
-        val ctaButton = adView.findViewById<Button>(R.id.ad_call_to_action).apply {
-            if (nativeAd.callToAction.isNullOrEmpty()) {
-                visibility = View.GONE
-            } else {
-                text = nativeAd.callToAction
-                visibility = View.VISIBLE
-                setBackgroundColor(Color.parseColor("#0B57D0"))
-            }
-            isEnabled = false
-        }
-        adView.callToActionView = ctaButton
-
-        val iconView = adView.findViewById<ImageView>(R.id.ad_icon).apply {
-            val icon = nativeAd.icon
-            if (icon == null) {
-                visibility = View.GONE
-            } else {
-                setImageDrawable(icon.drawable)
-                visibility = View.VISIBLE
-            }
-        }
-        adView.iconView = iconView
-
-        val mediaView = adView.findViewById<MediaView>(R.id.ad_media).apply {
-            mediaContent = nativeAd.mediaContent
-            setImageScaleType(ImageView.ScaleType.CENTER_CROP)
-        }
-        adView.mediaView = mediaView
-
-        adView.setNativeAd(nativeAd)
-
-        return adView
     }
 }
 

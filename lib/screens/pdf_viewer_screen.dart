@@ -1,187 +1,186 @@
-import 'dart:typed_data';
-
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:pdfx/pdfx.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:share_plus/share_plus.dart';
 
-class SharedPdfViewerScreen extends StatefulWidget {
-  const SharedPdfViewerScreen({
-    super.key,
-    required this.title,
-    this.bytes,
-    this.filePath,
-  }) : assert(bytes != null || filePath != null, 'PDF bytes या filePath में से एक प्रदान करें');
-
+class PdfViewerScreen extends StatefulWidget {
+  final String path;
   final String title;
-  final Uint8List? bytes;
-  final String? filePath;
+
+  const PdfViewerScreen({super.key, required this.path, required this.title});
 
   @override
-  State<SharedPdfViewerScreen> createState() => _SharedPdfViewerScreenState();
+  State<PdfViewerScreen> createState() => _PdfViewerScreenState();
 }
 
-class _SharedPdfViewerScreenState extends State<SharedPdfViewerScreen> {
-  PdfControllerPinch? _controller;
-  bool _initializing = true;
-  String? _error;
-  String? _password;
-  bool _askedPasswordOnce = false;
+class _PdfViewerScreenState extends State<PdfViewerScreen> {
+  int? pages = 0;
+  int? currentPage = 0;
+  bool isReady = false;
+  String errorMessage = '';
+
+  static const _channel = MethodChannel(
+    'com.samoondigital.yojnaplus/downloads',
+  );
 
   @override
-  void initState() {
-    super.initState();
-    _reopenDocument();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(''), // Hidden title as requested
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () => _sharePdf(),
+            tooltip: 'Share PDF',
+          ),
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            onPressed: () => _savePdfToDownloads(),
+            tooltip: 'Download PDF',
+          ),
+        ],
+      ),
+      body: Stack(
+        children: <Widget>[
+          PDFView(
+            filePath: widget.path,
+            enableSwipe: true,
+            swipeHorizontal: false,
+            autoSpacing: true,
+            pageFling: true,
+            pageSnap: true,
+            defaultPage: currentPage!,
+            fitPolicy: FitPolicy.BOTH,
+            preventLinkNavigation: false,
+            onRender: (pages) {
+              setState(() {
+                pages = pages;
+                isReady = true;
+              });
+            },
+            onError: (error) {
+              setState(() {
+                errorMessage = error.toString();
+              });
+              print(error.toString());
+            },
+            onPageError: (page, error) {
+              setState(() {
+                errorMessage = '$page: ${error.toString()}';
+              });
+              print('$page: ${error.toString()}');
+            },
+            onViewCreated: (PDFViewController pdfViewController) {
+              // controller = pdfViewController;
+            },
+            onPageChanged: (int? page, int? total) {
+              setState(() {
+                currentPage = page;
+              });
+            },
+          ),
+          errorMessage.isEmpty
+              ? !isReady
+                    ? const Center(child: CircularProgressIndicator())
+                    : Container()
+              : Center(child: Text(errorMessage)),
+        ],
+      ),
+      floatingActionButton: FutureBuilder<int>(
+        future: Future.value(currentPage),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                "${(currentPage ?? 0) + 1} / $pages",
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
+          }
+          return Container();
+        },
+      ),
+    );
   }
 
-  Future<void> _waitForDocument(Future<PdfDocument> future) async {
-    setState(() {
-      _initializing = true;
-      _error = null;
-    });
+  Future<void> _savePdfToDownloads() async {
     try {
-      await future;
-      if (!mounted) return;
-      setState(() => _initializing = false);
+      final File sourceFile = File(widget.path);
+      if (!sourceFile.existsSync()) {
+        throw Exception("Source file not found");
+      }
+
+      String filename = widget.title;
+      if (!filename.toLowerCase().endsWith('.pdf')) {
+        filename += '.pdf';
+      }
+      // Sanitizing filename
+      filename = filename.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+
+      final bytes = await sourceFile.readAsBytes();
+      final base64Bytes = base64Encode(bytes);
+
+      try {
+        await _channel.invokeMethod('saveToDownloads', {
+          'fileName': filename,
+          'mimeType': 'application/pdf',
+          'bytesBase64': base64Bytes,
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Saved to Downloads successfully'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } on PlatformException catch (e) {
+        throw Exception("Native save failed: ${e.message}");
+      }
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _initializing = false;
-      });
-      // If password likely or any first-time failure, prompt once
-      if (!_askedPasswordOnce || _looksLikePasswordError(_error)) {
-        _askedPasswordOnce = true;
-        _promptPassword();
+      debugPrint("Error saving PDF: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
-  }
-
-  Future<PdfDocument> _openDocumentFuture() {
-    if (widget.bytes != null) {
-      return PdfDocument.openData(widget.bytes!, password: _password);
-    }
-    return PdfDocument.openFile(widget.filePath!, password: _password);
-  }
-
-  bool _looksLikePasswordError(String? err) {
-    if (err == null) return false;
-    final e = err.toLowerCase();
-    return e.contains('password') || e.contains('encrypt');
-  }
-
-  Future<void> _promptPassword() async {
-    final ctrl = TextEditingController();
-    final pass = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('PDF पासवर्ड दर्ज करें'),
-          content: TextField(
-            controller: ctrl,
-            obscureText: true,
-            decoration: const InputDecoration(hintText: 'पासवर्ड'),
-            onSubmitted: (_) => Navigator.of(context).pop(ctrl.text.trim()),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('रद्द करें'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(ctrl.text.trim()),
-              child: const Text('ओके'),
-            ),
-          ],
-        );
-      },
-    );
-    if (pass == null || pass.isEmpty) return;
-    _password = pass;
-    _reopenDocument();
-  }
-
-  void _reopenDocument() {
-    final future = _openDocumentFuture();
-    final old = _controller;
-    final ctrl = PdfControllerPinch(document: future);
-    _controller = ctrl;
-    setState(() {
-      _initializing = true;
-      _error = null;
-    });
-    _waitForDocument(future);
-    if (old != null) {
-      // Dispose old after frame
-      WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
   }
 
   Future<void> _sharePdf() async {
     try {
-      if (widget.filePath != null) {
-        await Share.shareXFiles(
-          [XFile(widget.filePath!, mimeType: 'application/pdf')],
-          subject: widget.title,
-        );
-      } else if (widget.bytes != null) {
-        await Share.shareXFiles(
-          [XFile.fromData(widget.bytes!, mimeType: 'application/pdf', name: '${widget.title}.pdf')],
-          subject: widget.title,
-        );
+      final File file = File(widget.path);
+      if (await file.exists()) {
+        final xFile = XFile(widget.path);
+        await Share.shareXFiles([xFile], text: 'Check out this PDF');
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File not found to share')),
+          );
+        }
       }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF साझा करने में समस्या: $e')),
-      );
+      debugPrint('Error sharing: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error sharing: $e')));
+      }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share_rounded),
-            tooltip: 'शेयर करें',
-            onPressed: _sharePdf,
-          ),
-          IconButton(
-            icon: const Icon(Icons.lock_open_rounded),
-            tooltip: 'पासवर्ड दर्ज करें',
-            onPressed: _promptPassword,
-          ),
-        ],
-      ),
-      body: _buildBody(theme),
-    );
-  }
-
-  Widget _buildBody(ThemeData theme) {
-    if (_initializing) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(child: Text('PDF खोलने में समस्या: $_error'));
-    }
-    return PdfViewPinch(
-      controller: _controller!,
-      onDocumentError: (error) {
-        if (!mounted) return;
-        setState(() => _error = error.toString());
-      },
-      backgroundDecoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
-      ),
-    );
   }
 }

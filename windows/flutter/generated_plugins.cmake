@@ -3,14 +3,9 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  cloud_firestore
-  file_saver
   firebase_core
   flutter_inappwebview_windows
-  flutter_tts
-  pdfx
   permission_handler_windows
-  printing
   share_plus
   url_launcher_windows
 )

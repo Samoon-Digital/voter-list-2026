@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:in_app_update/in_app_update.dart';
+import 'package:yojna_plus/services/update_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:yojna_plus/screens/select_state_screen.dart';
-import 'package:yojna_plus/screens/uttar_pradesh_screen.dart';
+import 'package:yojna_plus/screens/home_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:yojna_plus/screens/onboarding_screen.dart';
 import 'package:yojna_plus/screens/splash_screen.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:yojna_plus/utils/ad_manager.dart';
+import 'package:yojna_plus/l10n/app_strings.dart';
 
 // Explicit Firebase options for Android to support initialization in background isolate
 const FirebaseOptions _androidFirebaseOptions = FirebaseOptions(
@@ -43,33 +43,19 @@ class RootRouter extends StatefulWidget {
 
 class _RootRouterState extends State<RootRouter> {
   bool _loading = true;
-  bool _seen = false;
-  String? _selectedState;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _checkUpdate();
   }
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final seen = prefs.getBool('onboarding_seen') ?? false;
-    final selected = prefs.getString('selected_state');
+  Future<void> _checkUpdate() async {
+    // Simulate update check or load
+    await Future.delayed(Duration.zero);
     if (!mounted) return;
     setState(() {
-      _seen = seen;
-      _selectedState = selected;
       _loading = false;
-    });
-  }
-
-  Future<void> _finishOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_seen', true);
-    if (!mounted) return;
-    setState(() {
-      _seen = true;
     });
   }
 
@@ -78,14 +64,8 @@ class _RootRouterState extends State<RootRouter> {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (!_seen) {
-      return OnboardingScreen(onFinished: _finishOnboarding);
-    }
-    if ((_selectedState ?? '').isNotEmpty) {
-      // फिलहाल केवल उत्तर प्रदेश लाइव है
-      return const UpdateGate(child: UttarPradeshPage());
-    }
-    return const UpdateGate(child: SelectStatePage());
+    // होम स्क्रीन पर जाएं
+    return const UpdateGate(child: HomePage());
   }
 }
 
@@ -96,8 +76,12 @@ Future<void> main() async {
   } else {
     await Firebase.initializeApp();
   }
-  await MobileAds.instance.initialize();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  unawaited(MobileAds.instance.initialize());
+  AdManager.instance.preloadAll();
+  await AppStrings.init();
+
   runApp(const MainApp());
 }
 
@@ -108,19 +92,22 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Tailored color scheme for a Sarkari Yojna information app
-    const seed = Color(0xFF0B57D0); // Trustworthy gov blue
+    // Voter List 2026 Theme
+    const primaryColor = Color(0xFF1A237E); // Deep Indigo
+    const secondaryColor = Color(0xFFFF6D00); // Vibrant Saffron
+    const seed = primaryColor;
 
     final lightScheme =
         ColorScheme.fromSeed(
           seedColor: seed,
           brightness: Brightness.light,
         ).copyWith(
-          secondary: const Color(0xFFE65100), // Saffron accent for highlights
-          tertiary: const Color(
-            0xFF2E7D32,
-          ), // Green accent for success/eligibility
-          surface: const Color(0xFFF7F9FC),
+          primary: primaryColor,
+          onPrimary: Colors.white,
+          secondary: secondaryColor,
+          onSecondary: Colors.white,
+          tertiary: const Color(0xFF2E7D32), // Success Green
+          surface: const Color(0xFFF5F5F5),
           error: const Color(0xFFD32F2F),
         );
 
@@ -129,9 +116,10 @@ class MainApp extends StatelessWidget {
           seedColor: seed,
           brightness: Brightness.dark,
         ).copyWith(
-          secondary: const Color(0xFFFFB74D),
+          primary: const Color(0xFF536DFE),
+          secondary: const Color(0xFFFF9E80),
           tertiary: const Color(0xFF81C784),
-          surface: const Color(0xFF0F131A),
+          surface: const Color(0xFF121212),
           error: const Color(0xFFEF5350),
         );
 
@@ -140,42 +128,26 @@ class MainApp extends StatelessWidget {
       colorScheme: lightScheme,
       scaffoldBackgroundColor: lightScheme.surface,
       appBarTheme: AppBarTheme(
-        backgroundColor: lightScheme.surface,
-        foregroundColor: lightScheme.onSurface,
-        elevation: 0,
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 2,
         centerTitle: true,
       ),
       cardTheme: CardThemeData(
         color: Colors.white,
-        elevation: 1,
-        margin: const EdgeInsets.all(12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: lightScheme.outline),
-        ),
-      ),
-      listTileTheme: ListTileThemeData(
-        iconColor: lightScheme.primary,
-        textColor: lightScheme.onSurface,
-        selectedColor: lightScheme.primary,
-      ),
-      chipTheme: ChipThemeData(
-        backgroundColor: lightScheme.secondaryContainer,
-        selectedColor: lightScheme.secondaryContainer.withOpacity(0.9),
-        labelStyle: TextStyle(color: lightScheme.onSecondaryContainer),
-        side: BorderSide(color: lightScheme.outline.withOpacity(0.5)),
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFF1565C0), // Link color
-          textStyle: const TextStyle(
-            decoration: TextDecoration.underline,
-            fontWeight: FontWeight.w600,
-          ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: secondaryColor,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      dividerColor: lightScheme.outline.withOpacity(0.3),
     );
 
     final darkTheme = ThemeData(
@@ -183,45 +155,21 @@ class MainApp extends StatelessWidget {
       colorScheme: darkScheme,
       scaffoldBackgroundColor: darkScheme.surface,
       appBarTheme: AppBarTheme(
-        backgroundColor: darkScheme.surface,
-        foregroundColor: darkScheme.onSurface,
+        backgroundColor: const Color(0xFF0D1245),
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
       cardTheme: CardThemeData(
-        color: darkScheme.surface,
-        elevation: 1,
-        margin: const EdgeInsets.all(12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: darkScheme.outline),
-        ),
-      ),
-      listTileTheme: ListTileThemeData(
-        iconColor: darkScheme.primary,
-        textColor: darkScheme.onSurface,
-        selectedColor: darkScheme.primary,
-      ),
-      chipTheme: ChipThemeData(
-        backgroundColor: darkScheme.secondaryContainer,
-        selectedColor: darkScheme.secondaryContainer.withOpacity(0.9),
-        labelStyle: TextStyle(color: darkScheme.onSecondaryContainer),
-        side: BorderSide(color: darkScheme.outline.withOpacity(0.5)),
+        color: const Color(0xFF1E1E1E),
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFF90CAF9), // Link color (dark)
-          textStyle: const TextStyle(
-            decoration: TextDecoration.underline,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      dividerColor: darkScheme.outline.withOpacity(0.4),
     );
 
     return MaterialApp(
+      title: 'Voterlist',
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
@@ -244,7 +192,6 @@ class UpdateGate extends StatefulWidget {
 }
 
 class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
-  bool _checked = false;
   bool _forceRequired = false;
 
   @override
@@ -252,9 +199,7 @@ class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initMessaging();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkForUpdate();
-    });
+    _checkForUpdate();
   }
 
   Future<void> _initMessaging() async {
@@ -321,25 +266,9 @@ class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
   }
 
   Future<void> _checkForUpdate() async {
-    if (_checked) return;
-    _checked = true;
-    // Android-only: Force immediate update if available
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
-    try {
-      final info = await InAppUpdate.checkForUpdate();
-      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
-        if (info.immediateUpdateAllowed) {
-          await InAppUpdate.performImmediateUpdate();
-        } else {
-          // Enforce forced update by blocking UI and asking user to update from Play Store
-          if (mounted) setState(() => _forceRequired = true);
-        }
-      }
-    } catch (e) {
-      // Silent fail: Common on debug/emulator or non-Play builds. Avoid noisy snackbar at startup.
-      if (kDebugMode) {
-        debugPrint('Update check skipped: $e');
-      }
+    final force = await UpdateService.instance.checkForUpdate();
+    if (mounted && force != _forceRequired) {
+      setState(() => _forceRequired = force);
     }
   }
 
@@ -376,9 +305,7 @@ class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _forceRequired) {
-      // Re-check after returning from Play Store
-      _checked = false;
+    if (state == AppLifecycleState.resumed) {
       _checkForUpdate();
     }
   }
@@ -391,8 +318,8 @@ class _ForceUpdateView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         body: SafeArea(
           child: Center(

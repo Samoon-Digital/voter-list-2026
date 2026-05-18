@@ -63,12 +63,20 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
-            isMinifyEnabled = false
-            // Disable resource shrinking unless code shrinking is also enabled
-            // (AGP requires minifyEnabled=true when shrinkResources=true)
-            isShrinkResources = false
+            // Enable R8/ProGuard to reduce size and generate a mapping.txt for Play Console
+            isMinifyEnabled = true
+            // Shrink resources alongside code shrinking
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
+}
+
+dependencies {
+
 }
 
 flutter {
