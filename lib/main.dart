@@ -1,35 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:yojna_plus/services/update_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:yojna_plus/screens/home_page.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:yojna_plus/screens/splash_screen.dart';
-
-// Explicit Firebase options for Android to support initialization in background isolate
-const FirebaseOptions _androidFirebaseOptions = FirebaseOptions(
-  apiKey: 'AIzaSyCV5kWm_ZkboDPWagH4sWhmiuaBDsUX0a0',
-  appId: '1:373614355764:android:1ef1d8eb45013c5b2bb161',
-  messagingSenderId: '373614355764',
-  projectId: 'yojna-plus',
-  storageBucket: 'yojna-plus.firebasestorage.app',
-);
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Ensure plugins are registered in background isolate before using them
-  WidgetsFlutterBinding.ensureInitialized();
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    await Firebase.initializeApp(options: _androidFirebaseOptions);
-  } else {
-    await Firebase.initializeApp();
-  }
-}
 
 class RootRouter extends StatelessWidget {
   const RootRouter({super.key});
@@ -42,8 +17,6 @@ class RootRouter extends StatelessWidget {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
   runApp(const MainApp());
 }
 
@@ -136,9 +109,6 @@ class MainApp extends StatelessWidget {
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: ThemeMode.system,
-      navigatorObservers: [
-        FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
-      ],
       home: SplashScreen(next: const RootRouter()),
     );
   }
@@ -155,100 +125,17 @@ class UpdateGate extends StatefulWidget {
 
 class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
   bool _forceRequired = false;
-  bool _firebaseReady = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_bootstrapPostFirstFrame());
+      unawaited(_checkForUpdate());
     });
   }
 
-  Future<void> _bootstrapPostFirstFrame() async {
-    await _ensureFirebaseReady();
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    unawaited(_initMessaging());
-    unawaited(_checkForUpdate());
-  }
-
-  Future<void> _ensureFirebaseReady() async {
-    if (_firebaseReady) return;
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      await Firebase.initializeApp(options: _androidFirebaseOptions);
-    } else {
-      await Firebase.initializeApp();
-    }
-    _firebaseReady = true;
-  }
-
-  Future<void> _initMessaging() async {
-    try {
-      await _ensureFirebaseReady();
-      // Request permissions
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        await FirebaseMessaging.instance.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-      } else if (defaultTargetPlatform == TargetPlatform.android) {
-        await Permission.notification.request();
-      }
-
-      // FCM token (send to server if needed)
-      final token = await FirebaseMessaging.instance.getToken();
-      if (kDebugMode) debugPrint('FCM token: $token');
-
-      // Foreground messages
-      FirebaseMessaging.onMessage.listen((message) {
-        if (!mounted) return;
-        final notif = message.notification;
-        final title = notif?.title ?? 'नई सूचना';
-        final body = notif?.body ?? '';
-        final text = body.isNotEmpty ? '$title — $body' : title;
-        ScaffoldMessenger.maybeOf(
-          context,
-        )?.showSnackBar(SnackBar(content: Text(text)));
-      });
-
-      // App opened from notification tap (background)
-      FirebaseMessaging.onMessageOpenedApp.listen((message) {
-        if (!mounted) return;
-        final notif = message.notification;
-        final title = notif?.title ?? 'नई सूचना';
-        final body = notif?.body ?? '';
-        final text = body.isNotEmpty ? '$title — $body' : title;
-        ScaffoldMessenger.maybeOf(
-          context,
-        )?.showSnackBar(SnackBar(content: Text(text)));
-      });
-
-      // App opened from terminated state
-      final initial = await FirebaseMessaging.instance.getInitialMessage();
-      if (initial != null && mounted) {
-        final notif = initial.notification;
-        final title = notif?.title ?? 'नई सूचना';
-        final body = notif?.body ?? '';
-        final text = body.isNotEmpty ? '$title — $body' : title;
-        ScaffoldMessenger.maybeOf(
-          context,
-        )?.showSnackBar(SnackBar(content: Text(text)));
-      }
-
-      // Analytics basic event
-      await FirebaseAnalytics.instance.logAppOpen();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text('नोटिफिकेशन सेटअप में समस्या: $e')),
-      );
-    }
-  }
-
   Future<void> _checkForUpdate() async {
-    await _ensureFirebaseReady();
     final force = await UpdateService.instance.checkForUpdate();
     if (mounted && force != _forceRequired) {
       setState(() => _forceRequired = force);

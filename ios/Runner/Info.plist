@@ -56,14 +56,6 @@
 				<string>cstr6suwn9.skadnetwork</string>
 			</dict>
 		</array>
-		<!-- Enable background remote notifications for Firebase Messaging -->
-		<key>UIBackgroundModes</key>
-		<array>
-			<string>remote-notification</string>
-		</array>
-		<!-- Allow Firebase Analytics/Messaging auto init (default true) -->
-		<key>FirebaseAppDelegateProxyEnabled</key>
-		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>
