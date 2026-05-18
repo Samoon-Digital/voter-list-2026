@@ -10,9 +10,6 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:yojna_plus/screens/splash_screen.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:yojna_plus/utils/ad_manager.dart';
-import 'package:yojna_plus/l10n/app_strings.dart';
 
 // Explicit Firebase options for Android to support initialization in background isolate
 const FirebaseOptions _androidFirebaseOptions = FirebaseOptions(
@@ -34,53 +31,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-class RootRouter extends StatefulWidget {
+class RootRouter extends StatelessWidget {
   const RootRouter({super.key});
 
   @override
-  State<RootRouter> createState() => _RootRouterState();
-}
-
-class _RootRouterState extends State<RootRouter> {
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkUpdate();
-  }
-
-  Future<void> _checkUpdate() async {
-    // Simulate update check or load
-    await Future.delayed(Duration.zero);
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    // होम स्क्रीन पर जाएं
     return const UpdateGate(child: HomePage());
   }
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    await Firebase.initializeApp(options: _androidFirebaseOptions);
-  } else {
-    await Firebase.initializeApp();
-  }
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  unawaited(MobileAds.instance.initialize());
-  AdManager.instance.preloadAll();
-  await AppStrings.init();
 
   runApp(const MainApp());
 }
@@ -193,17 +155,37 @@ class UpdateGate extends StatefulWidget {
 
 class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
   bool _forceRequired = false;
+  bool _firebaseReady = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initMessaging();
-    _checkForUpdate();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_bootstrapPostFirstFrame());
+    });
+  }
+
+  Future<void> _bootstrapPostFirstFrame() async {
+    await _ensureFirebaseReady();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    unawaited(_initMessaging());
+    unawaited(_checkForUpdate());
+  }
+
+  Future<void> _ensureFirebaseReady() async {
+    if (_firebaseReady) return;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await Firebase.initializeApp(options: _androidFirebaseOptions);
+    } else {
+      await Firebase.initializeApp();
+    }
+    _firebaseReady = true;
   }
 
   Future<void> _initMessaging() async {
     try {
+      await _ensureFirebaseReady();
       // Request permissions
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         await FirebaseMessaging.instance.requestPermission(
@@ -266,6 +248,7 @@ class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
   }
 
   Future<void> _checkForUpdate() async {
+    await _ensureFirebaseReady();
     final force = await UpdateService.instance.checkForUpdate();
     if (mounted && force != _forceRequired) {
       setState(() => _forceRequired = force);

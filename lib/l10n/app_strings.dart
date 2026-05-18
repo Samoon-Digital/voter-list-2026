@@ -3,6 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AppStrings {
   static String _languageCode = 'en';
 
+  static void setCachedLanguage(String? languageCode) {
+    _languageCode = languageCode ?? 'en';
+  }
+
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _languageCode = prefs.getString('language_code') ?? 'en';

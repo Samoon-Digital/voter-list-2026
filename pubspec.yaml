@@ -1,7 +1,7 @@
 name: yojna_plus
 description: "govt yojna jaankari hindi main."
-publish_to: 'none'
-version: 3.3.0+17
+publish_to: "none"
+version: 3.3.1+18
 
 environment:
   sdk: ^3.8.1

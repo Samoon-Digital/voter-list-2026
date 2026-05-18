@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yojna_plus/screens/language_selection_screen.dart';
 import 'package:yojna_plus/utils/ad_manager.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:yojna_plus/l10n/app_strings.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key, required this.next});
@@ -16,31 +18,32 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Preload ads immediately for valid background loading
-    AdManager.instance.preloadAll();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_warmupAds());
+    });
     _checkLanguageAndNavigate();
   }
 
-  Future<void> _checkLanguageAndNavigate() async {
-    // Wait for the splash animation/delay
-    await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
+  Future<void> _warmupAds() async {
+    await MobileAds.instance.initialize();
+    AdManager.instance.preloadAll();
+  }
 
+  Future<void> _checkLanguageAndNavigate() async {
     final prefs = await SharedPreferences.getInstance();
     final String? languageCode = prefs.getString('language_code');
+    AppStrings.setCachedLanguage(languageCode);
 
-    if (mounted) {
-      if (languageCode == null) {
-        // First time launch -> Language Selection
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
-        );
-      } else {
-        // Language already selected -> Go to Home (widget.next)
-        Navigator.of(
-          context,
-        ).pushReplacement(MaterialPageRoute(builder: (_) => widget.next));
-      }
+    if (!mounted) return;
+
+    if (languageCode == null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
+      );
+    } else {
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => widget.next));
     }
   }
 
