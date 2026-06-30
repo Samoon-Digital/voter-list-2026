@@ -13,6 +13,7 @@ import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -47,7 +48,16 @@ class PdfDownloadManager @Inject constructor(
                 "VoterList2026/$fileName",
             )
         val id = downloadManager.enqueue(request)
-        pollDownload(id, fileName, onProgress)
+        var completed = false
+        try {
+            val downloaded = pollDownload(id, fileName, onProgress)
+            completed = true
+            downloaded
+        } finally {
+            if (!completed) {
+                downloadManager.remove(id)
+            }
+        }
     }
 
     suspend fun saveBase64Pdf(
@@ -101,6 +111,7 @@ class PdfDownloadManager @Inject constructor(
         onProgress: (Int) -> Unit,
     ): DownloadedPdf {
         while (true) {
+            kotlin.coroutines.coroutineContext.ensureActive()
             val query = DownloadManager.Query().setFilterById(id)
             downloadManager.query(query).use { cursor ->
                 if (cursor.moveToFirst()) {

@@ -12,10 +12,15 @@ import com.samoondigital.yojnaplus.pdf.DownloadedPdf
 import com.samoondigital.yojnaplus.pdf.PdfDownloadManager
 import com.samoondigital.yojnaplus.repository.ElectoralRollRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
@@ -26,25 +31,124 @@ class ElectoralRollViewModel @Inject constructor(
     private val pdfDownloadManager: PdfDownloadManager,
 ) : ViewModel() {
     private val currentYear = LocalDate.now().year
+    private val rollTypesByYear = mutableMapOf<Int, List<RollTypeDto>>()
+    private var downloadJob: Job? = null
 
-    private val _state = MutableStateFlow(
-        ElectoralRollUiState(
-            years = listOf(currentYear, currentYear - 1, currentYear - 2),
-            selectedYear = currentYear,
-        ),
-    )
+    private val _state = MutableStateFlow(ElectoralRollUiState())
     val state: StateFlow<ElectoralRollUiState> = _state.asStateFlow()
 
     init {
         loadStates()
-        refreshCaptcha()
     }
 
     fun loadStates() = viewModelScope.launch {
         runLoading("Loading states") {
-            val states = repository.getStates()
-            _state.update { it.copy(states = states) }
+            _state.update { it.copy(states = repository.getStates()) }
         }
+    }
+
+    fun selectState(state: StateDto) {
+        rollTypesByYear.clear()
+        _state.update {
+            it.resetAfterState().copy(
+                step = ElectoralRollStep.Year,
+                selectedState = state,
+                message = null,
+            )
+        }
+        loadAvailableYears(state.stateCd)
+    }
+
+    fun selectYear(year: Int) {
+        val rollTypes = rollTypesByYear[year].orEmpty()
+        _state.update {
+            it.resetAfterYear().copy(
+                step = ElectoralRollStep.RollType,
+                selectedYear = year,
+                rollTypes = rollTypes,
+                selectedRollType = null,
+                message = if (rollTypes.isEmpty()) "No roll type found for $year" else null,
+            )
+        }
+    }
+
+    fun selectRollType(rollType: RollTypeDto) {
+        val stateCd = _state.value.selectedState?.stateCd
+        _state.update {
+            it.resetAfterRollType().copy(
+                step = ElectoralRollStep.District,
+                selectedRollType = rollType,
+                message = null,
+            )
+        }
+        if (stateCd != null) {
+            loadDistricts(stateCd)
+        }
+    }
+
+    fun selectDistrict(district: DistrictDto) {
+        _state.update {
+            it.resetAfterDistrict().copy(
+                step = ElectoralRollStep.Assembly,
+                selectedDistrict = district,
+                message = null,
+            )
+        }
+        loadAssemblies(district.districtCd)
+    }
+
+    fun selectAssembly(assembly: AssemblyDto) {
+        _state.update {
+            it.resetAfterAssembly().copy(
+                step = ElectoralRollStep.Parts,
+                selectedAssembly = assembly,
+                message = null,
+            )
+        }
+        loadLanguagesAndParts()
+    }
+
+    fun togglePart(partNumber: Int) {
+        _state.update { current ->
+            val selected = current.selectedPartNumbers
+            val updated = if (partNumber in selected) {
+                selected - partNumber
+            } else {
+                if (selected.size >= 10) {
+                    return@update current.copy(message = "Maximum 10 parts are allowed at once")
+                }
+                selected + partNumber
+            }
+            current.copy(selectedPartNumbers = updated, message = null)
+        }
+    }
+
+    fun showLanguageSheet() {
+        val current = _state.value
+        when {
+            current.selectedPartNumbers.isEmpty() ->
+                _state.update { it.copy(message = "Please select at least one part") }
+            current.languages.isEmpty() ->
+                _state.update { it.copy(message = "Language list is not loaded yet") }
+            else ->
+                _state.update { it.copy(isLanguageSheetVisible = true, message = null) }
+        }
+    }
+
+    fun dismissLanguageSheet() {
+        _state.update { it.copy(isLanguageSheetVisible = false) }
+    }
+
+    fun selectLanguage(code: String) {
+        _state.update {
+            it.copy(
+                selectedLanguageCode = code,
+                isLanguageSheetVisible = false,
+                step = ElectoralRollStep.Captcha,
+                message = null,
+            )
+        }
+        refreshCaptcha()
     }
 
     fun refreshCaptcha() = viewModelScope.launch {
@@ -63,187 +167,45 @@ class ElectoralRollViewModel @Inject constructor(
             }
     }
 
-    fun selectYear(year: Int) {
-        _state.update {
-            it.copy(
-                selectedYear = year,
-                selectedRollType = null,
-                rollTypes = emptyList(),
-                languages = emptyMap(),
-                parts = emptyList(),
-                selectedPartNumbers = emptySet(),
-                downloadedPdfs = emptyList(),
-            )
-        }
-        state.value.selectedState?.let { loadRollTypes(it.stateCd, year) }
-    }
-
-    fun selectState(state: StateDto) {
-        val selectedYear = _state.value.selectedYear
-        _state.update {
-            it.copy(
-                selectedState = state,
-                selectedDistrict = null,
-                selectedAssembly = null,
-                selectedRollType = null,
-                selectedLanguageCode = null,
-                districts = emptyList(),
-                assemblies = emptyList(),
-                rollTypes = emptyList(),
-                languages = emptyMap(),
-                parts = emptyList(),
-                selectedPartNumbers = emptySet(),
-                downloadedPdfs = emptyList(),
-                message = null,
-            )
-        }
-        loadDistricts(state.stateCd)
-        loadRollTypes(state.stateCd, selectedYear)
-    }
-
-    fun selectRollType(rollType: RollTypeDto) {
-        _state.update {
-            it.copy(
-                selectedRollType = rollType,
-                selectedDistrict = null,
-                selectedAssembly = null,
-                selectedLanguageCode = null,
-                assemblies = emptyList(),
-                languages = emptyMap(),
-                parts = emptyList(),
-                selectedPartNumbers = emptySet(),
-                downloadedPdfs = emptyList(),
-                message = null,
-            )
-        }
-    }
-
-    fun selectDistrict(district: DistrictDto) {
-        _state.update {
-            it.copy(
-                selectedDistrict = district,
-                selectedAssembly = null,
-                assemblies = emptyList(),
-                languages = emptyMap(),
-                parts = emptyList(),
-                selectedPartNumbers = emptySet(),
-                downloadedPdfs = emptyList(),
-                message = null,
-            )
-        }
-        loadAssemblies(district.districtCd)
-    }
-
-    fun selectAssembly(assembly: AssemblyDto) {
-        _state.update {
-            it.copy(
-                selectedAssembly = assembly,
-                selectedLanguageCode = null,
-                languages = emptyMap(),
-                parts = emptyList(),
-                selectedPartNumbers = emptySet(),
-                downloadedPdfs = emptyList(),
-                message = null,
-            )
-        }
-        loadLanguagesAndParts()
-    }
-
-    fun selectLanguage(code: String) {
-        _state.update { it.copy(selectedLanguageCode = code, message = null) }
-    }
-
     fun updateCaptchaInput(value: String) {
-        _state.update { it.copy(captchaInput = value.take(6), message = null) }
+        _state.update { it.copy(captchaInput = value.take(8), message = null) }
     }
 
-    fun togglePart(partNumber: Int) {
-        _state.update { current ->
-            val selected = current.selectedPartNumbers
-            val updated = if (partNumber in selected) {
-                selected - partNumber
+    fun startDownloads() {
+        if (downloadJob?.isActive == true) return
+        downloadJob = viewModelScope.launch {
+            downloadSelectedPdfs(retryOnlyFailed = false)
+        }
+    }
+
+    fun retryDownloads() {
+        if (downloadJob?.isActive == true) return
+        downloadJob = viewModelScope.launch {
+            val hasFileIds = _state.value.downloadItems.any {
+                it.status == DownloadStatus.Failed && it.fileId != null
+            }
+            if (hasFileIds) {
+                retryFailedFileDownloads()
             } else {
-                if (selected.size >= 10) {
-                    return@update current.copy(message = "Maximum 10 parts are allowed at once")
-                }
-                selected + partNumber
+                downloadSelectedPdfs(retryOnlyFailed = false)
             }
-            current.copy(selectedPartNumbers = updated, message = null)
         }
     }
 
-    fun clearMessage() {
-        _state.update { it.copy(message = null) }
-    }
-
-    fun downloadSelectedPdfs() = viewModelScope.launch {
-        val current = state.value
-        val validationError = current.validationError()
-        if (validationError != null) {
-            _state.update { it.copy(message = validationError) }
-            return@launch
-        }
-
-        val selectedState = current.selectedState ?: return@launch
-        val selectedDistrict = current.selectedDistrict ?: return@launch
-        val selectedAssembly = current.selectedAssembly ?: return@launch
-        val selectedRollType = current.selectedRollType ?: return@launch
-        val captcha = current.captcha ?: return@launch
-        val languageCode = current.selectedLanguageCode ?: return@launch
-
-        _state.update {
-            it.copy(
-                isDownloading = true,
-                downloadProgress = 0,
-                downloadedPdfs = emptyList(),
-                message = "Generating PDF request",
-            )
-        }
-
-        runCatching {
-            repository.generatePublishedPdfs(
-                stateCd = selectedState.stateCd,
-                districtCd = selectedDistrict.districtCd,
-                acNumber = selectedAssembly.asmblyNo,
-                selectedParts = current.selectedPartNumbers.sorted(),
-                captcha = current.captchaInput.trim(),
-                captchaId = captcha.id,
-                languageCode = languageCode,
-                rollType = selectedRollType,
-            )
-        }.onSuccess { batch ->
-            val downloads = mutableListOf<DownloadedPdf>()
-            batch.fileIds.forEachIndexed { index, fileId ->
-                val downloaded = if (batch.isCdn) {
-                    pdfDownloadManager.downloadCdnPdf(fileId) { progress ->
-                        updateDownloadProgress(index, batch.fileIds.size, progress)
+    fun cancelDownloads() = viewModelScope.launch {
+        downloadJob?.cancelAndJoin()
+        _state.update { current ->
+            current.copy(
+                isDownloading = false,
+                message = "Downloads cancelled",
+                downloadItems = current.downloadItems.map {
+                    if (it.status == DownloadStatus.Waiting || it.status == DownloadStatus.Downloading) {
+                        it.copy(status = DownloadStatus.Cancelled)
+                    } else {
+                        it
                     }
-                } else {
-                    val file = repository.getPublishedFile(fileId)
-                    pdfDownloadManager.saveBase64Pdf(file.base64Pdf, file.fileName) { progress ->
-                        updateDownloadProgress(index, batch.fileIds.size, progress)
-                    }
-                }
-                downloads += downloaded
-                _state.update { it.copy(downloadedPdfs = downloads.toList()) }
-            }
-            _state.update {
-                it.copy(
-                    isDownloading = false,
-                    downloadProgress = 100,
-                    message = "PDF downloaded successfully",
-                )
-            }
-            refreshCaptcha()
-        }.onFailure { error ->
-            _state.update {
-                it.copy(
-                    isDownloading = false,
-                    downloadProgress = 0,
-                    message = error.userMessage("Unable to download PDF"),
-                )
-            }
-            refreshCaptcha()
+                },
+            ).withDownloadSummary()
         }
     }
 
@@ -254,29 +216,65 @@ class ElectoralRollViewModel @Inject constructor(
             }
     }
 
+    fun openDownloadedPdfs() {
+        val first = _state.value.downloadedPdfs.firstOrNull()
+        if (first == null) {
+            _state.update { it.copy(message = "No downloaded PDF found") }
+            return
+        }
+        openPdf(first)
+    }
+
+    fun goBack(): Boolean {
+        val previous = when (_state.value.step) {
+            ElectoralRollStep.State -> return false
+            ElectoralRollStep.Year -> ElectoralRollStep.State
+            ElectoralRollStep.RollType -> ElectoralRollStep.Year
+            ElectoralRollStep.District -> ElectoralRollStep.RollType
+            ElectoralRollStep.Assembly -> ElectoralRollStep.District
+            ElectoralRollStep.Parts -> ElectoralRollStep.Assembly
+            ElectoralRollStep.Captcha -> ElectoralRollStep.Parts
+            ElectoralRollStep.Success -> ElectoralRollStep.Captcha
+        }
+        _state.update { it.copy(step = previous, isLanguageSheetVisible = false, message = null) }
+        return true
+    }
+
+    fun clearMessage() {
+        _state.update { it.copy(message = null) }
+    }
+
+    private fun loadAvailableYears(stateCd: String) = viewModelScope.launch {
+        runLoading("Loading available revision years") {
+            val available = mutableListOf<Int>()
+            val candidates = (currentYear downTo currentYear - 5).toList()
+            candidates.forEach { year ->
+                runCatching { repository.getRollTypes(stateCd, year) }
+                    .onSuccess { rollTypes ->
+                        if (rollTypes.isNotEmpty()) {
+                            rollTypesByYear[year] = rollTypes
+                            available += year
+                        }
+                    }
+            }
+            _state.update {
+                it.copy(
+                    years = available,
+                    message = if (available.isEmpty()) "No electoral roll years found" else null,
+                )
+            }
+        }
+    }
+
     private fun loadDistricts(stateCd: String) = viewModelScope.launch {
         runLoading("Loading districts") {
-            val districts = repository.getDistricts(stateCd)
-            _state.update { it.copy(districts = districts) }
+            _state.update { it.copy(districts = repository.getDistricts(stateCd)) }
         }
     }
 
     private fun loadAssemblies(districtCd: String) = viewModelScope.launch {
-        runLoading("Loading assembly list") {
-            val assemblies = repository.getAssemblies(districtCd)
-            _state.update { it.copy(assemblies = assemblies) }
-        }
-    }
-
-    private fun loadRollTypes(stateCd: String, year: Int) = viewModelScope.launch {
-        runLoading("Loading roll types") {
-            val rollTypes = repository.getRollTypes(stateCd, year)
-            _state.update {
-                it.copy(
-                    rollTypes = rollTypes,
-                    selectedRollType = rollTypes.firstOrNull(),
-                )
-            }
+        runLoading("Loading assembly constituencies") {
+            _state.update { it.copy(assemblies = repository.getAssemblies(districtCd)) }
         }
     }
 
@@ -285,7 +283,9 @@ class ElectoralRollViewModel @Inject constructor(
         val selectedState = current.selectedState ?: return@launch
         val selectedAssembly = current.selectedAssembly ?: return@launch
         val selectedRollType = current.selectedRollType ?: return@launch
-        runLoading("Loading parts and languages") {
+        val selectedYear = current.selectedYear ?: return@launch
+
+        runLoading("Loading village and part list") {
             val languages = repository.getLanguages(
                 stateCd = selectedState.stateCd,
                 acNumber = selectedAssembly.asmblyNo,
@@ -295,15 +295,212 @@ class ElectoralRollViewModel @Inject constructor(
                 stateCd = selectedState.stateCd,
                 acNumber = selectedAssembly.asmblyNo,
                 rollType = selectedRollType,
-                year = current.selectedYear,
+                year = selectedYear,
             )
             _state.update {
                 it.copy(
                     languages = languages,
-                    selectedLanguageCode = languages.keys.firstOrNull(),
+                    selectedLanguageCode = null,
                     parts = parts,
                 )
             }
+        }
+    }
+
+    private suspend fun downloadSelectedPdfs(retryOnlyFailed: Boolean) {
+        val current = state.value
+        val validationError = current.validationError()
+        if (validationError != null) {
+            _state.update { it.copy(message = validationError) }
+            return
+        }
+
+        val selectedState = current.selectedState ?: return
+        val selectedDistrict = current.selectedDistrict ?: return
+        val selectedAssembly = current.selectedAssembly ?: return
+        val selectedRollType = current.selectedRollType ?: return
+        val captcha = current.captcha ?: return
+        val languageCode = current.selectedLanguageCode ?: return
+        val selectedParts = current.selectedParts
+
+        if (retryOnlyFailed) {
+            retryFailedFileDownloads()
+            return
+        }
+
+        val initialItems = selectedParts.map {
+            ElectoralRollDownloadItem(
+                partNumber = it.partNumber,
+                partName = it.partName,
+                status = DownloadStatus.Waiting,
+            )
+        }
+        _state.update {
+            it.copy(
+                isDownloading = true,
+                downloadProgress = 0,
+                downloadedPdfs = emptyList(),
+                downloadItems = initialItems,
+                message = "Verifying captcha",
+            )
+        }
+
+        runCatching {
+            repository.generatePublishedPdfs(
+                stateCd = selectedState.stateCd,
+                districtCd = selectedDistrict.districtCd,
+                acNumber = selectedAssembly.asmblyNo,
+                selectedParts = selectedParts.map { it.partNumber },
+                captcha = current.captchaInput.trim(),
+                captchaId = captcha.id,
+                languageCode = languageCode,
+                rollType = selectedRollType,
+            )
+        }.onSuccess { batch ->
+            val mapped = initialItems.mapIndexed { index, item ->
+                item.copy(fileId = batch.fileIds.getOrNull(index))
+            }
+            _state.update { it.copy(downloadItems = mapped, message = "Captcha verified. Starting downloads") }
+            _state.update { it.copy(isCdnBatch = batch.isCdn) }
+            downloadFiles(batch.isCdn, mapped)
+        }.onFailure { error ->
+            _state.update {
+                it.copy(
+                    isDownloading = false,
+                    downloadProgress = 0,
+                    message = error.userMessage("Captcha verification failed"),
+                    downloadItems = initialItems.map { item ->
+                        item.copy(status = DownloadStatus.Failed, error = error.userMessage("Verification failed"))
+                    },
+                )
+            }
+            refreshCaptcha()
+        }
+    }
+
+    private suspend fun retryFailedFileDownloads() {
+        val current = _state.value
+        val failedItems = current.downloadItems.filter {
+            it.status == DownloadStatus.Failed && it.fileId != null
+        }
+        if (failedItems.isEmpty()) {
+            downloadSelectedPdfs(retryOnlyFailed = false)
+            return
+        }
+        _state.update {
+            it.copy(
+                isDownloading = true,
+                message = "Retrying failed downloads",
+                downloadItems = current.downloadItems.map { item ->
+                    if (item.status == DownloadStatus.Failed && item.fileId != null) {
+                        item.copy(status = DownloadStatus.Waiting, progress = 0, error = null)
+                    } else {
+                        item
+                    }
+                },
+            ).withDownloadSummary()
+        }
+        downloadFiles(isCdn = current.isCdnBatch, items = failedItems)
+    }
+
+    private suspend fun downloadFiles(
+        isCdn: Boolean,
+        items: List<ElectoralRollDownloadItem>,
+    ) {
+        val targetItems = items.filter { it.fileId != null }
+        if (targetItems.isEmpty()) {
+            _state.update { it.copy(isDownloading = false, message = "No PDF files returned") }
+            return
+        }
+
+        targetItems.forEach { item ->
+            currentCoroutineContext().ensureActive()
+            val fileId = item.fileId ?: return@forEach
+            markItemDownloading(item.partNumber, fileId)
+            val result = runCatching {
+                if (isCdn) {
+                    pdfDownloadManager.downloadCdnPdf(fileId) { progress ->
+                        updateItemProgress(item.partNumber, progress)
+                    }
+                } else {
+                    val file = repository.getPublishedFile(fileId)
+                    pdfDownloadManager.saveBase64Pdf(file.base64Pdf, file.fileName) { progress ->
+                        updateItemProgress(item.partNumber, progress)
+                    }
+                }
+            }
+            currentCoroutineContext().ensureActive()
+            result.onSuccess { downloaded ->
+                _state.update { current ->
+                    current.copy(
+                        downloadedPdfs = current.downloadedPdfs + downloaded,
+                        downloadItems = current.downloadItems.map { existing ->
+                            if (existing.partNumber == item.partNumber) {
+                                existing.copy(
+                                    status = DownloadStatus.Completed,
+                                    progress = 100,
+                                    fileName = downloaded.fileName,
+                                    downloadedPdf = downloaded,
+                                    error = null,
+                                )
+                            } else {
+                                existing
+                            }
+                        },
+                    ).withDownloadSummary()
+                }
+            }.onFailure { error ->
+                _state.update { current ->
+                    current.copy(
+                        downloadItems = current.downloadItems.map { existing ->
+                            if (existing.partNumber == item.partNumber) {
+                                existing.copy(
+                                    status = DownloadStatus.Failed,
+                                    error = error.userMessage("Download failed"),
+                                )
+                            } else {
+                                existing
+                            }
+                        },
+                    ).withDownloadSummary()
+                }
+            }
+        }
+
+        _state.update { current ->
+            val next = current.withDownloadSummary()
+            val hasFailures = next.failedCount > 0
+            next.copy(
+                isDownloading = false,
+                step = if (!hasFailures && next.completedCount > 0) ElectoralRollStep.Success else next.step,
+                message = if (hasFailures) "Some PDFs failed. You can retry." else "All PDFs downloaded successfully",
+            )
+        }
+        refreshCaptcha()
+    }
+
+    private fun markItemDownloading(partNumber: Int, fileId: String) {
+        _state.update { current ->
+            current.copy(
+                message = "Downloading Part $partNumber",
+                downloadItems = current.downloadItems.map {
+                    if (it.partNumber == partNumber) {
+                        it.copy(status = DownloadStatus.Downloading, fileId = fileId, progress = 0, error = null)
+                    } else {
+                        it
+                    }
+                },
+            ).withDownloadSummary()
+        }
+    }
+
+    private fun updateItemProgress(partNumber: Int, progress: Int) {
+        _state.update { current ->
+            current.copy(
+                downloadItems = current.downloadItems.map {
+                    if (it.partNumber == partNumber) it.copy(progress = progress.coerceIn(0, 100)) else it
+                },
+            ).withDownloadSummary()
         }
     }
 
@@ -316,18 +513,44 @@ class ElectoralRollViewModel @Inject constructor(
         _state.update { it.copy(isLoading = false) }
     }
 
-    private fun updateDownloadProgress(index: Int, total: Int, itemProgress: Int) {
-        val progress = (((index * 100) + itemProgress) / total).coerceIn(0, 100)
-        _state.update { it.copy(downloadProgress = progress, message = "Downloading PDF $progress%") }
-    }
-
     private fun Throwable.userMessage(fallback: String): String =
         message?.takeIf { it.isNotBlank() } ?: fallback
 }
 
+enum class ElectoralRollStep {
+    State,
+    Year,
+    RollType,
+    District,
+    Assembly,
+    Parts,
+    Captcha,
+    Success,
+}
+
+enum class DownloadStatus {
+    Waiting,
+    Downloading,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+data class ElectoralRollDownloadItem(
+    val partNumber: Int,
+    val partName: String,
+    val fileId: String? = null,
+    val fileName: String? = null,
+    val progress: Int = 0,
+    val status: DownloadStatus = DownloadStatus.Waiting,
+    val error: String? = null,
+    val downloadedPdf: DownloadedPdf? = null,
+)
+
 data class ElectoralRollUiState(
+    val step: ElectoralRollStep = ElectoralRollStep.State,
     val years: List<Int> = emptyList(),
-    val selectedYear: Int,
+    val selectedYear: Int? = null,
     val states: List<StateDto> = emptyList(),
     val districts: List<DistrictDto> = emptyList(),
     val assemblies: List<AssemblyDto> = emptyList(),
@@ -343,34 +566,137 @@ data class ElectoralRollUiState(
     val captcha: CaptchaData? = null,
     val captchaInput: String = "",
     val downloadedPdfs: List<DownloadedPdf> = emptyList(),
+    val downloadItems: List<ElectoralRollDownloadItem> = emptyList(),
     val isLoading: Boolean = false,
     val isCaptchaLoading: Boolean = false,
     val isDownloading: Boolean = false,
+    val isLanguageSheetVisible: Boolean = false,
+    val isCdnBatch: Boolean = false,
     val downloadProgress: Int = 0,
     val message: String? = null,
 ) {
-    val currentStep: Int
-        get() = when {
-            selectedState == null -> 1
-            selectedRollType == null -> 2
-            selectedDistrict == null -> 3
-            selectedAssembly == null -> 4
-            selectedLanguageCode == null -> 5
-            selectedPartNumbers.isEmpty() -> 6
-            captchaInput.isBlank() -> 7
-            else -> 8
+    val stepNumber: Int
+        get() = when (step) {
+            ElectoralRollStep.State -> 1
+            ElectoralRollStep.Year -> 2
+            ElectoralRollStep.RollType -> 3
+            ElectoralRollStep.District -> 4
+            ElectoralRollStep.Assembly -> 5
+            ElectoralRollStep.Parts -> 6
+            ElectoralRollStep.Captcha -> 7
+            ElectoralRollStep.Success -> 7
         }
+
+    val selectedParts: List<PartDto>
+        get() = parts.filter { it.partNumber in selectedPartNumbers }.sortedBy { it.partNumber }
+
+    val completedCount: Int
+        get() = downloadItems.count { it.status == DownloadStatus.Completed }
+
+    val failedCount: Int
+        get() = downloadItems.count { it.status == DownloadStatus.Failed }
+
+    val currentFileName: String?
+        get() = downloadItems.firstOrNull { it.status == DownloadStatus.Downloading }?.let {
+            it.fileName ?: "Part ${it.partNumber}"
+        }
+
+    val hasFailedDownloads: Boolean
+        get() = failedCount > 0
 
     fun validationError(): String? = when {
         selectedState == null -> "Please select State"
+        selectedYear == null -> "Please select Year"
         selectedRollType == null -> "Please select Roll Type"
         selectedDistrict == null -> "Please select District"
         selectedAssembly == null -> "Please select Assembly Constituency"
-        selectedLanguageCode == null -> "Please select Language"
-        selectedPartNumbers.isEmpty() -> "Please select Part"
+        selectedPartNumbers.isEmpty() -> "Please select at least one part"
         selectedPartNumbers.size > 10 -> "Maximum 10 parts are allowed at once"
-        captchaInput.isBlank() -> "Please enter valid Captcha"
+        selectedLanguageCode == null -> "Please select Download Language"
+        captchaInput.isBlank() -> "Please enter captcha"
         captcha == null -> "Captcha not loaded"
         else -> null
+    }
+
+    fun resetAfterState(): ElectoralRollUiState = copy(
+        selectedYear = null,
+        selectedRollType = null,
+        selectedDistrict = null,
+        selectedAssembly = null,
+        selectedLanguageCode = null,
+        years = emptyList(),
+        districts = emptyList(),
+        assemblies = emptyList(),
+        rollTypes = emptyList(),
+        languages = emptyMap(),
+        parts = emptyList(),
+        selectedPartNumbers = emptySet(),
+        downloadItems = emptyList(),
+        downloadedPdfs = emptyList(),
+        isCdnBatch = false,
+    )
+
+    fun resetAfterYear(): ElectoralRollUiState = copy(
+        selectedRollType = null,
+        selectedDistrict = null,
+        selectedAssembly = null,
+        selectedLanguageCode = null,
+        districts = emptyList(),
+        assemblies = emptyList(),
+        languages = emptyMap(),
+        parts = emptyList(),
+        selectedPartNumbers = emptySet(),
+        downloadItems = emptyList(),
+        downloadedPdfs = emptyList(),
+        isCdnBatch = false,
+    )
+
+    fun resetAfterRollType(): ElectoralRollUiState = copy(
+        selectedDistrict = null,
+        selectedAssembly = null,
+        selectedLanguageCode = null,
+        districts = emptyList(),
+        assemblies = emptyList(),
+        languages = emptyMap(),
+        parts = emptyList(),
+        selectedPartNumbers = emptySet(),
+        downloadItems = emptyList(),
+        downloadedPdfs = emptyList(),
+        isCdnBatch = false,
+    )
+
+    fun resetAfterDistrict(): ElectoralRollUiState = copy(
+        selectedAssembly = null,
+        selectedLanguageCode = null,
+        assemblies = emptyList(),
+        languages = emptyMap(),
+        parts = emptyList(),
+        selectedPartNumbers = emptySet(),
+        downloadItems = emptyList(),
+        downloadedPdfs = emptyList(),
+        isCdnBatch = false,
+    )
+
+    fun resetAfterAssembly(): ElectoralRollUiState = copy(
+        selectedLanguageCode = null,
+        languages = emptyMap(),
+        parts = emptyList(),
+        selectedPartNumbers = emptySet(),
+        downloadItems = emptyList(),
+        downloadedPdfs = emptyList(),
+        isCdnBatch = false,
+    )
+
+    fun withDownloadSummary(): ElectoralRollUiState {
+        if (downloadItems.isEmpty()) return copy(downloadProgress = 0)
+        val total = downloadItems.size * 100
+        val sum = downloadItems.sumOf {
+            when (it.status) {
+                DownloadStatus.Completed -> 100
+                DownloadStatus.Downloading -> it.progress
+                else -> 0
+            }
+        }
+        return copy(downloadProgress = ((sum * 100) / total).coerceIn(0, 100))
     }
 }

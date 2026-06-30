@@ -2,49 +2,73 @@ package com.samoondigital.yojnaplus.feature.pdf
 
 import android.graphics.BitmapFactory
 import android.util.Base64
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.ArrowDropDown
-import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,22 +77,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
 import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.PartDto
 import com.samoondigital.yojnaplus.model.RollTypeDto
 import com.samoondigital.yojnaplus.model.StateDto
-import com.samoondigital.yojnaplus.pdf.DownloadedPdf
+import com.samoondigital.yojnaplus.viewmodel.DownloadStatus
+import com.samoondigital.yojnaplus.viewmodel.ElectoralRollDownloadItem
+import com.samoondigital.yojnaplus.viewmodel.ElectoralRollStep
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollUiState
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollViewModel
 
+@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PdfScreen(
     onBack: () -> Unit,
@@ -77,429 +105,641 @@ fun PdfScreen(
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
 
+    fun handleBack() {
+        if (!viewModel.goBack()) onBack()
+    }
+
+    BackHandler(onBack = ::handleBack)
+
     Scaffold(
-        topBar = { AppToolbar(title = "Voter List PDF", onBack = onBack) },
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            WizardTopBar(
+                uiState = uiState,
+                onBack = ::handleBack,
+            )
+        },
     ) { padding ->
-        PdfStepForm(
-            uiState = uiState,
-            onYearSelected = viewModel::selectYear,
-            onStateSelected = viewModel::selectState,
-            onRollTypeSelected = viewModel::selectRollType,
-            onDistrictSelected = viewModel::selectDistrict,
-            onAssemblySelected = viewModel::selectAssembly,
-            onLanguageSelected = viewModel::selectLanguage,
-            onPartToggled = viewModel::togglePart,
-            onCaptchaChanged = viewModel::updateCaptchaInput,
-            onRefreshCaptcha = viewModel::refreshCaptcha,
-            onDownload = viewModel::downloadSelectedPdfs,
-            onOpenPdf = viewModel::openPdf,
-            modifier = modifier
+        Box(
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.surface),
+        ) {
+            AnimatedContent(
+                targetState = uiState.step,
+                transitionSpec = {
+                    (slideInHorizontally { it / 4 } + fadeIn())
+                        .togetherWith(slideOutHorizontally { -it / 4 } + fadeOut())
+                },
+                label = "electoral-roll-step",
+            ) { step ->
+                when (step) {
+                    ElectoralRollStep.State -> StateStep(uiState, viewModel::selectState)
+                    ElectoralRollStep.Year -> YearStep(uiState, viewModel::selectYear)
+                    ElectoralRollStep.RollType -> RollTypeStep(uiState, viewModel::selectRollType)
+                    ElectoralRollStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
+                    ElectoralRollStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
+                    ElectoralRollStep.Parts -> PartsStep(
+                        uiState = uiState,
+                        onPartToggled = viewModel::togglePart,
+                        onProceed = viewModel::showLanguageSheet,
+                    )
+                    ElectoralRollStep.Captcha -> CaptchaStep(
+                        uiState = uiState,
+                        onCaptchaChanged = viewModel::updateCaptchaInput,
+                        onRefreshCaptcha = viewModel::refreshCaptcha,
+                        onStartDownload = viewModel::startDownloads,
+                        onRetry = viewModel::retryDownloads,
+                        onCancel = viewModel::cancelDownloads,
+                    )
+                    ElectoralRollStep.Success -> SuccessStep(
+                        uiState = uiState,
+                        onOpenPdfs = viewModel::openDownloadedPdfs,
+                    )
+                }
+            }
+        }
+    }
+
+    if (uiState.isLanguageSheetVisible) {
+        LanguageBottomSheet(
+            uiState = uiState,
+            onDismiss = viewModel::dismissLanguageSheet,
+            onSelected = viewModel::selectLanguage,
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PdfStepForm(
-    uiState: ElectoralRollUiState,
-    onYearSelected: (Int) -> Unit,
-    onStateSelected: (StateDto) -> Unit,
-    onRollTypeSelected: (RollTypeDto) -> Unit,
-    onDistrictSelected: (DistrictDto) -> Unit,
-    onAssemblySelected: (AssemblyDto) -> Unit,
-    onLanguageSelected: (String) -> Unit,
-    onPartToggled: (Int) -> Unit,
-    onCaptchaChanged: (String) -> Unit,
-    onRefreshCaptcha: () -> Unit,
-    onDownload: () -> Unit,
-    onOpenPdf: (DownloadedPdf) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    LazyColumn(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+private fun WizardTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) {
+    CenterAlignedTopAppBar(
+        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = Color.White,
+            navigationIconContentColor = Color.White,
+        ),
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        },
+        title = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = uiState.toolbarTitle(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = "Step ${uiState.stepNumber} of 7",
+                    maxLines = 1,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.82f),
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> Unit) {
+    SearchableChoiceScreen(
+        title = "Select State",
+        subtitle = "Choose a state to load available electoral roll years.",
+        queryPlaceholder = "Search state",
+        items = uiState.states,
+        itemTitle = StateDto::stateName,
+        itemSubtitle = { it.stateCd },
+        loading = uiState.isLoading && uiState.states.isEmpty(),
+        message = uiState.message,
+        onSelected = onSelected,
+    )
+}
+
+@Composable
+private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
+    ChoiceListScaffold(
+        title = "Select Year",
+        subtitle = "Years are loaded from available ECI roll types for ${uiState.selectedState?.stateName.orEmpty()}.",
+        loading = uiState.isLoading,
+        message = uiState.message,
     ) {
-        item {
-            Spacer(Modifier.height(8.dp))
-            ProgressHeader(uiState)
-        }
-
-        item {
-            StepSection(step = 1, title = "State and Revision") {
-                SelectorField(
-                    label = "State",
-                    value = uiState.selectedState?.stateName ?: "Select State",
-                    items = uiState.states,
-                    itemLabel = StateDto::stateName,
-                    onItemSelected = onStateSelected,
-                    enabled = !uiState.isLoading && !uiState.isDownloading,
-                )
-                Spacer(Modifier.height(10.dp))
-                SelectorField(
-                    label = "Year of Revision",
-                    value = uiState.selectedYear.toString(),
-                    items = uiState.years,
-                    itemLabel = Int::toString,
-                    onItemSelected = onYearSelected,
-                    enabled = !uiState.isLoading && !uiState.isDownloading,
-                )
-            }
-        }
-
-        item {
-            StepSection(step = 2, title = "Roll Type") {
-                SelectorField(
-                    label = "Roll Type",
-                    value = uiState.selectedRollType?.displayName ?: "Select Roll Type",
-                    items = uiState.rollTypes,
-                    itemLabel = RollTypeDto::displayName,
-                    onItemSelected = onRollTypeSelected,
-                    enabled = uiState.selectedState != null && !uiState.isLoading && !uiState.isDownloading,
-                )
-            }
-        }
-
-        item {
-            StepSection(step = 3, title = "District and Assembly") {
-                SelectorField(
-                    label = "District",
-                    value = uiState.selectedDistrict?.displayName ?: "Select District",
-                    items = uiState.districts,
-                    itemLabel = DistrictDto::displayName,
-                    onItemSelected = onDistrictSelected,
-                    enabled = uiState.selectedRollType != null && !uiState.isLoading && !uiState.isDownloading,
-                )
-                Spacer(Modifier.height(10.dp))
-                SelectorField(
-                    label = "Assembly Constituency",
-                    value = uiState.selectedAssembly?.let { "${it.asmblyNo} - ${it.asmblyName}" } ?: "Select AC",
-                    items = uiState.assemblies,
-                    itemLabel = { "${it.asmblyNo} - ${it.asmblyName}" },
-                    onItemSelected = onAssemblySelected,
-                    enabled = uiState.selectedDistrict != null && !uiState.isLoading && !uiState.isDownloading,
-                )
-            }
-        }
-
-        item {
-            StepSection(step = 4, title = "Language") {
-                SelectorField(
-                    label = "Language",
-                    value = uiState.selectedLanguageCode?.let { code ->
-                        "${uiState.languages[code].orEmpty()} ($code)"
-                    } ?: "Select Language",
-                    items = uiState.languages.entries.toList(),
-                    itemLabel = { "${it.value} (${it.key})" },
-                    onItemSelected = { onLanguageSelected(it.key) },
-                    enabled = uiState.languages.isNotEmpty() && !uiState.isDownloading,
-                )
-            }
-        }
-
-        item {
-            StepSection(step = 5, title = "Select Parts") {
-                PartsSummary(uiState)
-            }
-        }
-
-        items(uiState.parts, key = { it.partNumber }) { part ->
-            PartRow(
-                part = part,
-                checked = part.partNumber in uiState.selectedPartNumbers,
-                enabled = !uiState.isDownloading,
-                onCheckedChange = { onPartToggled(part.partNumber) },
+        items(uiState.years, key = { it }) { year ->
+            ChoiceCard(
+                title = year.toString(),
+                subtitle = "View available roll types",
+                onClick = { onSelected(year) },
             )
         }
+    }
+}
 
-        item {
-            StepSection(step = 6, title = "Captcha") {
-                CaptchaBlock(
-                    uiState = uiState,
-                    onCaptchaChanged = onCaptchaChanged,
-                    onRefreshCaptcha = onRefreshCaptcha,
+@Composable
+private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto) -> Unit) {
+    ChoiceListScaffold(
+        title = "Select Roll Type",
+        subtitle = "Loaded dynamically for ${uiState.selectedYear ?: ""}.",
+        loading = uiState.isLoading,
+        message = uiState.message,
+    ) {
+        items(uiState.rollTypes, key = { it.id }) { rollType ->
+            ChoiceCard(
+                title = rollType.displayName,
+                subtitle = rollType.rollTypeRefId,
+                onClick = { onSelected(rollType) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DistrictStep(uiState: ElectoralRollUiState, onSelected: (DistrictDto) -> Unit) {
+    SearchableChoiceScreen(
+        title = "Select District",
+        subtitle = "Choose district to load assembly constituencies.",
+        queryPlaceholder = "Search district",
+        items = uiState.districts,
+        itemTitle = DistrictDto::displayName,
+        itemSubtitle = { it.districtCd },
+        loading = uiState.isLoading && uiState.districts.isEmpty(),
+        message = uiState.message,
+        selectedSummary = uiState.selectedSummary(),
+        onSelected = onSelected,
+    )
+}
+
+@Composable
+private fun AssemblyStep(uiState: ElectoralRollUiState, onSelected: (AssemblyDto) -> Unit) {
+    SearchableChoiceScreen(
+        title = "Select Assembly Constituency",
+        subtitle = "Choose your assembly constituency.",
+        queryPlaceholder = "Search assembly",
+        items = uiState.assemblies,
+        itemTitle = { it.asmblyName },
+        itemSubtitle = { "AC ${it.asmblyNo}" },
+        loading = uiState.isLoading && uiState.assemblies.isEmpty(),
+        message = uiState.message,
+        selectedSummary = uiState.selectedSummary(),
+        onSelected = onSelected,
+    )
+}
+
+@Composable
+private fun PartsStep(
+    uiState: ElectoralRollUiState,
+    onPartToggled: (Int) -> Unit,
+    onProceed: () -> Unit,
+) {
+    var query by remember(uiState.selectedAssembly?.asmblyNo) { mutableStateOf("") }
+    val filtered = remember(uiState.parts, query) {
+        val term = query.trim()
+        if (term.isBlank()) uiState.parts else uiState.parts.filter {
+            it.partName.contains(term, ignoreCase = true) ||
+                it.partNumber.toString().contains(term)
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        ChoiceListScaffold(
+            title = "Select Village / Part List",
+            subtitle = "Select up to 10 polling parts. Proceed appears after selection.",
+            loading = uiState.isLoading && uiState.parts.isEmpty(),
+            message = uiState.message,
+            selectedSummary = uiState.selectedSummary(),
+            trailingHeader = {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    placeholder = { Text("Search part or village") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "${uiState.selectedPartNumbers.size}/10 selected",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            },
+        ) {
+            items(filtered, key = { it.partNumber }) { part ->
+                PartChoiceCard(
+                    part = part,
+                    selected = part.partNumber in uiState.selectedPartNumbers,
+                    onClick = { onPartToggled(part.partNumber) },
                 )
             }
         }
 
+        AnimatedVisibility(
+            visible = uiState.selectedPartNumbers.isNotEmpty(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(18.dp)
+                .navigationBarsPadding(),
+        ) {
+            ExtendedFloatingActionButton(
+                onClick = onProceed,
+                icon = { Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null) },
+                text = { Text("Proceed (${uiState.selectedPartNumbers.size}/10)") },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CaptchaStep(
+    uiState: ElectoralRollUiState,
+    onCaptchaChanged: (String) -> Unit,
+    onRefreshCaptcha: () -> Unit,
+    onStartDownload: () -> Unit,
+    onRetry: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(),
+        contentPadding = PaddingValues(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item { SummaryCard(uiState.selectedSummary()) }
+        item {
+            ElevatedCard(shape = RoundedCornerShape(8.dp)) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Text(
+                        text = "Enter Captcha",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CaptchaImage(uiState.captcha?.captcha)
+                        OutlinedButton(
+                            onClick = onRefreshCaptcha,
+                            enabled = !uiState.isCaptchaLoading && !uiState.isDownloading,
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Icon(Icons.Outlined.Refresh, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Refresh")
+                        }
+                    }
+                    OutlinedTextField(
+                        value = uiState.captchaInput,
+                        onValueChange = onCaptchaChanged,
+                        enabled = !uiState.isDownloading,
+                        label = { Text("Captcha") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = onStartDownload,
+                        enabled = uiState.captchaInput.isNotBlank() && !uiState.isDownloading,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                    ) {
+                        Icon(Icons.Outlined.FileDownload, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Start Download")
+                    }
+                    uiState.message?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (uiState.hasFailedDownloads) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            AnimatedVisibility(visible = uiState.downloadItems.isNotEmpty() || uiState.isDownloading) {
+                DownloadPanel(
+                    uiState = uiState,
+                    onRetry = onRetry,
+                    onCancel = onCancel,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuccessStep(uiState: ElectoralRollUiState, onOpenPdfs: () -> Unit) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        item {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(86.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(54.dp),
+                    )
+                }
+            }
+        }
+        item {
+            Text(
+                text = "PDFs Downloaded",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "${uiState.completedCount} completed, ${uiState.failedCount} failed",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         item {
             Button(
-                onClick = onDownload,
-                enabled = !uiState.isDownloading && !uiState.isLoading,
+                onClick = onOpenPdfs,
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
             ) {
-                Icon(Icons.Outlined.Download, contentDescription = null)
+                Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Download Selected PDFs")
+                Text("Open PDFs")
             }
         }
-
-        item {
-            AnimatedVisibility(visible = uiState.downloadedPdfs.isNotEmpty()) {
-                DownloadedList(
-                    downloads = uiState.downloadedPdfs,
-                    onOpenPdf = onOpenPdf,
-                )
-            }
-        }
-
-        item {
-            Spacer(Modifier.height(20.dp))
-        }
-    }
-}
-
-@Composable
-private fun ProgressHeader(uiState: ElectoralRollUiState) {
-    Surface(
-        color = MaterialTheme.colorScheme.primaryContainer,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Electoral Roll PDF",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Text(
-                    text = "Step ${uiState.currentStep}/8",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-            LinearProgressIndicator(
-                progress = { uiState.currentStep / 8f },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            AnimatedVisibility(visible = uiState.isLoading || uiState.isDownloading || uiState.message != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    uiState.message?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-                    if (uiState.isDownloading) {
-                        LinearProgressIndicator(
-                            progress = { uiState.downloadProgress / 100f },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+        items(uiState.downloadedPdfs, key = { it.uri }) { pdf ->
+            ElevatedCard(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = pdf.fileName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StepSection(
-    step: Int,
-    title: String,
-    content: @Composable ColumnScope.() -> Unit,
+private fun LanguageBottomSheet(
+    uiState: ElectoralRollUiState,
+    onDismiss: () -> Unit,
+    onSelected: (String) -> Unit,
 ) {
-    ElevatedCard(
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = "Step $step",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(4.dp))
-            content()
-        }
-    }
-}
-
-@Composable
-private fun <T> SelectorField(
-    label: String,
-    value: String,
-    items: List<T>,
-    itemLabel: (T) -> String,
-    onItemSelected: (T) -> Unit,
-    enabled: Boolean,
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        OutlinedButton(
-            onClick = { expanded = true },
-            enabled = enabled && items.isNotEmpty(),
-            shape = RoundedCornerShape(8.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.heightIn(max = 320.dp),
-        ) {
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = itemLabel(item),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    onClick = {
-                        expanded = false
-                        onItemSelected(item)
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PartsSummary(uiState: ElectoralRollUiState) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "Polling Station Parts",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Text(
-                text = "${uiState.selectedPartNumbers.size}/10",
-                style = MaterialTheme.typography.labelLarge,
+                text = "Select Download Language",
+                style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
+            uiState.languages.entries.forEach { language ->
+                ChoiceCard(
+                    title = language.value,
+                    subtitle = language.key,
+                    leading = { Icon(Icons.Outlined.Language, contentDescription = null) },
+                    onClick = { onSelected(language.key) },
+                )
+            }
+            Spacer(Modifier.height(10.dp))
         }
-        Text(
-            text = if (uiState.parts.isEmpty()) "Select assembly to load part numbers" else "${uiState.parts.size} parts available",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
 @Composable
-private fun PartRow(
-    part: PartDto,
-    checked: Boolean,
-    enabled: Boolean,
-    onCheckedChange: () -> Unit,
+private fun <T> SearchableChoiceScreen(
+    title: String,
+    subtitle: String,
+    queryPlaceholder: String,
+    items: List<T>,
+    itemTitle: (T) -> String,
+    itemSubtitle: (T) -> String?,
+    loading: Boolean,
+    message: String?,
+    selectedSummary: String? = null,
+    onSelected: (T) -> Unit,
 ) {
-    Surface(
-        tonalElevation = 1.dp,
+    var query by remember(title) { mutableStateOf("") }
+    val filtered = remember(items, query) {
+        val term = query.trim()
+        if (term.isBlank()) items else items.filter {
+            itemTitle(it).contains(term, ignoreCase = true) ||
+                itemSubtitle(it).orEmpty().contains(term, ignoreCase = true)
+        }
+    }
+
+    ChoiceListScaffold(
+        title = title,
+        subtitle = subtitle,
+        loading = loading,
+        message = message,
+        selectedSummary = selectedSummary,
+        trailingHeader = {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                placeholder = { Text(queryPlaceholder) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+    ) {
+        items(filtered) { item ->
+            ChoiceCard(
+                title = itemTitle(item),
+                subtitle = itemSubtitle(item),
+                onClick = { onSelected(item) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChoiceListScaffold(
+    title: String,
+    subtitle: String,
+    loading: Boolean,
+    message: String?,
+    selectedSummary: String? = null,
+    trailingHeader: (@Composable ColumnScope.() -> Unit)? = null,
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SummaryCard(selectedSummary)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (loading) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+                message?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                trailingHeader?.invoke(this)
+            }
+        }
+        content()
+        item { Spacer(Modifier.height(88.dp)) }
+    }
+}
+
+@Composable
+private fun ChoiceCard(
+    title: String,
+    subtitle: String?,
+    onClick: () -> Unit,
+    leading: (@Composable () -> Unit)? = null,
+) {
+    ElevatedCard(
+        onClick = onClick,
         shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        ),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Checkbox(
-                checked = checked,
-                onCheckedChange = { onCheckedChange() },
-                enabled = enabled,
-            )
+            leading?.invoke()
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Part ${part.partNumber}",
-                    style = MaterialTheme.typography.labelLarge,
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
                 )
-                Text(
-                    text = part.partName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                subtitle?.takeIf { it.isNotBlank() }?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            Icon(
+                Icons.AutoMirrored.Outlined.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
 
 @Composable
-private fun CaptchaBlock(
-    uiState: ElectoralRollUiState,
-    onCaptchaChanged: (String) -> Unit,
-    onRefreshCaptcha: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit) {
+    ElevatedCard(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            },
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
         Row(
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            CaptchaImage(uiState.captcha?.captcha)
-            IconButton(
-                onClick = onRefreshCaptcha,
-                enabled = !uiState.isCaptchaLoading && !uiState.isDownloading,
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Part ${part.partNumber}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = part.partName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Surface(
+                shape = CircleShape,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier.size(34.dp),
             ) {
-                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh captcha")
+                Box(contentAlignment = Alignment.Center) {
+                    if (selected) {
+                        Icon(
+                            Icons.Outlined.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                }
             }
         }
-        OutlinedTextField(
-            value = uiState.captchaInput,
-            onValueChange = onCaptchaChanged,
-            enabled = !uiState.isDownloading,
-            label = { Text("Enter Captcha") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Characters,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 
@@ -514,8 +754,8 @@ private fun CaptchaImage(base64Captcha: String?) {
 
     Box(
         modifier = Modifier
-            .size(width = 132.dp, height = 50.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .size(width = 190.dp, height = 72.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
@@ -526,57 +766,173 @@ private fun CaptchaImage(base64Captcha: String?) {
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            Text(
-                text = "Captcha",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
         }
     }
 }
 
 @Composable
-private fun DownloadedList(
-    downloads: List<DownloadedPdf>,
-    onOpenPdf: (DownloadedPdf) -> Unit,
+private fun DownloadPanel(
+    uiState: ElectoralRollUiState,
+    onRetry: () -> Unit,
+    onCancel: () -> Unit,
 ) {
-    ElevatedCard(
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
+    ElevatedCard(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Download Progress",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            LinearProgressIndicator(
+                progress = { uiState.downloadProgress / 100f },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            uiState.currentFileName?.let {
                 Text(
-                    text = "Downloaded PDFs",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Current: $it",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            downloads.forEachIndexed { index, item ->
-                if (index > 0) {
-                    HorizontalDivider()
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = item.fileName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { onOpenPdf(item) }) {
-                        Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = "Open PDF")
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    text = "${uiState.completedCount} of ${uiState.downloadItems.size} completed",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = "Failed: ${uiState.failedCount}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (uiState.failedCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                AnimatedVisibility(visible = uiState.hasFailedDownloads && !uiState.isDownloading) {
+                    OutlinedButton(onClick = onRetry, shape = RoundedCornerShape(8.dp)) {
+                        Icon(Icons.Outlined.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Retry")
                     }
                 }
+                AnimatedVisibility(visible = uiState.isDownloading) {
+                    OutlinedButton(onClick = onCancel, shape = RoundedCornerShape(8.dp)) {
+                        Icon(Icons.Outlined.Cancel, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Cancel")
+                    }
+                }
+            }
+            HorizontalDivider()
+            uiState.downloadItems.forEach { item ->
+                DownloadItemRow(item)
             }
         }
     }
 }
+
+@Composable
+private fun DownloadItemRow(item: ElectoralRollDownloadItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            imageVector = when (item.status) {
+                DownloadStatus.Waiting -> Icons.Outlined.HourglassEmpty
+                DownloadStatus.Downloading -> Icons.Outlined.FileDownload
+                DownloadStatus.Completed -> Icons.Outlined.CheckCircle
+                DownloadStatus.Failed -> Icons.Outlined.ErrorOutline
+                DownloadStatus.Cancelled -> Icons.Outlined.Close
+            },
+            contentDescription = null,
+            tint = when (item.status) {
+                DownloadStatus.Completed -> MaterialTheme.colorScheme.primary
+                DownloadStatus.Failed, DownloadStatus.Cancelled -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Part ${item.partNumber}",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = item.partName,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = item.status.label(item.error),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (item.status == DownloadStatus.Downloading) {
+                LinearProgressIndicator(
+                    progress = { item.progress / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryCard(summary: String?) {
+    if (summary.isNullOrBlank()) return
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(14.dp),
+        )
+    }
+}
+
+private fun ElectoralRollUiState.toolbarTitle(): String =
+    when (step) {
+        ElectoralRollStep.State -> "Electoral Roll"
+        ElectoralRollStep.Year -> selectedState?.stateName ?: "Select Year"
+        ElectoralRollStep.RollType -> selectedState?.stateName ?: "Roll Type"
+        ElectoralRollStep.District -> selectedState?.stateName ?: "District"
+        ElectoralRollStep.Assembly -> selectedState?.stateName ?: "Assembly"
+        ElectoralRollStep.Parts -> selectedState?.stateName ?: "Parts"
+        ElectoralRollStep.Captcha -> "Enter Captcha"
+        ElectoralRollStep.Success -> "Download Complete"
+    }
+
+private fun ElectoralRollUiState.selectedSummary(): String? {
+    val roll = selectedRollType?.displayName
+    val year = selectedYear?.toString()
+    val district = selectedDistrict?.displayName
+    val assembly = selectedAssembly?.asmblyName
+    return listOfNotNull(
+        if (roll != null && year != null) "$roll - $year" else null,
+        district,
+        assembly,
+    ).takeIf { it.isNotEmpty() }?.joinToString(" / ")
+}
+
+private fun DownloadStatus.label(error: String?): String =
+    when (this) {
+        DownloadStatus.Waiting -> "Waiting in queue"
+        DownloadStatus.Downloading -> "Downloading..."
+        DownloadStatus.Completed -> "Completed"
+        DownloadStatus.Failed -> error ?: "Failed"
+        DownloadStatus.Cancelled -> "Cancelled"
+    }
