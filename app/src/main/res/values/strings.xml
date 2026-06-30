@@ -1,12 +1,8 @@
 <resources>
     <string name="app_name">Voter List 2026</string>
-    <string name="app_tagline">Find, download, and search voter list details quickly.</string>
+    <string name="app_tagline">Download voter list details quickly.</string>
 
     <!-- Home cards -->
-    <string name="electoral_search">Electoral Search</string>
-    <string name="electoral_search_desc">Search voter details using Mobile / EPIC number, or Name / DOB</string>
-    <string name="start_search">Start Search</string>
-
     <string name="voter_list_pdf">Voter List PDF</string>
     <string name="voter_list_pdf_desc">Download latest district / Assembly &amp; part-wise electoral roll PDF</string>
     <string name="download_pdf">Download PDF</string>

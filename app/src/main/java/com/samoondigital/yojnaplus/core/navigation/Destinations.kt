@@ -13,15 +13,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
  */
 object Routes {
     const val HOME = "home"
-    const val ELECTORAL_SEARCH = "electoral_search"
-    const val VOTER_RESULTS = "voter_results?searchType={searchType}&query={query}"
     const val PDF = "pdf"
     const val NEWS = "news"
     const val NOTIFICATIONS = "notifications"
     const val SETTINGS = "settings"
-
-    fun voterResults(searchType: String, query: String) =
-        "voter_results?searchType=$searchType&query=${android.net.Uri.encode(query)}"
 }
 
 /** Items shown in the bottom navigation bar. */

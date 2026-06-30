@@ -1,6 +1,5 @@
 package com.samoondigital.yojnaplus.feature.home
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -11,22 +10,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.samoondigital.yojnaplus.R
+import com.samoondigital.yojnaplus.core.ui.components.FeatureCard
 import com.samoondigital.yojnaplus.core.ui.theme.Green
 import com.samoondigital.yojnaplus.core.ui.theme.GreenContainer
 import com.samoondigital.yojnaplus.core.ui.theme.Indigo
-import com.samoondigital.yojnaplus.core.ui.theme.IndigoContainer
 import com.samoondigital.yojnaplus.core.ui.theme.OnGreenContainer
-import com.samoondigital.yojnaplus.core.ui.theme.OnIndigoContainer
-import com.samoondigital.yojnaplus.core.ui.components.FeatureCard
-import androidx.compose.ui.graphics.Color
 
 /**
  * Home landing screen. Pure UI built from the supplied mockup; navigation is
@@ -35,7 +31,6 @@ import androidx.compose.ui.graphics.Color
  */
 @Composable
 fun HomeScreen(
-    onStartSearch: () -> Unit,
     onDownloadPdf: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -61,20 +56,6 @@ fun HomeScreen(
         )
 
         Spacer(Modifier.height(28.dp))
-
-        FeatureCard(
-            title = stringResource(R.string.electoral_search),
-            description = stringResource(R.string.electoral_search_desc),
-            actionLabel = stringResource(R.string.start_search),
-            icon = Icons.Outlined.Search,
-            accent = Indigo,
-            container = IndigoContainer,
-            onAction = Color.White,
-            onContainer = OnIndigoContainer,
-            onClick = onStartSearch,
-        )
-
-        Spacer(Modifier.height(20.dp))
 
         FeatureCard(
             title = stringResource(R.string.voter_list_pdf),

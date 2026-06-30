@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
  * The hero card used on the Home screen: a full-height coloured icon rail on the
  * left, a tinted body with title/description, and a solid call-to-action footer.
  *
- * Stateless and reusable for any "big action" entry point (Search, PDF, etc.).
+ * Stateless and reusable for any "big action" entry point.
  */
 @Composable
 fun FeatureCard(

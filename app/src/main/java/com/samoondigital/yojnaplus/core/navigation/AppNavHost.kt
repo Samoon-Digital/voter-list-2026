@@ -14,18 +14,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.news.NewsScreen
 import com.samoondigital.yojnaplus.feature.notifications.NotificationsScreen
 import com.samoondigital.yojnaplus.feature.pdf.PdfScreen
-import com.samoondigital.yojnaplus.feature.results.VoterResultsScreen
-import com.samoondigital.yojnaplus.feature.search.ElectoralSearchScreen
 import com.samoondigital.yojnaplus.feature.settings.SettingsScreen
 
 @Composable
@@ -71,7 +67,6 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         ) {
             composable(Routes.HOME) {
                 HomeScreen(
-                    onStartSearch = { navController.navigate(Routes.ELECTORAL_SEARCH) },
                     onDownloadPdf = { navController.navigate(Routes.PDF) },
                     contentPadding = innerPadding,
                 )
@@ -79,23 +74,6 @@ fun AppNavHost(modifier: Modifier = Modifier) {
             composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }
             composable(Routes.NOTIFICATIONS) { NotificationsScreen(contentPadding = innerPadding) }
             composable(Routes.SETTINGS) { SettingsScreen(contentPadding = innerPadding) }
-            composable(Routes.ELECTORAL_SEARCH) {
-                ElectoralSearchScreen(
-                    onBack = { navController.popBackStack() },
-                    onNavigateToResults = { searchType, query ->
-                        navController.navigate(Routes.voterResults(searchType, query))
-                    },
-                )
-            }
-            composable(
-                route = Routes.VOTER_RESULTS,
-                arguments = listOf(
-                    navArgument("searchType") { type = NavType.StringType; defaultValue = "" },
-                    navArgument("query") { type = NavType.StringType; defaultValue = "" },
-                ),
-            ) {
-                VoterResultsScreen(onBack = { navController.popBackStack() })
-            }
             composable(Routes.PDF) { PdfScreen(onBack = { navController.popBackStack() }) }
         }
     }
