@@ -11,6 +11,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,13 +26,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,20 +43,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,10 +75,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -77,8 +88,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,7 +112,22 @@ import com.samoondigital.yojnaplus.viewmodel.ElectoralRollStep
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollUiState
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollViewModel
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+private val WizardPurple = Color(0xFF3522A8)
+private val WizardPurpleDark = Color(0xFF20106F)
+private val WizardPurpleBright = Color(0xFF7C5CFF)
+private val WizardInk = Color(0xFF090B1F)
+private val WizardMuted = Color(0xFF686A8D)
+private val WizardSurface = Color(0xFFFCFCFF)
+private val WizardStroke = Color(0xFFE3E2F5)
+private val ChoiceAccents = listOf(
+    Color(0xFF4A2CC3),
+    Color(0xFF43A66E),
+    Color(0xFFD66C2E),
+    Color(0xFF477CCA),
+    Color(0xFFC83D77),
+)
+
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun PdfScreen(
     onBack: () -> Unit,
@@ -114,7 +145,7 @@ fun PdfScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            WizardTopBar(
+            WizardHeroTopBar(
                 uiState = uiState,
                 onBack = ::handleBack,
             )
@@ -124,7 +155,7 @@ fun PdfScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(MaterialTheme.colorScheme.surface),
+                .background(WizardSurface),
         ) {
             AnimatedContent(
                 targetState = uiState.step,
@@ -171,37 +202,193 @@ fun PdfScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WizardTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) {
-    CenterAlignedTopAppBar(
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            titleContentColor = Color.White,
-            navigationIconContentColor = Color.White,
-        ),
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+private fun WizardHeroTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(222.dp)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(WizardPurpleDark, WizardPurple, Color(0xFF2E1B98)),
+                    start = Offset.Zero,
+                    end = Offset(950f, 360f),
+                ),
+            ),
+    ) {
+        HeaderArtwork(modifier = Modifier.matchParentSize())
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(start = 20.dp, top = 26.dp, end = 20.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Surface(
+                onClick = onBack,
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 8.dp,
+                modifier = Modifier.size(56.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = WizardPurpleDark,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
             }
-        },
-        title = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+
+            Spacer(Modifier.width(20.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 5.dp),
+            ) {
                 Text(
-                    text = uiState.toolbarTitle(),
+                    text = "Voter List Download",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
                     text = "Step ${uiState.stepNumber} of 7",
                     maxLines = 1,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.82f),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White.copy(alpha = 0.76f),
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+                WizardStepProgress(
+                    currentStep = uiState.stepNumber,
+                    modifier = Modifier
+                        .padding(top = 15.dp)
+                        .fillMaxWidth(0.86f),
                 )
             }
-        },
-    )
+
+            Surface(
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 8.dp,
+                modifier = Modifier.size(56.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.HelpOutline,
+                        contentDescription = "Help",
+                        tint = WizardPurpleDark,
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderArtwork(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        val wave = Path().apply {
+            moveTo(0f, h * 0.64f)
+            cubicTo(w * 0.10f, h * 0.46f, w * 0.15f, h * 0.78f, w * 0.28f, h * 0.58f)
+            cubicTo(w * 0.42f, h * 0.36f, w * 0.50f, h * 0.78f, w * 0.66f, h * 0.62f)
+            cubicTo(w * 0.78f, h * 0.50f, w * 0.88f, h * 0.80f, w, h * 0.56f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(wave, Color(0xFF5B49D7).copy(alpha = 0.30f))
+
+        val map = Path().apply {
+            moveTo(w * 0.68f, h * 0.20f)
+            cubicTo(w * 0.72f, h * 0.12f, w * 0.76f, h * 0.18f, w * 0.76f, h * 0.26f)
+            cubicTo(w * 0.83f, h * 0.25f, w * 0.89f, h * 0.35f, w * 0.86f, h * 0.44f)
+            cubicTo(w * 0.91f, h * 0.50f, w * 0.84f, h * 0.55f, w * 0.78f, h * 0.51f)
+            cubicTo(w * 0.74f, h * 0.58f, w * 0.66f, h * 0.53f, w * 0.70f, h * 0.45f)
+            cubicTo(w * 0.63f, h * 0.39f, w * 0.67f, h * 0.30f, w * 0.68f, h * 0.20f)
+            close()
+        }
+        drawPath(map, Color.White.copy(alpha = 0.13f))
+
+        val dotColor = Color.White.copy(alpha = 0.18f)
+        repeat(4) { row ->
+            repeat(4) { col ->
+                drawCircle(
+                    color = dotColor,
+                    radius = 4.3f,
+                    center = Offset(w * 0.90f + col * 22f, h * 0.60f + row * 22f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WizardStepProgress(
+    currentStep: Int,
+    modifier: Modifier = Modifier,
+    totalSteps: Int = 7,
+) {
+    Row(
+        modifier = modifier.height(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(totalSteps) { index ->
+            val step = index + 1
+            val completed = step <= currentStep
+            Surface(
+                shape = CircleShape,
+                color = if (completed) Color.White else Color.Transparent,
+                border = if (completed) null else BorderStroke(2.dp, Color.White),
+                modifier = Modifier.size(if (step == currentStep) 22.dp else 18.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (completed) {
+                        if (step == currentStep) {
+                            Surface(
+                                shape = CircleShape,
+                                color = WizardPurpleBright,
+                                modifier = Modifier.size(18.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(13.dp),
+                                    )
+                                }
+                            }
+                        } else {
+                            Icon(
+                                Icons.Outlined.Check,
+                                contentDescription = null,
+                                tint = WizardPurpleDark,
+                                modifier = Modifier.size(13.dp),
+                            )
+                        }
+                    }
+                }
+            }
+            if (index != totalSteps - 1) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(2.dp)
+                        .background(if (step < currentStep) Color.White else Color.White.copy(alpha = 0.55f)),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -212,7 +399,9 @@ private fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> U
         queryPlaceholder = "Search state",
         items = uiState.states,
         itemTitle = StateDto::stateName,
-        itemSubtitle = { it.stateCd },
+        itemSubtitle = { null },
+        headerIcon = Icons.Outlined.Map,
+        itemIcon = Icons.Outlined.Map,
         loading = uiState.isLoading && uiState.states.isEmpty(),
         message = uiState.message,
         onSelected = onSelected,
@@ -224,13 +413,16 @@ private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
     ChoiceListScaffold(
         title = "Select Year",
         subtitle = "Years are loaded from available ECI roll types for ${uiState.selectedState?.stateName.orEmpty()}.",
+        headerIcon = Icons.Outlined.CalendarMonth,
         loading = uiState.isLoading,
         message = uiState.message,
     ) {
-        items(uiState.years, key = { it }) { year ->
+        itemsIndexed(uiState.years, key = { _, year -> year }) { index, year ->
             ChoiceCard(
                 title = year.toString(),
-                subtitle = "View available roll types",
+                subtitle = null,
+                icon = Icons.Outlined.CalendarMonth,
+                accentIndex = index,
                 onClick = { onSelected(year) },
             )
         }
@@ -242,13 +434,16 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
     ChoiceListScaffold(
         title = "Select Roll Type",
         subtitle = "Loaded dynamically for ${uiState.selectedYear ?: ""}.",
+        headerIcon = Icons.Outlined.FactCheck,
         loading = uiState.isLoading,
         message = uiState.message,
     ) {
-        items(uiState.rollTypes, key = { it.id }) { rollType ->
+        itemsIndexed(uiState.rollTypes, key = { _, rollType -> rollType.id }) { index, rollType ->
             ChoiceCard(
                 title = rollType.displayName,
-                subtitle = rollType.rollTypeRefId,
+                subtitle = null,
+                icon = Icons.Outlined.FactCheck,
+                accentIndex = index,
                 onClick = { onSelected(rollType) },
             )
         }
@@ -262,8 +457,10 @@ private fun DistrictStep(uiState: ElectoralRollUiState, onSelected: (DistrictDto
         subtitle = "Choose district to load assembly constituencies.",
         queryPlaceholder = "Search district",
         items = uiState.districts,
-        itemTitle = DistrictDto::displayName,
-        itemSubtitle = { it.districtCd },
+        itemTitle = { it.primaryDistrictName() },
+        itemSubtitle = { it.hindiSubtitle(it.primaryDistrictName()) },
+        headerIcon = Icons.Outlined.LocationOn,
+        itemIcon = Icons.Outlined.AccountBalance,
         loading = uiState.isLoading && uiState.districts.isEmpty(),
         message = uiState.message,
         selectedSummary = uiState.selectedSummary(),
@@ -279,7 +476,9 @@ private fun AssemblyStep(uiState: ElectoralRollUiState, onSelected: (AssemblyDto
         queryPlaceholder = "Search assembly",
         items = uiState.assemblies,
         itemTitle = { it.asmblyName },
-        itemSubtitle = { "AC ${it.asmblyNo}" },
+        itemSubtitle = { it.asmblyName.hindiLineExcept(it.asmblyName) },
+        headerIcon = Icons.Outlined.AccountBalance,
+        itemIcon = Icons.Outlined.AccountBalance,
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
         message = uiState.message,
         selectedSummary = uiState.selectedSummary(),
@@ -306,6 +505,7 @@ private fun PartsStep(
         ChoiceListScaffold(
             title = "Select Village / Part List",
             subtitle = "Select up to 10 polling parts. Proceed appears after selection.",
+            headerIcon = Icons.Outlined.AccountBalance,
             loading = uiState.isLoading && uiState.parts.isEmpty(),
             message = uiState.message,
             selectedSummary = uiState.selectedSummary(),
@@ -314,8 +514,11 @@ private fun PartsStep(
                     value = query,
                     onValueChange = { query = it },
                     leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    trailingIcon = { Icon(Icons.Outlined.Tune, contentDescription = null, tint = WizardPurple) },
                     placeholder = { Text("Search part or village") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = searchFieldColors(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(10.dp))
@@ -556,6 +759,8 @@ private fun <T> SearchableChoiceScreen(
     loading: Boolean,
     message: String?,
     selectedSummary: String? = null,
+    headerIcon: ImageVector,
+    itemIcon: ImageVector,
     onSelected: (T) -> Unit,
 ) {
     var query by remember(title) { mutableStateOf("") }
@@ -570,6 +775,7 @@ private fun <T> SearchableChoiceScreen(
     ChoiceListScaffold(
         title = title,
         subtitle = subtitle,
+        headerIcon = headerIcon,
         loading = loading,
         message = message,
         selectedSummary = selectedSummary,
@@ -578,16 +784,22 @@ private fun <T> SearchableChoiceScreen(
                 value = query,
                 onValueChange = { query = it },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                trailingIcon = { Icon(Icons.Outlined.Tune, contentDescription = null, tint = WizardPurple) },
                 placeholder = { Text(queryPlaceholder) },
                 singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = searchFieldColors(),
+                textStyle = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.fillMaxWidth(),
             )
         },
     ) {
-        items(filtered) { item ->
+        itemsIndexed(filtered) { index, item ->
             ChoiceCard(
                 title = itemTitle(item),
                 subtitle = itemSubtitle(item),
+                icon = itemIcon,
+                accentIndex = index,
                 onClick = { onSelected(item) },
             )
         }
@@ -598,6 +810,7 @@ private fun <T> SearchableChoiceScreen(
 private fun ChoiceListScaffold(
     title: String,
     subtitle: String,
+    headerIcon: ImageVector,
     loading: Boolean,
     message: String?,
     selectedSummary: String? = null,
@@ -610,18 +823,11 @@ private fun ChoiceListScaffold(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryCard(selectedSummary)
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                StepHeading(
+                    icon = headerIcon,
+                    title = title,
+                    subtitle = subtitle,
                 )
                 if (loading) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -642,39 +848,127 @@ private fun ChoiceListScaffold(
 }
 
 @Composable
+private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = Color(0xFFF0EEFF),
+            modifier = Modifier.size(58.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = WizardPurple,
+                    modifier = Modifier.size(32.dp),
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = WizardInk,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = WizardMuted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = WizardStroke,
+    unfocusedBorderColor = WizardStroke,
+    focusedLeadingIconColor = WizardMuted,
+    unfocusedLeadingIconColor = WizardMuted,
+    focusedPlaceholderColor = WizardMuted,
+    unfocusedPlaceholderColor = WizardMuted,
+    cursorColor = WizardPurple,
+    focusedTextColor = WizardInk,
+    unfocusedTextColor = WizardInk,
+)
+
+@Composable
 private fun ChoiceCard(
     title: String,
     subtitle: String?,
     onClick: () -> Unit,
     leading: (@Composable () -> Unit)? = null,
+    icon: ImageVector = Icons.Outlined.AccountBalance,
+    accentIndex: Int = 0,
 ) {
+    val accent = ChoiceAccents[accentIndex % ChoiceAccents.size]
     ElevatedCard(
         onClick = onClick,
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            containerColor = Color.White,
         ),
-        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 10.dp,
+                shape = RoundedCornerShape(8.dp),
+                ambientColor = Color(0xFFE9E8F8),
+                spotColor = Color(0xFFE9E8F8),
+            ),
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 76.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            leading?.invoke()
+            if (leading != null) {
+                leading()
+            } else {
+                Surface(
+                    shape = CircleShape,
+                    color = accent.copy(alpha = 0.12f),
+                    modifier = Modifier.size(58.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+                }
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = WizardInk,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 subtitle?.takeIf { it.isNotBlank() }?.let {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = WizardInk,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -683,7 +977,8 @@ private fun ChoiceCard(
             Icon(
                 Icons.AutoMirrored.Outlined.ArrowForward,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = WizardPurple,
+                modifier = Modifier.size(28.dp),
             )
         }
     }
@@ -691,42 +986,66 @@ private fun ChoiceCard(
 
 @Composable
 private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit) {
+    val accent = ChoiceAccents[(part.partNumber - 1).floorMod(ChoiceAccents.size)]
     ElevatedCard(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-            },
+            containerColor = if (selected) Color(0xFFF2EFFF) else Color.White,
         ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 10.dp,
+                shape = RoundedCornerShape(8.dp),
+                ambientColor = Color(0xFFE9E8F8),
+                spotColor = Color(0xFFE9E8F8),
+            )
             .clickable(onClick = onClick),
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 82.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            Surface(
+                shape = CircleShape,
+                color = accent.copy(alpha = 0.12f),
+                modifier = Modifier.size(58.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.AccountBalance,
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Part ${part.partNumber}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = WizardInk,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(
                     text = part.partName,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = WizardInk,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Surface(
                 shape = CircleShape,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                color = if (selected) WizardPurple else Color(0xFFE9E8F8),
                 modifier = Modifier.size(34.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -936,3 +1255,20 @@ private fun DownloadStatus.label(error: String?): String =
         DownloadStatus.Failed -> error ?: "Failed"
         DownloadStatus.Cancelled -> "Cancelled"
     }
+
+private fun DistrictDto.primaryDistrictName(): String =
+    listOfNotNull(districtValue, districtName, districtCd)
+        .firstOrNull { !it.hasDevanagari() }
+        ?: displayName
+
+private fun DistrictDto.hindiSubtitle(primary: String): String? =
+    listOfNotNull(districtName, districtValue)
+        .firstOrNull { it.hasDevanagari() && it != primary }
+
+private fun String.hindiLineExcept(primary: String): String? =
+    takeIf { it.hasDevanagari() && it != primary }
+
+private fun String.hasDevanagari(): Boolean =
+    any { it in '\u0900'..'\u097F' }
+
+private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
