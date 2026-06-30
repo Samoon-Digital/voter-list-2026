@@ -2,6 +2,7 @@ package com.samoondigital.yojnaplus.domain.repository
 
 import com.samoondigital.yojnaplus.core.common.Resource
 import com.samoondigital.yojnaplus.domain.model.CaptchaData
+import com.samoondigital.yojnaplus.domain.model.RecentSearchItem
 import com.samoondigital.yojnaplus.domain.model.Voter
 import kotlinx.coroutines.flow.Flow
 
@@ -39,7 +40,11 @@ interface ElectoralRepository {
         captchaData: String,
     ): Resource<List<Voter>>
 
-    fun recentSearches(): Flow<List<String>>
+    fun recentSearches(): Flow<List<RecentSearchItem>>
 
     suspend fun clearRecentSearches()
+
+    suspend fun saveVoterResults(voters: List<Voter>, query: String, searchType: String)
+
+    fun observeVoterResults(query: String, searchType: String): Flow<List<Voter>>
 }

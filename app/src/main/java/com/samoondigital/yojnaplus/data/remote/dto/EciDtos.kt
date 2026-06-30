@@ -6,10 +6,11 @@ import kotlinx.serialization.Serializable
 
 // ─── Captcha ────────────────────────────────────────────────────────────────
 
+// ECI getCaptcha returns {data:"sessionToken"} since mid-2026 API change.
+// The token is the session ID; no image is embedded — handled in repo layer.
 @Serializable
 data class CaptchaResponse(
-    @SerialName("captcha") val captcha: String = "",
-    @SerialName("id") val id: String = "",
+    @SerialName("data") val data: String = "",
 )
 
 // ─── OTP ─────────────────────────────────────────────────────────────────────

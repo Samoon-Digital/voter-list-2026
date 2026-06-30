@@ -1,8 +1,6 @@
 package com.samoondigital.yojnaplus.feature.search
 
-import android.content.Intent
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -18,11 +16,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material3.Card
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,9 +33,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,7 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,18 +55,52 @@ import com.samoondigital.yojnaplus.core.common.UiState
 import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
 import com.samoondigital.yojnaplus.core.ui.components.PrimaryButton
 import com.samoondigital.yojnaplus.domain.model.INDIA_STATES
+import com.samoondigital.yojnaplus.domain.model.RecentSearchItem
 import com.samoondigital.yojnaplus.domain.model.SearchType
-import com.samoondigital.yojnaplus.domain.model.Voter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ElectoralSearchScreen(
     onBack: () -> Unit,
+    onNavigateToResults: (searchType: String, query: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ElectoralSearchViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
+
+    // Observe navigation events
+    LaunchedEffect(Unit) {
+        viewModel.navEvents.collect { event ->
+            when (event) {
+                is NavEvent.GoToResults -> onNavigateToResults(event.searchType, event.query)
+            }
+        }
+    }
+
+    // Captcha dialog
+    if (state.showCaptchaDialog) {
+        CaptchaDialog(
+            captchaState = state.captcha,
+            captchaInput = state.captchaInput,
+            onCaptchaInputChange = viewModel::onCaptchaInputChange,
+            onRefresh = viewModel::refreshCaptcha,
+            onSubmit = viewModel::onCaptchaSubmit,
+            onDismiss = viewModel::onCaptchaDialogDismiss,
+        )
+    }
+
+    // OTP dialog
+    if (state.showOtpDialog) {
+        OtpDialog(
+            mobile = state.query,
+            otp = state.otp,
+            onOtpChange = viewModel::onOtpChange,
+            onVerify = viewModel::onVerifyOtp,
+            onDismiss = viewModel::onOtpDialogDismiss,
+            isLoading = state.searchState is UiState.Loading,
+        )
+    }
 
     Scaffold(
         topBar = { AppToolbar(title = "Electoral Search", onBack = onBack) },
@@ -80,7 +114,6 @@ fun ElectoralSearchScreen(
         ) {
             item {
                 Spacer(Modifier.height(4.dp))
-                // ─── Search type tabs ────────────────────────────────────────
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SearchType.entries.forEach { type ->
                         FilterChip(
@@ -92,7 +125,6 @@ fun ElectoralSearchScreen(
                 }
             }
 
-            // ─── Primary query field ─────────────────────────────────────────
             item {
                 OutlinedTextField(
                     value = state.query,
@@ -108,17 +140,13 @@ fun ElectoralSearchScreen(
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = if (state.selectedType == SearchType.MOBILE) {
-                            KeyboardType.Number
-                        } else {
-                            KeyboardType.Text
-                        },
+                        keyboardType = if (state.selectedType == SearchType.MOBILE) KeyboardType.Number
+                        else KeyboardType.Text,
                     ),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
 
-            // ─── Name/DOB extra fields ───────────────────────────────────────
             if (state.selectedType == SearchType.NAME_DOB) {
                 item {
                     OutlinedTextField(
@@ -149,22 +177,11 @@ fun ElectoralSearchScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                item {
-                    GenderDropdown(
-                        selected = state.gender,
-                        onSelect = viewModel::onGenderChange,
-                    )
-                }
-                item {
-                    StateDropdown(
-                        selectedCode = state.selectedStateCd,
-                        onSelect = viewModel::onStateChange,
-                    )
-                }
+                item { GenderDropdown(selected = state.gender, onSelect = viewModel::onGenderChange) }
+                item { StateDropdown(selectedCode = state.selectedStateCd, onSelect = viewModel::onStateChange) }
             }
 
-            // ─── State dropdown for Mobile (optional) ────────────────────────
-            if (state.selectedType == SearchType.MOBILE && !state.otpStep) {
+            if (state.selectedType == SearchType.MOBILE) {
                 item {
                     StateDropdown(
                         label = "State (optional)",
@@ -174,119 +191,63 @@ fun ElectoralSearchScreen(
                 }
             }
 
-            // ─── Captcha section (hidden once OTP step is active) ────────────
-            if (!state.otpStep) {
-                item {
-                    CaptchaSection(
-                        captchaState = state.captcha,
-                        captchaInput = state.captchaInput,
-                        onCaptchaInputChange = viewModel::onCaptchaInputChange,
-                        onRefresh = viewModel::refreshCaptcha,
-                    )
-                }
+            item {
+                PrimaryButton(
+                    text = if (state.selectedType == SearchType.MOBILE) "Send OTP" else "Search",
+                    onClick = viewModel::onSearch,
+                )
             }
 
-            // ─── Send OTP / Search button ────────────────────────────────────
-            if (!state.otpStep) {
-                item {
-                    PrimaryButton(
-                        text = if (state.selectedType == SearchType.MOBILE) "Send OTP" else "Search",
-                        onClick = viewModel::onSearch,
-                    )
-                }
-                // Show OTP send state errors
-                if (state.otpSendState is UiState.Error) {
-                    item {
-                        Text(
-                            text = (state.otpSendState as UiState.Error).message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-                if (state.otpSendState is UiState.Loading) {
-                    item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                }
-            }
-
-            // ─── OTP input (Mobile only, after OTP sent) ─────────────────────
-            if (state.otpStep) {
-                item {
-                    Text(
-                        "OTP sent to ${state.query}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                item {
-                    OutlinedTextField(
-                        value = state.otp,
-                        onValueChange = viewModel::onOtpChange,
-                        label = { Text("Enter OTP") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PrimaryButton(
-                            text = "Verify OTP",
-                            onClick = viewModel::onVerifyOtp,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = {
-                            viewModel.onTypeChange(SearchType.MOBILE)
-                        }) { Text("Resend") }
-                    }
-                }
-            }
-
-            // ─── Results ────────────────────────────────────────────────────
-            item { Spacer(Modifier.height(4.dp)) }
-
-            when (val results = state.results) {
-                is UiState.Idle -> Unit
-
+            when (val s = state.searchState) {
                 is UiState.Loading -> item {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
-
                 is UiState.Error -> item {
                     Text(
-                        text = results.message,
+                        s.message,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
+                else -> Unit
+            }
 
-                is UiState.Success -> {
-                    if (results.data.isEmpty()) {
-                        item {
-                            Text(
-                                "No voter records found.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else {
-                        items(results.data, key = { it.epicNumber }) { voter ->
-                            VoterResultCard(voter = voter, onDownloadPdf = { epicNo ->
-                                val url = "https://electoralsearch.eci.gov.in/"
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    },
-                                )
-                            })
-                        }
+            if (state.otpSendState is UiState.Error) {
+                item {
+                    Text(
+                        (state.otpSendState as UiState.Error).message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+            if (state.otpSendState is UiState.Loading) {
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
+                }
+            }
+
+            // Recent searches section
+            if (recentSearches.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Recent Searches", style = MaterialTheme.typography.labelLarge)
+                        TextButton(onClick = viewModel::clearRecent) { Text("Clear") }
+                    }
+                }
+                recentSearches.forEach { searchItem ->
+                    item(key = searchItem.query) { RecentSearchRow(item = searchItem) }
                 }
             }
 
@@ -295,68 +256,130 @@ fun ElectoralSearchScreen(
     }
 }
 
-// ─── Captcha Section ─────────────────────────────────────────────────────────
+// ─── Captcha Dialog ───────────────────────────────────────────────────────────
 
 @Composable
-private fun CaptchaSection(
+private fun CaptchaDialog(
     captchaState: UiState<com.samoondigital.yojnaplus.domain.model.CaptchaData>,
     captchaInput: String,
     onCaptchaInputChange: (String) -> Unit,
     onRefresh: () -> Unit,
+    onSubmit: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(width = 160.dp, height = 56.dp)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small),
-                contentAlignment = Alignment.Center,
-            ) {
-                when (captchaState) {
-                    is UiState.Loading -> CircularProgressIndicator(Modifier.size(28.dp))
-                    is UiState.Success -> {
-                        val bitmap = remember(captchaState.data.imageBase64) {
-                            runCatching {
-                                val bytes = Base64.decode(captchaState.data.imageBase64, Base64.DEFAULT)
-                                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-                            }.getOrNull()
-                        }
-                        if (bitmap != null) {
-                            Image(
-                                bitmap = bitmap,
-                                contentDescription = "Captcha",
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize().padding(4.dp),
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Enter Captcha") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 160.dp, height = 56.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        when (captchaState) {
+                            is UiState.Loading -> CircularProgressIndicator(Modifier.size(28.dp))
+                            is UiState.Success -> {
+                                val bitmap = remember(captchaState.data.imageBase64) {
+                                    runCatching {
+                                        val bytes = Base64.decode(captchaState.data.imageBase64, Base64.DEFAULT)
+                                        if (bytes.isEmpty()) null
+                                        else BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                                    }.getOrNull()
+                                }
+                                if (bitmap != null) {
+                                    Image(
+                                        bitmap = bitmap,
+                                        contentDescription = "Captcha",
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier.fillMaxSize().padding(4.dp),
+                                    )
+                                } else {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            "Captcha",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            "Image unavailable",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontStyle = FontStyle.Italic,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                            is UiState.Error -> Text(
+                                "Failed to load",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
                             )
-                        } else {
-                            Text("?", style = MaterialTheme.typography.titleLarge)
+                            is UiState.Idle -> Unit
                         }
                     }
-                    is UiState.Error -> Text(
-                        "Failed to load",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    is UiState.Idle -> Unit
+                    IconButton(onClick = onRefresh) {
+                        Icon(Icons.Outlined.Refresh, contentDescription = "Refresh captcha")
+                    }
+                }
+                OutlinedTextField(
+                    value = captchaInput,
+                    onValueChange = onCaptchaInputChange,
+                    label = { Text("Enter Captcha Code") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onSubmit) { Text("Submit") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+// ─── OTP Dialog ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun OtpDialog(
+    mobile: String,
+    otp: String,
+    onOtpChange: (String) -> Unit,
+    onVerify: () -> Unit,
+    onDismiss: () -> Unit,
+    isLoading: Boolean,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Enter OTP") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "OTP sent to $mobile",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = otp,
+                    onValueChange = onOtpChange,
+                    label = { Text("OTP") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (isLoading) {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(28.dp))
+                    }
                 }
             }
-
-            IconButton(onClick = onRefresh) {
-                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh captcha")
-            }
-        }
-
-        OutlinedTextField(
-            value = captchaInput,
-            onValueChange = onCaptchaInputChange,
-            label = { Text("Enter Captcha") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+        },
+        confirmButton = { TextButton(onClick = onVerify, enabled = !isLoading) { Text("Verify") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 // ─── State Dropdown ───────────────────────────────────────────────────────────
@@ -379,15 +402,10 @@ private fun StateDropdown(
             label = { Text(label) },
             placeholder = { Text(label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(label) },
-                onClick = { onSelect("NA"); expanded = false },
-            )
+            DropdownMenuItem(text = { Text(label) }, onClick = { onSelect("NA"); expanded = false })
             INDIA_STATES.forEach { state ->
                 DropdownMenuItem(
                     text = { Text(state.name) },
@@ -414,9 +432,7 @@ private fun GenderDropdown(selected: String, onSelect: (String) -> Unit) {
             readOnly = true,
             label = { Text("Gender") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { (code, name) ->
@@ -429,61 +445,42 @@ private fun GenderDropdown(selected: String, onSelect: (String) -> Unit) {
     }
 }
 
-// ─── Voter Result Card ────────────────────────────────────────────────────────
+// ─── Recent Search Row ────────────────────────────────────────────────────────
 
 @Composable
-private fun VoterResultCard(voter: Voter, onDownloadPdf: (String) -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text(voter.name, style = MaterialTheme.typography.titleMedium)
-            if (voter.relativeName.isNotBlank()) {
-                Text(
-                    "S/o D/o W/o: ${voter.relativeName}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(6.dp))
-            VoterInfoRow("EPIC", voter.epicNumber)
-            VoterInfoRow("Gender / Age", "${voter.gender}, ${voter.age} yrs")
-            if (voter.stateName.isNotBlank()) VoterInfoRow("State", voter.stateName)
-            VoterInfoRow(
-                "Assembly",
-                voter.assembly.ifBlank { "—" },
-            )
-            VoterInfoRow(
-                "Part / Serial",
-                "${voter.partNumber} / ${voter.serialNumber}",
-            )
-            if (voter.pollingStation.isNotBlank()) {
-                VoterInfoRow("Polling Station", voter.pollingStation)
-            }
-            Spacer(Modifier.height(8.dp))
-            TextButton(
-                onClick = { onDownloadPdf(voter.epicNumber) },
-                modifier = Modifier.align(Alignment.End),
-            ) {
-                Text("Download Voter Slip")
-            }
-        }
+private fun RecentSearchRow(item: RecentSearchItem) {
+    val typeLabel = when (item.searchType) {
+        "MOBILE" -> "Mobile"
+        "EPIC" -> "EPIC"
+        "NAME_DOB" -> "Name/DOB"
+        else -> item.searchType
     }
-}
-
-@Composable
-private fun VoterInfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.small,
     ) {
-        Text(
-            "$label: ",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(110.dp),
-        )
-        Text(value, style = MaterialTheme.typography.bodySmall)
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                Icons.Outlined.History,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                item.query,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                typeLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }

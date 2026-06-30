@@ -8,4 +8,5 @@ import androidx.room.PrimaryKey
 data class RecentSearchEntity(
     @PrimaryKey val query: String,
     val timestamp: Long,
+    val searchType: String = "MOBILE",
 )

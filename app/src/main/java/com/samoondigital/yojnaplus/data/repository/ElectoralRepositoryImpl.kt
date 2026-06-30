@@ -2,7 +2,9 @@ package com.samoondigital.yojnaplus.data.repository
 
 import com.samoondigital.yojnaplus.core.common.Resource
 import com.samoondigital.yojnaplus.data.local.dao.RecentSearchDao
+import com.samoondigital.yojnaplus.data.local.dao.VoterResultDao
 import com.samoondigital.yojnaplus.data.local.entity.RecentSearchEntity
+import com.samoondigital.yojnaplus.data.local.entity.VoterResultEntity
 import com.samoondigital.yojnaplus.data.remote.api.ElectoralApi
 import com.samoondigital.yojnaplus.data.remote.dto.DetailsSearchRequest
 import com.samoondigital.yojnaplus.data.remote.dto.EpicSearchRequest
@@ -10,6 +12,7 @@ import com.samoondigital.yojnaplus.data.remote.dto.MobileSearchRequest
 import com.samoondigital.yojnaplus.data.remote.dto.SendOtpRequest
 import com.samoondigital.yojnaplus.data.remote.dto.toDomain
 import com.samoondigital.yojnaplus.domain.model.CaptchaData
+import com.samoondigital.yojnaplus.domain.model.RecentSearchItem
 import com.samoondigital.yojnaplus.domain.model.Voter
 import com.samoondigital.yojnaplus.domain.repository.ElectoralRepository
 import kotlinx.coroutines.flow.Flow
@@ -21,11 +24,14 @@ import javax.inject.Singleton
 class ElectoralRepositoryImpl @Inject constructor(
     private val api: ElectoralApi,
     private val recentSearchDao: RecentSearchDao,
+    private val voterResultDao: VoterResultDao,
 ) : ElectoralRepository {
 
     override suspend fun getCaptcha(): Resource<CaptchaData> = try {
         val resp = api.getCaptcha()
-        Resource.Success(CaptchaData(id = resp.id, imageBase64 = resp.captcha))
+        // API now returns {data: "sessionToken"} instead of {captcha, id}.
+        // We use the token as the session ID and leave imageBase64 empty.
+        Resource.Success(CaptchaData(id = resp.data, imageBase64 = ""))
     } catch (e: Exception) {
         Resource.Error("Failed to load captcha: ${e.message}")
     }
@@ -58,12 +64,12 @@ class ElectoralRepositoryImpl @Inject constructor(
         mobile: String,
         stateCd: String?,
     ): Resource<List<Voter>> {
-        recordSearch(mobile)
+        recordSearch(mobile, "MOBILE")
         return try {
             val voters = api.searchByMobile(
                 MobileSearchRequest(otp = otp, mobileNumber = mobile, stateCd = stateCd),
-            )
-            Resource.Success(voters.map { it.toDomain() })
+            ).map { it.toDomain() }
+            Resource.Success(voters)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Search failed")
         }
@@ -74,7 +80,7 @@ class ElectoralRepositoryImpl @Inject constructor(
         captchaId: String,
         captchaData: String,
     ): Resource<List<Voter>> {
-        recordSearch(epicNumber)
+        recordSearch(epicNumber, "EPIC")
         return try {
             val voters = api.searchByEpic(
                 EpicSearchRequest(
@@ -82,8 +88,8 @@ class ElectoralRepositoryImpl @Inject constructor(
                     captchaId = captchaId,
                     captchaData = captchaData,
                 ),
-            )
-            Resource.Success(voters.map { it.toDomain() })
+            ).map { it.toDomain() }
+            Resource.Success(voters)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Search failed")
         }
@@ -99,7 +105,7 @@ class ElectoralRepositoryImpl @Inject constructor(
         captchaId: String,
         captchaData: String,
     ): Resource<List<Voter>> {
-        recordSearch(firstName)
+        recordSearch(firstName, "NAME_DOB")
         return try {
             val voters = api.searchByDetails(
                 DetailsSearchRequest(
@@ -112,21 +118,69 @@ class ElectoralRepositoryImpl @Inject constructor(
                     captchaId = captchaId,
                     captchaData = captchaData,
                 ),
-            )
-            Resource.Success(voters.map { it.toDomain() })
+            ).map { it.toDomain() }
+            Resource.Success(voters)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Search failed")
         }
     }
 
-    override fun recentSearches(): Flow<List<String>> =
-        recentSearchDao.observeRecent().map { list -> list.map { it.query } }
+    override fun recentSearches(): Flow<List<RecentSearchItem>> =
+        recentSearchDao.observeRecent().map { list ->
+            list.map { RecentSearchItem(query = it.query, searchType = it.searchType) }
+        }
 
     override suspend fun clearRecentSearches() = recentSearchDao.clear()
 
-    private suspend fun recordSearch(query: String) {
+    override suspend fun saveVoterResults(voters: List<Voter>, query: String, searchType: String) {
+        val ts = System.currentTimeMillis()
+        voterResultDao.deleteBySearch(query, searchType)
+        voterResultDao.insertAll(
+            voters.map { v ->
+                VoterResultEntity(
+                    epicNumber = v.epicNumber,
+                    name = v.name,
+                    relativeName = v.relativeName,
+                    age = v.age,
+                    gender = v.gender,
+                    assembly = v.assembly,
+                    partNumber = v.partNumber,
+                    serialNumber = v.serialNumber,
+                    stateName = v.stateName,
+                    pollingStation = v.pollingStation,
+                    searchQuery = query,
+                    searchType = searchType,
+                    timestamp = ts,
+                )
+            },
+        )
+    }
+
+    override fun observeVoterResults(query: String, searchType: String): Flow<List<Voter>> =
+        voterResultDao.observeBySearch(query, searchType).map { list ->
+            list.map { e ->
+                Voter(
+                    epicNumber = e.epicNumber,
+                    name = e.name,
+                    relativeName = e.relativeName,
+                    age = e.age,
+                    gender = e.gender,
+                    assembly = e.assembly,
+                    partNumber = e.partNumber,
+                    serialNumber = e.serialNumber,
+                    stateName = e.stateName,
+                    pollingStation = e.pollingStation,
+                )
+            }
+        }
+
+    private suspend fun recordSearch(query: String, type: String) {
         recentSearchDao.upsert(
-            RecentSearchEntity(query = query, timestamp = System.currentTimeMillis()),
+            RecentSearchEntity(
+                query = query,
+                timestamp = System.currentTimeMillis(),
+                searchType = type,
+            ),
         )
     }
 }

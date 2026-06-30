@@ -7,6 +7,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
+import okhttp3.Cookie
+import okhttp3.CookieJar
+import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -31,10 +34,20 @@ object NetworkModule {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         }
+        // In-memory cookie jar: keeps JSESSIONID from getCaptcha and sends it with
+        // every subsequent ECI API request (captcha session must be shared).
+        val cookieStore = mutableMapOf<String, List<Cookie>>()
+        val cookieJar = object : CookieJar {
+            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+                cookieStore[url.host] = cookies
+            }
+            override fun loadForRequest(url: HttpUrl): List<Cookie> =
+                cookieStore[url.host] ?: emptyList()
+        }
         return OkHttpClient.Builder()
+            .cookieJar(cookieJar)
             .addInterceptor(logging)
             .addInterceptor { chain ->
-                // ECI gateway requires browser-like headers on every request
                 chain.proceed(
                     chain.request().newBuilder()
                         .header("Origin", "https://electoralsearch.eci.gov.in")

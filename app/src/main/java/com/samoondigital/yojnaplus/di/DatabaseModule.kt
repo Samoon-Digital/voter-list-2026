@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.samoondigital.yojnaplus.data.local.AppDatabase
 import com.samoondigital.yojnaplus.data.local.dao.RecentSearchDao
+import com.samoondigital.yojnaplus.data.local.dao.VoterResultDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,4 +25,7 @@ object DatabaseModule {
 
     @Provides
     fun provideRecentSearchDao(db: AppDatabase): RecentSearchDao = db.recentSearchDao()
+
+    @Provides
+    fun provideVoterResultDao(db: AppDatabase): VoterResultDao = db.voterResultDao()
 }
