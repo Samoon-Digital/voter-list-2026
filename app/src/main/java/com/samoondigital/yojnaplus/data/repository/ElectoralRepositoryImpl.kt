@@ -4,8 +4,12 @@ import com.samoondigital.yojnaplus.core.common.Resource
 import com.samoondigital.yojnaplus.data.local.dao.RecentSearchDao
 import com.samoondigital.yojnaplus.data.local.entity.RecentSearchEntity
 import com.samoondigital.yojnaplus.data.remote.api.ElectoralApi
+import com.samoondigital.yojnaplus.data.remote.dto.DetailsSearchRequest
+import com.samoondigital.yojnaplus.data.remote.dto.EpicSearchRequest
+import com.samoondigital.yojnaplus.data.remote.dto.MobileSearchRequest
+import com.samoondigital.yojnaplus.data.remote.dto.SendOtpRequest
 import com.samoondigital.yojnaplus.data.remote.dto.toDomain
-import com.samoondigital.yojnaplus.domain.model.SearchType
+import com.samoondigital.yojnaplus.domain.model.CaptchaData
 import com.samoondigital.yojnaplus.domain.model.Voter
 import com.samoondigital.yojnaplus.domain.repository.ElectoralRepository
 import kotlinx.coroutines.flow.Flow
@@ -19,16 +23,99 @@ class ElectoralRepositoryImpl @Inject constructor(
     private val recentSearchDao: RecentSearchDao,
 ) : ElectoralRepository {
 
-    override suspend fun searchVoters(type: SearchType, query: String): Resource<List<Voter>> {
-        recordSearch(query)
+    override suspend fun getCaptcha(): Resource<CaptchaData> = try {
+        val resp = api.getCaptcha()
+        Resource.Success(CaptchaData(id = resp.id, imageBase64 = resp.captcha))
+    } catch (e: Exception) {
+        Resource.Error("Failed to load captcha: ${e.message}")
+    }
+
+    override suspend fun sendMobileOtp(
+        mobile: String,
+        stateCd: String,
+        captchaId: String,
+        captchaData: String,
+    ): Resource<Unit> = try {
+        val resp = api.sendMobileOtp(
+            SendOtpRequest(
+                mobNo = mobile,
+                stateCd = stateCd,
+                captchaId = captchaId,
+                captchaData = captchaData,
+            ),
+        )
+        if (resp.statusCode == 200) {
+            Resource.Success(Unit)
+        } else {
+            Resource.Error(resp.message.ifBlank { "OTP sending failed (${resp.statusCode})" })
+        }
+    } catch (e: Exception) {
+        Resource.Error(e.message ?: "Failed to send OTP")
+    }
+
+    override suspend fun searchByMobile(
+        otp: String,
+        mobile: String,
+        stateCd: String?,
+    ): Resource<List<Voter>> {
+        recordSearch(mobile)
         return try {
-            val response = api.searchVoters(type.name.lowercase(), query)
-            Resource.Success(response.results.map { it.toDomain() })
+            val voters = api.searchByMobile(
+                MobileSearchRequest(otp = otp, mobileNumber = mobile, stateCd = stateCd),
+            )
+            Resource.Success(voters.map { it.toDomain() })
         } catch (e: Exception) {
-            // No live backend wired yet: surface a deterministic sample so the
-            // UI can be exercised end-to-end. Swap this for `Resource.Error`
-            // once the real endpoint is connected.
-            Resource.Success(sampleResults(type, query))
+            Resource.Error(e.message ?: "Search failed")
+        }
+    }
+
+    override suspend fun searchByEpic(
+        epicNumber: String,
+        captchaId: String,
+        captchaData: String,
+    ): Resource<List<Voter>> {
+        recordSearch(epicNumber)
+        return try {
+            val voters = api.searchByEpic(
+                EpicSearchRequest(
+                    epicNumber = epicNumber,
+                    captchaId = captchaId,
+                    captchaData = captchaData,
+                ),
+            )
+            Resource.Success(voters.map { it.toDomain() })
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Search failed")
+        }
+    }
+
+    override suspend fun searchByDetails(
+        stateCd: String,
+        firstName: String,
+        lastName: String?,
+        relationName: String,
+        dob: String?,
+        gender: String,
+        captchaId: String,
+        captchaData: String,
+    ): Resource<List<Voter>> {
+        recordSearch(firstName)
+        return try {
+            val voters = api.searchByDetails(
+                DetailsSearchRequest(
+                    stateCd = stateCd,
+                    firstName = firstName,
+                    lastName = lastName,
+                    relationName = relationName,
+                    dob = dob,
+                    gender = gender,
+                    captchaId = captchaId,
+                    captchaData = captchaData,
+                ),
+            )
+            Resource.Success(voters.map { it.toDomain() })
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Search failed")
         }
     }
 
@@ -42,17 +129,4 @@ class ElectoralRepositoryImpl @Inject constructor(
             RecentSearchEntity(query = query, timestamp = System.currentTimeMillis()),
         )
     }
-
-    private fun sampleResults(type: SearchType, query: String): List<Voter> = listOf(
-        Voter(
-            epicNumber = if (type == SearchType.EPIC) query.uppercase() else "ABC1234567",
-            name = "Sample Voter",
-            relativeName = "Sample Relative",
-            age = 34,
-            gender = "Male",
-            assembly = "Sample Assembly Constituency",
-            partNumber = "045",
-            serialNumber = "128",
-        ),
-    )
 }

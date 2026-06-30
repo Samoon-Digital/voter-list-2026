@@ -10,4 +10,6 @@ data class Voter(
     val assembly: String,
     val partNumber: String,
     val serialNumber: String,
+    val stateName: String = "",
+    val pollingStation: String = "",
 )

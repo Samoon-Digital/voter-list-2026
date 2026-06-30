@@ -33,8 +33,21 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(logging)
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                // ECI gateway requires browser-like headers on every request
+                chain.proceed(
+                    chain.request().newBuilder()
+                        .header("Origin", "https://electoralsearch.eci.gov.in")
+                        .header("Referer", "https://electoralsearch.eci.gov.in/")
+                        .header(
+                            "User-Agent",
+                            "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36",
+                        )
+                        .build(),
+                )
+            }
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 
