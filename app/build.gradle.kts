@@ -121,6 +121,7 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Image loading
     implementation(libs.coil.compose)

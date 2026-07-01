@@ -8,6 +8,7 @@ import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.PartDto
 import com.samoondigital.yojnaplus.model.RollTypeDto
 import com.samoondigital.yojnaplus.model.StateDto
+import com.samoondigital.yojnaplus.feature.downloads.data.DownloadRepository
 import com.samoondigital.yojnaplus.pdf.DownloadedPdf
 import com.samoondigital.yojnaplus.pdf.PdfDownloadManager
 import com.samoondigital.yojnaplus.repository.ElectoralRollRepository
@@ -29,6 +30,7 @@ import javax.inject.Inject
 class ElectoralRollViewModel @Inject constructor(
     private val repository: ElectoralRollRepository,
     private val pdfDownloadManager: PdfDownloadManager,
+    private val downloadRepository: DownloadRepository,
 ) : ViewModel() {
     private val currentYear = LocalDate.now().year
     private val rollTypesByYear = mutableMapOf<Int, List<RollTypeDto>>()
@@ -200,6 +202,9 @@ class ElectoralRollViewModel @Inject constructor(
                 message = "Downloads cancelled",
                 downloadItems = current.downloadItems.map {
                     if (it.status == DownloadStatus.Waiting || it.status == DownloadStatus.Downloading) {
+                        it.downloadRecordId?.let { id ->
+                            viewModelScope.launch { downloadRepository.markCancelled(id) }
+                        }
                         it.copy(status = DownloadStatus.Cancelled)
                     } else {
                         it
@@ -207,22 +212,6 @@ class ElectoralRollViewModel @Inject constructor(
                 },
             ).withDownloadSummary()
         }
-    }
-
-    fun openPdf(downloadedPdf: DownloadedPdf) {
-        runCatching { pdfDownloadManager.openPdf(downloadedPdf) }
-            .onFailure { error ->
-                _state.update { it.copy(message = error.userMessage("No PDF viewer found")) }
-            }
-    }
-
-    fun openDownloadedPdfs() {
-        val first = _state.value.downloadedPdfs.firstOrNull()
-        if (first == null) {
-            _state.update { it.copy(message = "No downloaded PDF found") }
-            return
-        }
-        openPdf(first)
     }
 
     fun goBack(): Boolean {
@@ -360,9 +349,19 @@ class ElectoralRollViewModel @Inject constructor(
             val mapped = initialItems.mapIndexed { index, item ->
                 item.copy(fileId = batch.fileIds.getOrNull(index))
             }
-            _state.update { it.copy(downloadItems = mapped, message = "Captcha verified. Starting downloads") }
+            val tracked = mapped.map { item ->
+                item.copy(
+                    downloadRecordId = downloadRepository.createPendingRecord(
+                        district = selectedDistrict.displayName,
+                        assembly = selectedAssembly.asmblyName,
+                        village = item.partName,
+                        partNumber = item.partNumber,
+                    ),
+                )
+            }
+            _state.update { it.copy(downloadItems = tracked, message = "Captcha verified. Starting downloads") }
             _state.update { it.copy(isCdnBatch = batch.isCdn) }
-            downloadFiles(batch.isCdn, mapped)
+            downloadFiles(batch.isCdn, tracked)
         }.onFailure { error ->
             _state.update {
                 it.copy(
@@ -417,6 +416,7 @@ class ElectoralRollViewModel @Inject constructor(
             currentCoroutineContext().ensureActive()
             val fileId = item.fileId ?: return@forEach
             markItemDownloading(item.partNumber, fileId)
+            item.downloadRecordId?.let { downloadRepository.markDownloading(it) }
             val result = runCatching {
                 if (isCdn) {
                     pdfDownloadManager.downloadCdnPdf(fileId) { progress ->
@@ -431,6 +431,9 @@ class ElectoralRollViewModel @Inject constructor(
             }
             currentCoroutineContext().ensureActive()
             result.onSuccess { downloaded ->
+                item.downloadRecordId?.let { id ->
+                    downloadRepository.markCompleted(id, downloaded.fileName, downloaded.uri)
+                }
                 _state.update { current ->
                     current.copy(
                         downloadedPdfs = current.downloadedPdfs + downloaded,
@@ -450,6 +453,9 @@ class ElectoralRollViewModel @Inject constructor(
                     ).withDownloadSummary()
                 }
             }.onFailure { error ->
+                item.downloadRecordId?.let { id ->
+                    downloadRepository.markFailed(id, error.userMessage("Download failed"))
+                }
                 _state.update { current ->
                     current.copy(
                         downloadItems = current.downloadItems.map { existing ->
@@ -496,6 +502,9 @@ class ElectoralRollViewModel @Inject constructor(
 
     private fun updateItemProgress(partNumber: Int, progress: Int) {
         _state.update { current ->
+            current.downloadItems.firstOrNull { it.partNumber == partNumber }?.downloadRecordId?.let { id ->
+                viewModelScope.launch { downloadRepository.updateProgress(id, progress) }
+            }
             current.copy(
                 downloadItems = current.downloadItems.map {
                     if (it.partNumber == partNumber) it.copy(progress = progress.coerceIn(0, 100)) else it
@@ -539,6 +548,7 @@ enum class DownloadStatus {
 data class ElectoralRollDownloadItem(
     val partNumber: Int,
     val partName: String,
+    val downloadRecordId: String? = null,
     val fileId: String? = null,
     val fileName: String? = null,
     val progress: Int = 0,

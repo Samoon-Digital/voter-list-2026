@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.core.navigation
 
+import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Home
@@ -14,9 +15,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 object Routes {
     const val HOME = "home"
     const val PDF = "pdf"
+    const val DOWNLOADS = "downloads"
+    const val PDF_VIEWER = "pdf_viewer"
+    const val PDF_VIEWER_ROUTE = "$PDF_VIEWER/{uri}/{title}"
     const val NEWS = "news"
     const val NOTIFICATIONS = "notifications"
     const val SETTINGS = "settings"
+
+    fun pdfViewerRoute(uri: String, title: String): String =
+        "$PDF_VIEWER/${Uri.encode(uri)}/${Uri.encode(title)}"
 }
 
 /** Items shown in the bottom navigation bar. */

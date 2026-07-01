@@ -80,6 +80,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -129,16 +130,30 @@ private val ChoiceAccents = listOf(
 @Composable
 fun PdfScreen(
     onBack: () -> Unit,
+    onDownloadsComplete: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ElectoralRollViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    var openedDownloads by remember { mutableStateOf(false) }
 
     fun handleBack() {
         if (!viewModel.goBack()) onBack()
     }
 
     BackHandler(onBack = ::handleBack)
+    LaunchedEffect(uiState.step, uiState.isDownloading, uiState.completedCount, uiState.failedCount) {
+        if (
+            !openedDownloads &&
+            uiState.step == ElectoralRollStep.Success &&
+            !uiState.isDownloading &&
+            uiState.completedCount > 0 &&
+            uiState.failedCount == 0
+        ) {
+            openedDownloads = true
+            onDownloadsComplete()
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -184,7 +199,7 @@ fun PdfScreen(
                     )
                     ElectoralRollStep.Success -> SuccessStep(
                         uiState = uiState,
-                        onOpenPdfs = viewModel::openDownloadedPdfs,
+                        onOpenDownloads = onDownloadsComplete,
                     )
                 }
             }
@@ -649,7 +664,7 @@ private fun CaptchaStep(
 }
 
 @Composable
-private fun SuccessStep(uiState: ElectoralRollUiState, onOpenPdfs: () -> Unit) {
+private fun SuccessStep(uiState: ElectoralRollUiState, onOpenDownloads: () -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -686,7 +701,7 @@ private fun SuccessStep(uiState: ElectoralRollUiState, onOpenPdfs: () -> Unit) {
         }
         item {
             Button(
-                onClick = onOpenPdfs,
+                onClick = onOpenDownloads,
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -694,7 +709,7 @@ private fun SuccessStep(uiState: ElectoralRollUiState, onOpenPdfs: () -> Unit) {
             ) {
                 Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Open PDFs")
+                Text("Open Downloads")
             }
         }
         items(uiState.downloadedPdfs, key = { it.uri }) { pdf ->

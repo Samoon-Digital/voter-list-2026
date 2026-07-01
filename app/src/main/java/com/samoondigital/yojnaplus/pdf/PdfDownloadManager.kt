@@ -3,7 +3,6 @@ package com.samoondigital.yojnaplus.pdf
 import android.app.DownloadManager
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -94,15 +93,6 @@ class PdfDownloadManager @Inject constructor(
         }
         onProgress(100)
         DownloadedPdf(fileName = safeName, uri = uri.toString())
-    }
-
-    fun openPdf(downloadedPdf: DownloadedPdf) {
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(Uri.parse(downloadedPdf.uri), "application/pdf")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(Intent.createChooser(intent, "Open PDF").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     private suspend fun pollDownload(
