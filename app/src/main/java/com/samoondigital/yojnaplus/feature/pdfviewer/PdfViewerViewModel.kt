@@ -1,6 +1,7 @@
 package com.samoondigital.yojnaplus.feature.pdfviewer
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,14 +19,14 @@ class PdfViewerViewModel @Inject constructor(
     @ApplicationContext context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    private val uri: String = savedStateHandle.get<String>("uri").orEmpty()
+    private val uri: String = Uri.decode(savedStateHandle.get<String>("uri").orEmpty())
     private val prefs = context.getSharedPreferences("pdf_viewer_state", Context.MODE_PRIVATE)
     private val key = uri.hashCode().toString()
 
     private val _state = MutableStateFlow(
         PdfViewerUiState(
             uri = uri,
-            title = savedStateHandle.get<String>("title").orEmpty(),
+            title = Uri.decode(savedStateHandle.get<String>("title").orEmpty()),
             currentPage = prefs.getInt("${key}_page", 0),
             zoom = prefs.getFloat("${key}_zoom", 1f).coerceIn(MinZoom, MaxZoom),
         ),
@@ -66,12 +67,11 @@ class PdfViewerViewModel @Inject constructor(
     }
 
     fun updateSearch(value: String) {
-        _state.update { it.copy(searchQuery = value.filter(Char::isDigit).take(4)) }
+        _state.update { it.copy(searchQuery = value.take(80)) }
     }
 
-    fun goToSearchPage() {
-        val page = _state.value.searchQuery.toIntOrNull()?.minus(1) ?: return
-        requestPage(page)
+    fun clearSearch() {
+        _state.update { it.copy(searchQuery = "") }
     }
 
     fun requestPage(page: Int) {

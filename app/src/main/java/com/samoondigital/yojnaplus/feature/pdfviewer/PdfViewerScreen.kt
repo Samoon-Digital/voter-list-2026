@@ -1,11 +1,19 @@
 package com.samoondigital.yojnaplus.feature.pdfviewer
 
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Color as AndroidColor
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.Build
+import android.os.ParcelFileDescriptor
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,24 +21,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.NavigateBefore
-import androidx.compose.material.icons.automirrored.outlined.NavigateNext
-import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.ZoomIn
-import androidx.compose.material.icons.outlined.ZoomOut
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -44,22 +47,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.github.barteksc.pdfviewer.PDFView
-import com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 @Composable
 fun PdfViewerScreen(
@@ -69,79 +84,78 @@ fun PdfViewerScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var pdfView by remember { mutableStateOf<PDFView?>(null) }
-
-    LaunchedEffect(state.requestedPage) {
-        val page = state.requestedPage ?: return@LaunchedEffect
-        pdfView?.jumpTo(page, true)
-        viewModel.consumeRequestedPage()
+    val scope = rememberCoroutineScope()
+    var searchMessage by remember(state.uri) { mutableStateOf<String?>(null) }
+    val documentState by produceState<PdfDocumentState>(PdfDocumentState.Loading, state.uri) {
+        value = PdfDocumentState.Loading
+        value = runCatching { PdfDocument.open(context, state.uri.toUri()) }
+            .fold(
+                onSuccess = { PdfDocumentState.Ready(it) },
+                onFailure = { PdfDocumentState.Error(it.message ?: "Unable to open PDF") },
+            )
     }
 
-    LaunchedEffect(state.requestedZoom) {
-        val zoom = state.requestedZoom ?: return@LaunchedEffect
-        pdfView?.zoomWithAnimation(zoom)
-        viewModel.onZoomChanged(zoom)
-        viewModel.consumeRequestedZoom()
+    DisposableEffect(documentState) {
+        onDispose { (documentState as? PdfDocumentState.Ready)?.document?.close() }
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            pdfView?.recycle()
-            pdfView = null
+    LaunchedEffect(documentState) {
+        when (val document = documentState) {
+            is PdfDocumentState.Ready -> viewModel.onLoaded(document.document.pageCount)
+            is PdfDocumentState.Error -> viewModel.onError(document.message)
+            PdfDocumentState.Loading -> viewModel.setLoading()
         }
     }
 
-    val viewerBackground = if (state.isDarkMode) Color(0xFF090B12) else MaterialTheme.colorScheme.background
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = state.currentPage)
+    LaunchedEffect(state.requestedPage) {
+        val page = state.requestedPage ?: return@LaunchedEffect
+        listState.animateScrollToItem(page)
+        viewModel.consumeRequestedPage()
+    }
+
+    LaunchedEffect(listState, state.pageCount) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            .collect { page ->
+                if (state.pageCount > 0) {
+                    viewModel.onPageChanged(page.coerceIn(0, state.pageCount - 1), state.pageCount)
+                }
+            }
+    }
+
+    var zoom by remember(state.uri) { mutableFloatStateOf(state.zoom) }
+    LaunchedEffect(state.zoom) { zoom = state.zoom }
+    val transformState = rememberTransformableState { zoomChange, _, _ ->
+        zoom = (zoom * zoomChange).coerceIn(PdfViewerViewModel.MinZoom, PdfViewerViewModel.MaxZoom)
+        viewModel.onZoomChanged(zoom)
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(viewerBackground),
+            .background(if (state.isDarkMode) Color(0xFF090B12) else MaterialTheme.colorScheme.background),
     ) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { viewContext ->
-                PDFView(viewContext, null).also { view ->
-                    pdfView = view
-                    view.setBackgroundColor(if (state.isDarkMode) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-                    viewModel.setLoading()
-                    view.fromUri(state.uri.toUri())
-                        .defaultPage(state.currentPage)
-                        .enableSwipe(true)
-                        .swipeHorizontal(false)
-                        .enableDoubletap(true)
-                        .enableAntialiasing(true)
-                        .enableAnnotationRendering(true)
-                        .spacing(8)
-                        .nightMode(state.isDarkMode)
-                        .pageFling(false)
-                        .pageSnap(false)
-                        .autoSpacing(false)
-                        .scrollHandle(DefaultScrollHandle(viewContext))
-                        .onLoad { pageCount ->
-                            viewModel.onLoaded(pageCount)
-                            view.zoomTo(state.zoom)
-                            view.jumpTo(state.currentPage.coerceIn(0, pageCount - 1), false)
-                        }
-                        .onPageChange { page, pageCount ->
-                            viewModel.onPageChanged(page, pageCount)
-                            viewModel.onZoomChanged(view.zoom)
-                        }
-                        .onPageScroll { _, _ ->
-                            viewModel.onZoomChanged(view.zoom)
-                        }
-                        .onError { error ->
-                            viewModel.onError(error.message ?: "Unable to open PDF")
-                        }
-                        .onPageError { page, error ->
-                            viewModel.onError("Unable to render page ${page + 1}: ${error.message.orEmpty()}")
-                        }
-                        .load()
-                }
-            },
-            update = { view ->
-                view.setBackgroundColor(if (state.isDarkMode) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-            },
-        )
+        when (val document = documentState) {
+            is PdfDocumentState.Ready -> PdfPages(
+                document = document.document,
+                zoom = zoom,
+                listState = listState,
+                onDoubleTap = {
+                    zoom = if (zoom > 1.25f) 1f else 2f
+                    viewModel.onZoomChanged(zoom)
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .transformable(transformState),
+            )
+            is PdfDocumentState.Error -> ErrorPanel(
+                message = document.message,
+                onBack = onBack,
+                modifier = Modifier.align(Alignment.Center),
+            )
+            PdfDocumentState.Loading -> Unit
+        }
 
         PdfViewerTopBar(
             title = state.title,
@@ -166,49 +180,87 @@ fun PdfViewerScreen(
         ) {
             SearchPanel(
                 value = state.searchQuery,
-                pageCount = state.pageCount,
+                message = searchMessage,
                 onValueChange = viewModel::updateSearch,
-                onGo = viewModel::goToSearchPage,
+                onSearch = {
+                    val document = (documentState as? PdfDocumentState.Ready)?.document ?: return@SearchPanel
+                    val query = state.searchQuery.trim()
+                    if (query.isBlank()) return@SearchPanel
+                    scope.launch {
+                        searchMessage = "Searching"
+                        val result = document.findText(query, state.currentPage)
+                        if (result == null) {
+                            searchMessage = if (Build.VERSION.SDK_INT >= 35) "No match found" else "Text search requires Android 15+"
+                        } else {
+                            searchMessage = null
+                            viewModel.requestPage(result)
+                        }
+                    }
+                },
             )
         }
-
-        PdfViewerBottomBar(
-            state = state,
-            onPrevious = { viewModel.requestPage(state.currentPage - 1) },
-            onNext = { viewModel.requestPage(state.currentPage + 1) },
-            onZoomOut = viewModel::zoomOut,
-            onZoomIn = viewModel::zoomIn,
-            onToggleDark = viewModel::toggleDarkMode,
-            onPageSelected = viewModel::requestPage,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
 
         if (state.isLoading) {
-            Box(
+            LoadingOverlay()
+        }
+    }
+}
+
+@Composable
+private fun PdfPages(
+    document: PdfDocument,
+    zoom: Float,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onDoubleTap: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val targetWidth = with(density) { (screenWidth - 20.dp).roundToPx().coerceAtLeast(320) }
+
+    LazyColumn(
+        state = listState,
+        modifier = modifier
+            .padding(top = 78.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(onDoubleTap = { onDoubleTap() })
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items((0 until document.pageCount).toList(), key = { it }) { page ->
+            val bitmap by produceState<Bitmap?>(null, document, page, targetWidth) {
+                value = document.renderPage(page, targetWidth)
+            }
+            Surface(
+                color = Color.White,
+                tonalElevation = 1.dp,
+                shadowElevation = 1.dp,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.20f)),
-                contentAlignment = Alignment.Center,
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp)
+                    .graphicsLayer {
+                        scaleX = zoom
+                        scaleY = zoom
+                    },
             ) {
-                Surface(shape = RoundedCornerShape(8.dp), tonalElevation = 4.dp) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                if (bitmap == null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .size(180.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(22.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text("Loading PDF")
                     }
+                } else {
+                    Image(
+                        bitmap = bitmap!!.asImageBitmap(),
+                        contentDescription = "Page ${page + 1}",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
-        }
-
-        state.error?.let { error ->
-            ErrorPanel(
-                message = error,
-                onBack = onBack,
-                modifier = Modifier.align(Alignment.Center),
-            )
         }
     }
 }
@@ -229,7 +281,7 @@ private fun PdfViewerTopBar(
         Row(
             modifier = Modifier
                 .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -238,7 +290,7 @@ private fun PdfViewerTopBar(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -250,7 +302,7 @@ private fun PdfViewerTopBar(
                 )
             }
             IconButton(onClick = onSearch) {
-                Icon(Icons.Outlined.Search, contentDescription = "Search")
+                Icon(Icons.Outlined.Search, contentDescription = "Search text")
             }
             IconButton(onClick = onShare) {
                 Icon(Icons.Outlined.Share, contentDescription = "Share")
@@ -262,115 +314,61 @@ private fun PdfViewerTopBar(
 @Composable
 private fun SearchPanel(
     value: String,
-    pageCount: Int,
+    message: String?,
     onValueChange: (String) -> Unit,
-    onGo: () -> Unit,
+    onSearch: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
         tonalElevation = 6.dp,
         shadowElevation = 6.dp,
     ) {
-        Row(
-            modifier = Modifier.padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                label = { Text("Go to page") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            Button(onClick = onGo, enabled = value.toIntOrNull()?.let { it in 1..pageCount } == true) {
-                Text("Go")
-            }
-        }
-    }
-}
-
-@Composable
-private fun PdfViewerBottomBar(
-    state: PdfViewerUiState,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onZoomOut: () -> Unit,
-    onZoomIn: () -> Unit,
-    onToggleDark: () -> Unit,
-    onPageSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-        tonalElevation = 3.dp,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        Column {
             Row(
+                modifier = Modifier.padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                IconButton(onClick = onPrevious, enabled = state.currentPage > 0) {
-                    Icon(Icons.AutoMirrored.Outlined.NavigateBefore, contentDescription = "Previous page")
-                }
-                Text(
-                    text = state.pageLabel,
-                    style = MaterialTheme.typography.labelLarge,
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    label = { Text("Search text") },
+                    singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = onNext, enabled = state.currentPage < state.pageCount - 1) {
-                    Icon(Icons.AutoMirrored.Outlined.NavigateNext, contentDescription = "Next page")
-                }
-                IconButton(onClick = onZoomOut) {
-                    Icon(Icons.Outlined.ZoomOut, contentDescription = "Zoom out")
-                }
-                IconButton(onClick = onZoomIn) {
-                    Icon(Icons.Outlined.ZoomIn, contentDescription = "Zoom in")
-                }
-                IconButton(onClick = onToggleDark) {
-                    Icon(Icons.Outlined.DarkMode, contentDescription = "Dark mode")
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onSearch, enabled = value.isNotBlank()) {
+                    Text("Search")
                 }
             }
-            AnimatedVisibility(visible = state.pageCount > 1) {
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Outlined.GridView, contentDescription = null, modifier = Modifier.size(18.dp))
-                    repeat(state.pageCount.coerceAtMost(80)) { page ->
-                        PageThumbnailChip(
-                            page = page,
-                            selected = page == state.currentPage,
-                            onClick = { onPageSelected(page) },
-                        )
-                    }
-                }
+            message?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun PageThumbnailChip(page: Int, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+private fun LoadingOverlay() {
+    Box(
         modifier = Modifier
-            .size(width = 44.dp, height = 34.dp)
-            .clickable(onClick = onClick),
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.20f)),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = (page + 1).toString(),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-            )
+        Surface(shape = RoundedCornerShape(8.dp), tonalElevation = 4.dp) {
+            Row(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Loading PDF")
+            }
         }
     }
 }
@@ -401,6 +399,59 @@ private fun ErrorPanel(message: String, onBack: () -> Unit, modifier: Modifier =
             FilledTonalButton(onClick = onBack) {
                 Text("Back")
             }
+        }
+    }
+}
+
+private sealed interface PdfDocumentState {
+    data object Loading : PdfDocumentState
+    data class Ready(val document: PdfDocument) : PdfDocumentState
+    data class Error(val message: String) : PdfDocumentState
+}
+
+private class PdfDocument private constructor(
+    private val descriptor: ParcelFileDescriptor,
+    private val renderer: PdfRenderer,
+) {
+    private val mutex = Mutex()
+    val pageCount: Int = renderer.pageCount
+
+    suspend fun renderPage(pageIndex: Int, targetWidth: Int): Bitmap = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            renderer.openPage(pageIndex).use { page ->
+                val scale = targetWidth.toFloat() / page.width.toFloat()
+                val targetHeight = (page.height * scale).toInt().coerceAtLeast(1)
+                Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888).also { bitmap ->
+                    bitmap.eraseColor(AndroidColor.WHITE)
+                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                }
+            }
+        }
+    }
+
+    suspend fun findText(query: String, startPage: Int): Int? = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT < 35) return@withContext null
+        mutex.withLock {
+            val start = startPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
+            val pages = (start until pageCount) + (0 until start)
+            pages.firstOrNull { pageIndex ->
+                renderer.openPage(pageIndex).use { page ->
+                    page.searchText(query).isNotEmpty()
+                }
+            }
+        }
+    }
+
+    fun close() {
+        renderer.close()
+        descriptor.close()
+    }
+
+    companion object {
+        fun open(context: Context, uri: Uri): PdfDocument {
+            val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
+                ?: throw IllegalStateException("Unable to open PDF file")
+            return PdfDocument(descriptor, PdfRenderer(descriptor))
         }
     }
 }
