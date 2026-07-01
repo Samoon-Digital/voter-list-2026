@@ -1,6 +1,4 @@
 package com.samoondigital.yojnaplus.core.navigation
-
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -95,7 +93,6 @@ fun AppNavHost(modifier: Modifier = Modifier) {
             }
             composable(Routes.PDF_VIEWER_ROUTE) { entry ->
                 PdfViewerScreen(
-                    title = Uri.decode(entry.arguments?.getString("title").orEmpty()),
                     onBack = { navController.popBackStack() },
                 )
             }

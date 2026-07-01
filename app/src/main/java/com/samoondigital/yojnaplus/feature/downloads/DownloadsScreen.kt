@@ -249,6 +249,7 @@ private fun DownloadCard(
     onResume: () -> Unit,
 ) {
     ElevatedCard(
+        onClick = onOpen,
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),

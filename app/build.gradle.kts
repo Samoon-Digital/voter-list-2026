@@ -123,6 +123,9 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)
 
+    // In-app PDF rendering
+    implementation(libs.android.pdf.viewer)
+
     // Image loading
     implementation(libs.coil.compose)
 
