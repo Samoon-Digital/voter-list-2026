@@ -38,7 +38,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -96,7 +95,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -207,7 +205,7 @@ private fun WizardHeroTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(222.dp)
+            .height(190.dp)
             .background(
                 Brush.linearGradient(
                     colors = listOf(WizardPurpleDark, WizardPurple, Color(0xFF2E1B98)),
@@ -222,7 +220,7 @@ private fun WizardHeroTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) 
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(start = 20.dp, top = 26.dp, end = 20.dp),
+                .padding(start = 18.dp, top = 18.dp, end = 18.dp),
             verticalAlignment = Alignment.Top,
         ) {
             Surface(
@@ -230,44 +228,44 @@ private fun WizardHeroTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) 
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(48.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = WizardPurpleDark,
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }
 
-            Spacer(Modifier.width(20.dp))
+            Spacer(Modifier.width(16.dp))
 
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(top = 5.dp),
+                    .padding(top = 2.dp),
             ) {
                 Text(
                     text = "Voter List Download",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     color = Color.White,
                     fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
                     text = "Step ${uiState.stepNumber} of 7",
                     maxLines = 1,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = Color.White.copy(alpha = 0.76f),
-                    modifier = Modifier.padding(top = 3.dp),
+                    modifier = Modifier.padding(top = 1.dp),
                 )
                 WizardStepProgress(
                     currentStep = uiState.stepNumber,
                     modifier = Modifier
-                        .padding(top = 15.dp)
+                        .padding(top = 11.dp)
                         .fillMaxWidth(0.86f),
                 )
             }
@@ -276,14 +274,14 @@ private fun WizardHeroTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) 
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(48.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.HelpOutline,
                         contentDescription = "Help",
                         tint = WizardPurpleDark,
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(26.dp),
                     )
                 }
             }
@@ -339,7 +337,7 @@ private fun WizardStepProgress(
     totalSteps: Int = 7,
 ) {
     Row(
-        modifier = modifier.height(24.dp),
+        modifier = modifier.height(20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         repeat(totalSteps) { index ->
@@ -349,7 +347,7 @@ private fun WizardStepProgress(
                 shape = CircleShape,
                 color = if (completed) Color.White else Color.Transparent,
                 border = if (completed) null else BorderStroke(2.dp, Color.White),
-                modifier = Modifier.size(if (step == currentStep) 22.dp else 18.dp),
+                modifier = Modifier.size(if (step == currentStep) 18.dp else 16.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (completed) {
@@ -357,14 +355,14 @@ private fun WizardStepProgress(
                             Surface(
                                 shape = CircleShape,
                                 color = WizardPurpleBright,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(15.dp),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         Icons.Outlined.Check,
                                         contentDescription = null,
                                         tint = Color.White,
-                                        modifier = Modifier.size(13.dp),
+                                        modifier = Modifier.size(10.dp),
                                     )
                                 }
                             }
@@ -373,7 +371,7 @@ private fun WizardStepProgress(
                                 Icons.Outlined.Check,
                                 contentDescription = null,
                                 tint = WizardPurpleDark,
-                                modifier = Modifier.size(13.dp),
+                                modifier = Modifier.size(10.dp),
                             )
                         }
                     }
@@ -383,7 +381,7 @@ private fun WizardStepProgress(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(2.dp)
+                        .height(1.5.dp)
                         .background(if (step < currentStep) Color.White else Color.White.copy(alpha = 0.55f)),
                 )
             }
@@ -519,9 +517,12 @@ private fun PartsStep(
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = searchFieldColors(),
-                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(
                     text = "${uiState.selectedPartNumbers.size}/10 selected",
                     style = MaterialTheme.typography.labelLarge,
@@ -567,19 +568,19 @@ private fun CaptchaStep(
         modifier = Modifier
             .fillMaxSize()
             .imePadding(),
-        contentPadding = PaddingValues(18.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { SummaryCard(uiState.selectedSummary()) }
         item {
             ElevatedCard(shape = RoundedCornerShape(8.dp)) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text(
                         text = "Enter Captcha",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Row(
@@ -592,8 +593,12 @@ private fun CaptchaStep(
                             enabled = !uiState.isCaptchaLoading && !uiState.isDownloading,
                             shape = RoundedCornerShape(8.dp),
                         ) {
-                            Icon(Icons.Outlined.Refresh, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
+                            Icon(
+                                Icons.Outlined.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
                             Text("Refresh")
                         }
                     }
@@ -603,9 +608,6 @@ private fun CaptchaStep(
                         enabled = !uiState.isDownloading,
                         label = { Text("Captcha") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Characters,
-                        ),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Button(
@@ -614,10 +616,14 @@ private fun CaptchaStep(
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
+                            .height(48.dp),
                     ) {
-                        Icon(Icons.Outlined.FileDownload, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Outlined.FileDownload,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
                         Text("Start Download")
                     }
                     uiState.message?.let {
@@ -646,22 +652,22 @@ private fun CaptchaStep(
 private fun SuccessStep(uiState: ElectoralRollUiState, onOpenPdfs: () -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         item {
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(86.dp),
+                modifier = Modifier.size(72.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.CheckCircle,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(54.dp),
+                        modifier = Modifier.size(44.dp),
                     )
                 }
             }
@@ -684,7 +690,7 @@ private fun SuccessStep(uiState: ElectoralRollUiState, onOpenPdfs: () -> Unit) {
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(48.dp),
             ) {
                 Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
@@ -694,7 +700,7 @@ private fun SuccessStep(uiState: ElectoralRollUiState, onOpenPdfs: () -> Unit) {
         items(uiState.downloadedPdfs, key = { it.uri }) { pdf ->
             ElevatedCard(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)
@@ -789,8 +795,10 @@ private fun <T> SearchableChoiceScreen(
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = searchFieldColors(),
-                textStyle = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
             )
         },
     ) {
@@ -819,11 +827,11 @@ private fun ChoiceListScaffold(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 StepHeading(
                     icon = headerIcon,
                     title = title,
@@ -852,32 +860,32 @@ private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Surface(
             shape = CircleShape,
             color = Color(0xFFF0EEFF),
-            modifier = Modifier.size(58.dp),
+            modifier = Modifier.size(50.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     icon,
                     contentDescription = null,
                     tint = WizardPurple,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = WizardInk,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
@@ -922,7 +930,7 @@ private fun ChoiceCard(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 10.dp,
+                elevation = 8.dp,
                 shape = RoundedCornerShape(8.dp),
                 ambientColor = Color(0xFFE9E8F8),
                 spotColor = Color(0xFFE9E8F8),
@@ -931,10 +939,10 @@ private fun ChoiceCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 76.dp)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .heightIn(min = 68.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (leading != null) {
                 leading()
@@ -942,14 +950,14 @@ private fun ChoiceCard(
                 Surface(
                     shape = CircleShape,
                     color = accent.copy(alpha = 0.12f),
-                    modifier = Modifier.size(58.dp),
+                    modifier = Modifier.size(50.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             icon,
                             contentDescription = null,
                             tint = accent,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(28.dp),
                         )
                     }
                 }
@@ -957,7 +965,7 @@ private fun ChoiceCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = WizardInk,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
@@ -967,7 +975,7 @@ private fun ChoiceCard(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = WizardInk,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -978,7 +986,7 @@ private fun ChoiceCard(
                 Icons.AutoMirrored.Outlined.ArrowForward,
                 contentDescription = null,
                 tint = WizardPurple,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
     }
@@ -996,7 +1004,7 @@ private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 10.dp,
+                elevation = 8.dp,
                 shape = RoundedCornerShape(8.dp),
                 ambientColor = Color(0xFFE9E8F8),
                 spotColor = Color(0xFFE9E8F8),
@@ -1006,29 +1014,29 @@ private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 82.dp)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .heightIn(min = 72.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Surface(
                 shape = CircleShape,
                 color = accent.copy(alpha = 0.12f),
-                modifier = Modifier.size(58.dp),
+                modifier = Modifier.size(50.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.AccountBalance,
                         contentDescription = null,
                         tint = accent,
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(28.dp),
                     )
                 }
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Part ${part.partNumber}",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = WizardInk,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
@@ -1037,7 +1045,7 @@ private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = part.partName,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = WizardInk,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -1046,7 +1054,7 @@ private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit
             Surface(
                 shape = CircleShape,
                 color = if (selected) WizardPurple else Color(0xFFE9E8F8),
-                modifier = Modifier.size(34.dp),
+                modifier = Modifier.size(30.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (selected) {
@@ -1073,7 +1081,7 @@ private fun CaptchaImage(base64Captcha: String?) {
 
     Box(
         modifier = Modifier
-            .size(width = 190.dp, height = 72.dp)
+            .size(width = 160.dp, height = 60.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
@@ -1098,25 +1106,18 @@ private fun DownloadPanel(
 ) {
     ElevatedCard(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
                 text = "Download Progress",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
             LinearProgressIndicator(
                 progress = { uiState.downloadProgress / 100f },
                 modifier = Modifier.fillMaxWidth(),
             )
-            uiState.currentFileName?.let {
-                Text(
-                    text = "Current: $it",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(
                     text = "${uiState.completedCount} of ${uiState.downloadItems.size} completed",
@@ -1132,15 +1133,23 @@ private fun DownloadPanel(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AnimatedVisibility(visible = uiState.hasFailedDownloads && !uiState.isDownloading) {
                     OutlinedButton(onClick = onRetry, shape = RoundedCornerShape(8.dp)) {
-                        Icon(Icons.Outlined.Refresh, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Outlined.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
                         Text("Retry")
                     }
                 }
                 AnimatedVisibility(visible = uiState.isDownloading) {
                     OutlinedButton(onClick = onCancel, shape = RoundedCornerShape(8.dp)) {
-                        Icon(Icons.Outlined.Cancel, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Outlined.Cancel,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
                         Text("Cancel")
                     }
                 }
@@ -1158,9 +1167,9 @@ private fun DownloadItemRow(item: ElectoralRollDownloadItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(
             imageVector = when (item.status) {
@@ -1176,6 +1185,7 @@ private fun DownloadItemRow(item: ElectoralRollDownloadItem) {
                 DownloadStatus.Failed, DownloadStatus.Cancelled -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
+            modifier = Modifier.size(22.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
