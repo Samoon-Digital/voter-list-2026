@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
@@ -68,6 +70,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 import io.legere.pdfiumandroid.PdfDocument as PdfiumDocument
 import io.legere.pdfiumandroid.PdfiumCore
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +83,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.Normalizer
 import java.util.concurrent.atomic.AtomicBoolean
 
 @Composable
@@ -196,7 +203,7 @@ fun PdfViewerScreen(
                         if (result == null) {
                             searchMessage = "No match found"
                         } else {
-                            searchMessage = null
+                            searchMessage = "Found on page ${result + 1}"
                             viewModel.requestPage(result)
                         }
                     }
@@ -455,21 +462,7 @@ private class PdfDocument private constructor(
             if (closed.get()) return@withLock null
             runCatching {
                 document.openPage(pageIndex).use { page ->
-                    val pageWidth = page.getPageWidthPoint().coerceAtLeast(1)
-                    val pageHeight = page.getPageHeightPoint().coerceAtLeast(1)
-                    val scale = targetWidth.toFloat() / pageWidth.toFloat()
-                    val targetHeight = (pageHeight * scale).toInt().coerceAtLeast(1)
-                    Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888).also { bitmap ->
-                        bitmap.eraseColor(AndroidColor.WHITE)
-                        page.renderPageBitmap(
-                            bitmap = bitmap,
-                            startX = 0,
-                            startY = 0,
-                            drawSizeX = targetWidth,
-                            drawSizeY = targetHeight,
-                            renderAnnot = true,
-                        )
-                    }
+                    renderPageBitmap(page, targetWidth)
                 }
             }.getOrElse { error ->
                 Log.w(PdfViewerLogTag, "Unable to render PDF page ${pageIndex + 1}", error)
@@ -481,22 +474,93 @@ private class PdfDocument private constructor(
     suspend fun findText(query: String, startPage: Int): Int? = withContext(Dispatchers.IO) {
         mutex.withLock {
             if (closed.get()) return@withLock null
+            val normalizedQuery = query.normalizedForSearch()
             val start = startPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
             val pages = (start until pageCount) + (0 until start)
+            findWithPlatformRenderer(normalizedQuery, pages)
+                ?: findWithPdfium(normalizedQuery, pages)
+                ?: findWithOcr(normalizedQuery, pages)
+        }
+    }
+
+    private fun findWithPlatformRenderer(query: String, pages: Iterable<Int>): Int? {
+        if (Build.VERSION.SDK_INT < 35) return null
+        return runCatching {
+            val searchDescriptor = ParcelFileDescriptor.open(cacheFile, ParcelFileDescriptor.MODE_READ_ONLY)
+                ?: return null
+            searchDescriptor.use { descriptor ->
+                PdfRenderer(descriptor).use { renderer ->
+                    pages.firstOrNull { pageIndex ->
+                        renderer.openPage(pageIndex).use { page ->
+                            page.searchText(query).isNotEmpty()
+                        }
+                    }
+                }
+            }
+        }.getOrElse { error ->
+            Log.w(PdfViewerLogTag, "Unable to search PDF with platform renderer", error)
+            null
+        }
+    }
+
+    private fun findWithPdfium(query: String, pages: Iterable<Int>): Int? {
+        return pages.firstOrNull { pageIndex ->
+            runCatching {
+                document.openPage(pageIndex).use { page ->
+                    page.openTextPage().use { textPage ->
+                        textPage.findStart(query, emptySet(), 0)?.use { result ->
+                            result.findNext()
+                        } == true
+                    }
+                }
+            }.getOrElse { error ->
+                Log.w(PdfViewerLogTag, "Unable to search PDF page ${pageIndex + 1}", error)
+                false
+            }
+        }
+    }
+
+    private fun findWithOcr(query: String, pages: Iterable<Int>): Int? {
+        val recognizer = TextRecognition.getClient(DevanagariTextRecognizerOptions.Builder().build())
+        return try {
             pages.firstOrNull { pageIndex ->
+                if (closed.get()) return@firstOrNull false
                 runCatching {
                     document.openPage(pageIndex).use { page ->
-                        page.openTextPage().use { textPage ->
-                            textPage.findStart(query, emptySet(), 0)?.use { result ->
-                                result.findNext()
-                            } == true
+                        val bitmap = renderPageBitmap(page, OcrRenderWidth)
+                        try {
+                            val image = InputImage.fromBitmap(bitmap, 0)
+                            val result = Tasks.await(recognizer.process(image))
+                            result.text.normalizedForSearch().contains(query, ignoreCase = true)
+                        } finally {
+                            bitmap.recycle()
                         }
                     }
                 }.getOrElse { error ->
-                    Log.w(PdfViewerLogTag, "Unable to search PDF page ${pageIndex + 1}", error)
+                    Log.w(PdfViewerLogTag, "Unable to OCR PDF page ${pageIndex + 1}", error)
                     false
                 }
             }
+        } finally {
+            recognizer.close()
+        }
+    }
+
+    private fun renderPageBitmap(page: io.legere.pdfiumandroid.PdfPage, targetWidth: Int): Bitmap {
+        val pageWidth = page.getPageWidthPoint().coerceAtLeast(1)
+        val pageHeight = page.getPageHeightPoint().coerceAtLeast(1)
+        val scale = targetWidth.toFloat() / pageWidth.toFloat()
+        val targetHeight = (pageHeight * scale).toInt().coerceAtLeast(1)
+        return Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888).also { bitmap ->
+            bitmap.eraseColor(AndroidColor.WHITE)
+            page.renderPageBitmap(
+                bitmap = bitmap,
+                startX = 0,
+                startY = 0,
+                drawSizeX = targetWidth,
+                drawSizeY = targetHeight,
+                renderAnnot = true,
+            )
         }
     }
 
@@ -557,3 +621,9 @@ private class PdfDocument private constructor(
 }
 
 private const val PdfViewerLogTag = "PdfViewerScreen"
+private const val OcrRenderWidth = 1800
+
+private fun String.normalizedForSearch(): String =
+    Normalizer.normalize(this, Normalizer.Form.NFC)
+        .replace("\u200C", "")
+        .replace("\u200D", "")

@@ -126,6 +126,7 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
     implementation(libs.pdfium.android)
+    implementation(libs.mlkit.text.recognition.devanagari)
 
     // Testing
     testImplementation(libs.junit)
