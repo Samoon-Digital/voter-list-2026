@@ -51,7 +51,6 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocationOn
@@ -161,6 +160,7 @@ fun PdfScreen(
             WizardHeroTopBar(
                 uiState = uiState,
                 onBack = ::handleBack,
+                onOpenDownloads = onDownloadsComplete,
             )
         },
     ) { padding ->
@@ -216,7 +216,11 @@ fun PdfScreen(
 }
 
 @Composable
-private fun WizardHeroTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) {
+private fun WizardHeroTopBar(
+    uiState: ElectoralRollUiState,
+    onBack: () -> Unit,
+    onOpenDownloads: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -286,6 +290,7 @@ private fun WizardHeroTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) 
             }
 
             Surface(
+                onClick = onOpenDownloads,
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
@@ -293,8 +298,8 @@ private fun WizardHeroTopBar(uiState: ElectoralRollUiState, onBack: () -> Unit) 
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Outlined.HelpOutline,
-                        contentDescription = "Help",
+                        Icons.Outlined.FileDownload,
+                        contentDescription = "Downloaded files",
                         tint = WizardPurpleDark,
                         modifier = Modifier.size(26.dp),
                     )

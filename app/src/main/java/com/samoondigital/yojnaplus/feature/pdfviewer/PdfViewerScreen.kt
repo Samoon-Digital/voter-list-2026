@@ -4,10 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
-import android.graphics.pdf.PdfRenderer
 import android.net.Uri
-import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -69,12 +68,16 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.legere.pdfiumandroid.PdfDocument as PdfiumDocument
+import io.legere.pdfiumandroid.PdfiumCore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Composable
 fun PdfViewerScreen(
@@ -88,15 +91,16 @@ fun PdfViewerScreen(
     var searchMessage by remember(state.uri) { mutableStateOf<String?>(null) }
     val documentState by produceState<PdfDocumentState>(PdfDocumentState.Loading, state.uri) {
         value = PdfDocumentState.Loading
-        value = runCatching { PdfDocument.open(context, state.uri.toUri()) }
-            .fold(
-                onSuccess = { PdfDocumentState.Ready(it) },
-                onFailure = { PdfDocumentState.Error(it.message ?: "Unable to open PDF") },
-            )
+        value = try {
+            PdfDocumentState.Ready(PdfDocument.open(context, state.uri.toUri()))
+        } catch (error: Throwable) {
+            PdfDocumentState.Error(error.message ?: "Unable to open PDF")
+        }
     }
 
-    DisposableEffect(documentState) {
-        onDispose { (documentState as? PdfDocumentState.Ready)?.document?.close() }
+    val readyDocument = (documentState as? PdfDocumentState.Ready)?.document
+    DisposableEffect(readyDocument) {
+        onDispose { readyDocument?.close() }
     }
 
     LaunchedEffect(documentState) {
@@ -190,7 +194,7 @@ fun PdfViewerScreen(
                         searchMessage = "Searching"
                         val result = document.findText(query, state.currentPage)
                         if (result == null) {
-                            searchMessage = if (Build.VERSION.SDK_INT >= 35) "No match found" else "Text search requires Android 15+"
+                            searchMessage = "No match found"
                         } else {
                             searchMessage = null
                             viewModel.requestPage(result)
@@ -229,8 +233,14 @@ private fun PdfPages(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items((0 until document.pageCount).toList(), key = { it }) { page ->
-            val bitmap by produceState<Bitmap?>(null, document, page, targetWidth) {
+            val pageState by produceState<PageRenderState>(PageRenderState.Loading, document, page, targetWidth) {
                 value = document.renderPage(page, targetWidth)
+                    ?.let(PageRenderState::Ready)
+                    ?: PageRenderState.Error("Unable to render page ${page + 1}")
+            }
+            val bitmap = (pageState as? PageRenderState.Ready)?.bitmap
+            DisposableEffect(bitmap) {
+                onDispose { bitmap?.recycle() }
             }
             Surface(
                 color = Color.White,
@@ -244,21 +254,38 @@ private fun PdfPages(
                         scaleY = zoom
                     },
             ) {
-                if (bitmap == null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .size(180.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                when (val renderedPage = pageState) {
+                    PageRenderState.Loading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .size(180.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                        }
                     }
-                } else {
-                    Image(
-                        bitmap = bitmap!!.asImageBitmap(),
-                        contentDescription = "Page ${page + 1}",
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    is PageRenderState.Error -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .size(180.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = renderedPage.message,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                    is PageRenderState.Ready -> {
+                        Image(
+                            bitmap = renderedPage.bitmap.asImageBitmap(),
+                            contentDescription = "Page ${page + 1}",
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }
@@ -409,49 +436,124 @@ private sealed interface PdfDocumentState {
     data class Error(val message: String) : PdfDocumentState
 }
 
+private sealed interface PageRenderState {
+    data object Loading : PageRenderState
+    data class Ready(val bitmap: Bitmap) : PageRenderState
+    data class Error(val message: String) : PageRenderState
+}
+
 private class PdfDocument private constructor(
+    private val cacheFile: File,
     private val descriptor: ParcelFileDescriptor,
-    private val renderer: PdfRenderer,
+    private val document: PdfiumDocument,
 ) {
     private val mutex = Mutex()
-    val pageCount: Int = renderer.pageCount
+    val pageCount: Int = document.getPageCount()
 
-    suspend fun renderPage(pageIndex: Int, targetWidth: Int): Bitmap = withContext(Dispatchers.IO) {
+    suspend fun renderPage(pageIndex: Int, targetWidth: Int): Bitmap? = withContext(Dispatchers.IO) {
         mutex.withLock {
-            renderer.openPage(pageIndex).use { page ->
-                val scale = targetWidth.toFloat() / page.width.toFloat()
-                val targetHeight = (page.height * scale).toInt().coerceAtLeast(1)
-                Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888).also { bitmap ->
-                    bitmap.eraseColor(AndroidColor.WHITE)
-                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+            if (closed.get()) return@withLock null
+            runCatching {
+                document.openPage(pageIndex).use { page ->
+                    val pageWidth = page.getPageWidthPoint().coerceAtLeast(1)
+                    val pageHeight = page.getPageHeightPoint().coerceAtLeast(1)
+                    val scale = targetWidth.toFloat() / pageWidth.toFloat()
+                    val targetHeight = (pageHeight * scale).toInt().coerceAtLeast(1)
+                    Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888).also { bitmap ->
+                        bitmap.eraseColor(AndroidColor.WHITE)
+                        page.renderPageBitmap(
+                            bitmap = bitmap,
+                            startX = 0,
+                            startY = 0,
+                            drawSizeX = targetWidth,
+                            drawSizeY = targetHeight,
+                            renderAnnot = true,
+                        )
+                    }
                 }
+            }.getOrElse { error ->
+                Log.w(PdfViewerLogTag, "Unable to render PDF page ${pageIndex + 1}", error)
+                null
             }
         }
     }
 
     suspend fun findText(query: String, startPage: Int): Int? = withContext(Dispatchers.IO) {
-        if (Build.VERSION.SDK_INT < 35) return@withContext null
         mutex.withLock {
+            if (closed.get()) return@withLock null
             val start = startPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
             val pages = (start until pageCount) + (0 until start)
             pages.firstOrNull { pageIndex ->
-                renderer.openPage(pageIndex).use { page ->
-                    page.searchText(query).isNotEmpty()
+                runCatching {
+                    document.openPage(pageIndex).use { page ->
+                        page.openTextPage().use { textPage ->
+                            textPage.findStart(query, emptySet(), 0)?.use { result ->
+                                result.findNext()
+                            } == true
+                        }
+                    }
+                }.getOrElse { error ->
+                    Log.w(PdfViewerLogTag, "Unable to search PDF page ${pageIndex + 1}", error)
+                    false
                 }
             }
         }
     }
 
     fun close() {
-        renderer.close()
-        descriptor.close()
+        if (closed.compareAndSet(false, true)) {
+            document.close()
+            runCatching { descriptor.close() }
+            runCatching { cacheFile.delete() }
+        }
     }
 
+    private val closed = AtomicBoolean(false)
+
     companion object {
-        fun open(context: Context, uri: Uri): PdfDocument {
-            val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
+        suspend fun open(context: Context, uri: Uri): PdfDocument = withContext(Dispatchers.IO) {
+            val cacheFile = copyToViewerCache(context, uri)
+            val descriptor = ParcelFileDescriptor.open(cacheFile, ParcelFileDescriptor.MODE_READ_ONLY)
                 ?: throw IllegalStateException("Unable to open PDF file")
-            return PdfDocument(descriptor, PdfRenderer(descriptor))
+            try {
+                val document = PdfiumCore(context.applicationContext).newDocument(descriptor)
+                if (document.getPageCount() <= 0) {
+                    document.close()
+                    throw IllegalStateException("PDF has no pages")
+                }
+                PdfDocument(cacheFile, descriptor, document)
+            } catch (error: Throwable) {
+                runCatching { descriptor.close() }
+                runCatching { cacheFile.delete() }
+                throw IllegalStateException(error.message ?: "Unable to render PDF", error)
+            }
+        }
+
+        private fun copyToViewerCache(context: Context, uri: Uri): File {
+            val dir = File(context.cacheDir, "pdf_viewer").apply { mkdirs() }
+            val target = File(dir, "viewer-${uri.toString().hashCode()}.pdf")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            } ?: throw IllegalStateException("Unable to read PDF file")
+
+            if (target.length() == 0L) {
+                target.delete()
+                throw IllegalStateException("PDF file is empty")
+            }
+            if (!target.looksLikePdf()) {
+                target.delete()
+                throw IllegalStateException("Invalid PDF file")
+            }
+            return target
+        }
+
+        private fun File.looksLikePdf(): Boolean {
+            val header = ByteArray(1024)
+            val read = inputStream().use { it.read(header) }.coerceAtLeast(0)
+            val text = header.decodeToString(endIndex = read)
+            return text.contains("%PDF-")
         }
     }
 }
+
+private const val PdfViewerLogTag = "PdfViewerScreen"

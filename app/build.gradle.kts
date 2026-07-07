@@ -125,6 +125,7 @@ dependencies {
 
     // Image loading
     implementation(libs.coil.compose)
+    implementation(libs.pdfium.android)
 
     // Testing
     testImplementation(libs.junit)
