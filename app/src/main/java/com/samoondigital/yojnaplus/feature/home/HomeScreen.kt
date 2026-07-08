@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -200,14 +201,17 @@ private fun HomeHeader(
 private fun VoterListPdfCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(228.dp),
+            .fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = GreenContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
         onClick = onClick,
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+        ) {
             Box(
                 modifier = Modifier
                     .width(96.dp)
@@ -227,13 +231,12 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
                 )
             }
 
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
                         .background(Color(0xFFE5F5EA))
-                        .padding(start = 28.dp, top = 34.dp, end = 22.dp),
+                        .padding(start = 28.dp, top = 24.dp, end = 22.dp, bottom = 22.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.voter_list_pdf),
@@ -249,7 +252,7 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
                             .height(4.dp)
                             .background(Green),
                     )
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(14.dp))
                     Text(
                         text = stringResource(R.string.voter_list_pdf_desc),
                         color = Green,
@@ -322,6 +325,7 @@ private fun SecureReliableCard() {
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 18.dp, end = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
                     text = "100% Secure & Reliable",
@@ -330,7 +334,6 @@ private fun SecureReliableCard() {
                     lineHeight = 20.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                Spacer(Modifier.height(8.dp))
                 Text(
                     text = "All data is fetched from official sources\nand provided for reference only.",
                     color = Color(0xFF777286),
