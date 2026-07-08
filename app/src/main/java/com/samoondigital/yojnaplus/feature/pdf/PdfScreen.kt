@@ -224,7 +224,7 @@ private fun WizardHeroTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(190.dp)
+            .height(140.dp)
             .background(
                 Brush.linearGradient(
                     colors = listOf(WizardPurpleDark, WizardPurple, Color(0xFF2E1B98)),
@@ -239,7 +239,7 @@ private fun WizardHeroTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(start = 18.dp, top = 18.dp, end = 18.dp),
+                .padding(start = 18.dp, top = 10.dp, end = 18.dp),
             verticalAlignment = Alignment.Top,
         ) {
             Surface(
@@ -270,21 +270,21 @@ private fun WizardHeroTopBar(
                     text = "Voter List Download",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
                     fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
                     text = "Step ${uiState.stepNumber} of 7",
                     maxLines = 1,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.76f),
                     modifier = Modifier.padding(top = 1.dp),
                 )
                 WizardStepProgress(
                     currentStep = uiState.stepNumber,
                     modifier = Modifier
-                        .padding(top = 11.dp)
+                        .padding(top = 7.dp)
                         .fillMaxWidth(0.86f),
                 )
             }
@@ -357,7 +357,7 @@ private fun WizardStepProgress(
     totalSteps: Int = 7,
 ) {
     Row(
-        modifier = modifier.height(20.dp),
+        modifier = modifier.height(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         repeat(totalSteps) { index ->
@@ -367,7 +367,7 @@ private fun WizardStepProgress(
                 shape = CircleShape,
                 color = if (completed) Color.White else Color.Transparent,
                 border = if (completed) null else BorderStroke(2.dp, Color.White),
-                modifier = Modifier.size(if (step == currentStep) 18.dp else 16.dp),
+                modifier = Modifier.size(if (step == currentStep) 13.dp else 11.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (completed) {
@@ -375,14 +375,14 @@ private fun WizardStepProgress(
                             Surface(
                                 shape = CircleShape,
                                 color = WizardPurpleBright,
-                                modifier = Modifier.size(15.dp),
+                                modifier = Modifier.size(10.dp),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         Icons.Outlined.Check,
                                         contentDescription = null,
                                         tint = Color.White,
-                                        modifier = Modifier.size(10.dp),
+                                        modifier = Modifier.size(7.dp),
                                     )
                                 }
                             }
@@ -391,7 +391,7 @@ private fun WizardStepProgress(
                                 Icons.Outlined.Check,
                                 contentDescription = null,
                                 tint = WizardPurpleDark,
-                                modifier = Modifier.size(10.dp),
+                                modifier = Modifier.size(7.dp),
                             )
                         }
                     }
@@ -401,7 +401,7 @@ private fun WizardStepProgress(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(1.5.dp)
+                        .height(1.dp)
                         .background(if (step < currentStep) Color.White else Color.White.copy(alpha = 0.55f)),
                 )
             }
@@ -422,6 +422,7 @@ private fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> U
         itemIcon = Icons.Outlined.Map,
         loading = uiState.isLoading && uiState.states.isEmpty(),
         message = uiState.message,
+        showSearch = false,
         onSelected = onSelected,
     )
 }
@@ -779,6 +780,7 @@ private fun <T> SearchableChoiceScreen(
     title: String,
     subtitle: String,
     queryPlaceholder: String,
+    showSearch: Boolean = true,
     items: List<T>,
     itemTitle: (T) -> String,
     itemSubtitle: (T) -> String?,
@@ -805,8 +807,9 @@ private fun <T> SearchableChoiceScreen(
         loading = loading,
         message = message,
         selectedSummary = selectedSummary,
-        trailingHeader = {
-            OutlinedTextField(
+        trailingHeader = if (showSearch) {
+            {
+                OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
@@ -819,8 +822,9 @@ private fun <T> SearchableChoiceScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
-            )
-        },
+                )
+            }
+        } else null,
     ) {
         itemsIndexed(filtered) { index, item ->
             ChoiceCard(
@@ -860,7 +864,7 @@ private fun ChoiceListScaffold(
                 if (loading) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
-                message?.let {
+                message?.takeUnless { loading }?.let {
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodyMedium,
