@@ -3,6 +3,7 @@ package com.samoondigital.yojnaplus.feature.home
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,6 +86,7 @@ fun HomeScreen(
 private fun HomeHeader(
     onOpenDownloads: () -> Unit,
 ) {
+    val downloadsInteractionSource = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -179,7 +182,11 @@ private fun HomeHeader(
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onOpenDownloads)
+                    .clickable(
+                        interactionSource = downloadsInteractionSource,
+                        indication = null,
+                        onClick = onOpenDownloads,
+                    )
                     .padding(horizontal = 8.dp, vertical = 3.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -330,7 +337,7 @@ private fun SecureReliableCard() {
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 18.dp, end = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Text(
                     text = "100% Secure & Reliable",
@@ -340,10 +347,10 @@ private fun SecureReliableCard() {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "All data is fetched from official sources\nand provided for reference only.",
+                    text = "All data is fetched from official sources and provided for reference only.",
                     color = Color(0xFF777286),
                     fontSize = 14.sp,
-                    lineHeight = 21.sp,
+                    lineHeight = 17.sp,
                     fontWeight = FontWeight.Medium,
                 )
             }
@@ -396,17 +403,14 @@ private fun LegalContactCard() {
 
             LegalContactRow(
                 label = "Privacy Policy",
-                value = privacyUrl,
                 onClick = { uriHandler.openUri(privacyUrl) },
             )
             LegalContactRow(
                 label = "Follow us",
-                value = instagramUrl,
                 onClick = { uriHandler.openUri(instagramUrl) },
             )
             LegalContactRow(
                 label = "Email us",
-                value = email,
                 onClick = { uriHandler.openUri("mailto:$email") },
             )
         }
@@ -416,7 +420,6 @@ private fun LegalContactCard() {
 @Composable
 private fun LegalContactRow(
     label: String,
-    value: String,
     onClick: () -> Unit,
 ) {
     Row(
@@ -445,13 +448,6 @@ private fun LegalContactRow(
                 fontSize = 11.sp,
                 lineHeight = 14.sp,
                 fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = value,
-                color = Color(0xFF777286),
-                fontSize = 10.sp,
-                lineHeight = 13.sp,
-                fontWeight = FontWeight.Medium,
             )
         }
         Icon(
