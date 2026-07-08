@@ -226,7 +226,7 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
         ) {
             Box(
                 modifier = Modifier
-                    .width(96.dp)
+                    .width(72.dp)
                     .fillMaxHeight()
                     .background(
                         Brush.linearGradient(
@@ -239,7 +239,7 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
                     imageVector = Icons.Outlined.Download,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(58.dp),
+                    modifier = Modifier.size(38.dp),
                 )
             }
 
@@ -248,28 +248,28 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFFE5F5EA))
-                        .padding(start = 28.dp, top = 24.dp, end = 22.dp, bottom = 22.dp),
+                        .padding(start = 18.dp, top = 14.dp, end = 16.dp, bottom = 14.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.voter_list_pdf),
                         color = Green,
-                        fontSize = 28.sp,
-                        lineHeight = 34.sp,
+                        fontSize = 21.sp,
+                        lineHeight = 25.sp,
                         fontWeight = FontWeight.Bold,
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(6.dp))
                     Box(
                         modifier = Modifier
-                            .width(46.dp)
-                            .height(4.dp)
+                            .width(34.dp)
+                            .height(3.dp)
                             .background(Green),
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.voter_list_pdf_desc),
                         color = Green,
-                        fontSize = 18.sp,
-                        lineHeight = 29.sp,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.Medium,
                     )
                 }
@@ -277,25 +277,25 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(42.dp)
                         .background(Green)
                         .clickable(onClick = onClick)
-                        .padding(start = 36.dp, end = 24.dp),
+                        .padding(start = 22.dp, end = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
                         text = stringResource(R.string.download_pdf),
                         color = Color.White,
-                        fontSize = 18.sp,
-                        lineHeight = 22.sp,
+                        fontSize = 15.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
