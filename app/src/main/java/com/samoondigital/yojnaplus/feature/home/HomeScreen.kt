@@ -24,7 +24,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,6 +40,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,6 +73,8 @@ fun HomeScreen(
             VoterListPdfCard(onClick = onDownloadPdf)
             Spacer(Modifier.height(28.dp))
             SecureReliableCard()
+            Spacer(Modifier.height(14.dp))
+            LegalContactCard()
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -350,5 +355,110 @@ private fun SecureReliableCard() {
                 modifier = Modifier.size(32.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun LegalContactCard() {
+    val uriHandler = LocalUriHandler.current
+    val privacyUrl = "https://sites.google.com/view/voterlist2026/home"
+    val instagramUrl = "https://www.instagram.com/samoon_digital/"
+    val email = "alimailsamun@gmail.com"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF7FAF8)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = "Disclaimer",
+                    color = Green,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "This is an unofficial app and is not affiliated with or authorized by any government or government authority.",
+                    color = Color(0xFF777286),
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+
+            LegalContactRow(
+                label = "Privacy Policy",
+                value = privacyUrl,
+                onClick = { uriHandler.openUri(privacyUrl) },
+            )
+            LegalContactRow(
+                label = "Follow us",
+                value = instagramUrl,
+                onClick = { uriHandler.openUri(instagramUrl) },
+            )
+            LegalContactRow(
+                label = "Email us",
+                value = email,
+                onClick = { uriHandler.openUri("mailto:$email") },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LegalContactRow(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = if (label == "Email us") Icons.Outlined.Email else Icons.Outlined.Link,
+            contentDescription = null,
+            tint = Green,
+            modifier = Modifier.size(16.dp),
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            Text(
+                text = label,
+                color = Color(0xFF4F3BB5),
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = value,
+                color = Color(0xFF777286),
+                fontSize = 10.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        Icon(
+            imageVector = Icons.Outlined.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Color(0xFF6544C6),
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
