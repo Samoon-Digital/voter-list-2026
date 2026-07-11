@@ -1,11 +1,13 @@
 package com.samoondigital.yojnaplus
 
 import android.app.Application
+import com.samoondigital.yojnaplus.ads.AdManager
 import dagger.hilt.android.HiltAndroidApp
 
-/**
- * Application entry point. [HiltAndroidApp] triggers Hilt's code generation and
- * creates the application-level dependency container.
- */
 @HiltAndroidApp
-class YojnaPlusApp : Application()
+class YojnaPlusApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        AdManager.initialize(this)
+    }
+}

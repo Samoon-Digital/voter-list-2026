@@ -127,6 +127,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.pdfium.android)
     implementation(libs.mlkit.text.recognition.devanagari)
+    implementation(libs.play.services.ads)
 
     // Testing
     testImplementation(libs.junit)
