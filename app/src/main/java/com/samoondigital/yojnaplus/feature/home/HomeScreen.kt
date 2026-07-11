@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.samoondigital.yojnaplus.R
+import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
 import com.samoondigital.yojnaplus.core.ui.theme.Green
 import com.samoondigital.yojnaplus.core.ui.theme.GreenContainer
 
@@ -73,7 +74,9 @@ fun HomeScreen(
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Spacer(Modifier.height(24.dp))
             VoterListPdfCard(onClick = onDownloadPdf)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(16.dp))
+            AdMobNativeAd()
+            Spacer(Modifier.height(18.dp))
             SecureReliableCard()
             Spacer(Modifier.height(14.dp))
             LegalContactCard()

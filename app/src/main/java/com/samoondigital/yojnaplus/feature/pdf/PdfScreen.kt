@@ -446,6 +446,7 @@ private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
         headerIcon = Icons.Outlined.CalendarMonth,
         loading = uiState.isLoading,
         message = uiState.message,
+        headerAd = { AdMobBannerAd() },
     ) {
         itemsIndexed(uiState.years, key = { _, year -> year }) { index, year ->
             ChoiceCard(
@@ -470,6 +471,7 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
         headerIcon = Icons.Outlined.FactCheck,
         loading = uiState.isLoading,
         message = uiState.message,
+        headerAd = { AdMobBannerAd() },
     ) {
         itemsIndexed(uiState.rollTypes, key = { _, rollType -> rollType.id }) { index, rollType ->
             ChoiceCard(
@@ -479,6 +481,9 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
                 accentIndex = index,
                 onClick = { onSelected(rollType) },
             )
+        }
+        if (uiState.rollTypes.isNotEmpty()) {
+            item { AdMobNativeAd() }
         }
     }
 }
@@ -517,6 +522,7 @@ private fun AssemblyStep(uiState: ElectoralRollUiState, onSelected: (AssemblyDto
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
         message = uiState.message,
         selectedSummary = uiState.selectedSummary(),
+        headerAd = { AdMobBannerAd() },
         showInlineNativeAds = true,
         onSelected = onSelected,
     )
@@ -678,6 +684,7 @@ private fun CaptchaStep(
                 }
             }
         }
+        item { AdMobNativeAd() }
         item {
             AnimatedVisibility(visible = uiState.downloadItems.isNotEmpty() || uiState.isDownloading) {
                 DownloadPanel(
@@ -1336,3 +1343,4 @@ private fun String.hasDevanagari(): Boolean =
     any { it in '\u0900'..'\u097F' }
 
 private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
+

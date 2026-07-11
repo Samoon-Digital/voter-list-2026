@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
 import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
 import com.samoondigital.yojnaplus.feature.downloads.data.DownloadStatusEntity
 import kotlinx.coroutines.flow.collectLatest
@@ -185,18 +186,21 @@ private fun DownloadsContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    items(state.downloads, key = { it.id }) { download ->
-                        DownloadCard(
-                            download = download,
-                            onOpen = { onOpen(download.id) },
-                            onShare = { onShare(download.id) },
-                            onRename = { onRename(download) },
-                            onDelete = { onDelete(download.id) },
-                            onRetry = { onRetry(download.id) },
-                            onCancel = { onCancel(download.id) },
-                            onPause = { onPause(download.id) },
-                            onResume = { onResume(download.id) },
-                        )
+                    itemsIndexed(state.downloads, key = { _, it -> it.id }) { index, download ->
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            DownloadCard(
+                                download = download,
+                                onOpen = { onOpen(download.id) },
+                                onShare = { onShare(download.id) },
+                                onRename = { onRename(download) },
+                                onDelete = { onDelete(download.id) },
+                                onRetry = { onRetry(download.id) },
+                                onCancel = { onCancel(download.id) },
+                                onPause = { onPause(download.id) },
+                                onResume = { onResume(download.id) },
+                            )
+                            if ((index + 1) % 2 == 0) AdMobNativeAd()
+                        }
                     }
                 }
             }
@@ -490,3 +494,4 @@ private val DownloadStatusEntity.icon: ImageVector
         DownloadStatusEntity.Cancelled -> Icons.Outlined.Cancel
         DownloadStatusEntity.Missing -> Icons.Outlined.ErrorOutline
     }
+
