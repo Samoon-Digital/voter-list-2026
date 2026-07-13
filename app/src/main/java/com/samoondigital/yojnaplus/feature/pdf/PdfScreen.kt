@@ -1,6 +1,5 @@
 package com.samoondigital.yojnaplus.feature.pdf
 
-import android.app.Activity
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.activity.compose.BackHandler
@@ -50,7 +49,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.FactCheck
+import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Language
@@ -95,15 +94,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.samoondigital.yojnaplus.ads.AdManager
-import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
-import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
+import com.samoondigital.yojnaplus.core.ui.components.AdMobInlineBanner
 import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.PartDto
@@ -122,6 +118,16 @@ private val WizardInk = Color(0xFF090B1F)
 private val WizardMuted = Color(0xFF686A8D)
 private val WizardSurface = Color(0xFFFCFCFF)
 private val WizardStroke = Color(0xFFE3E2F5)
+private fun ElectoralRollStep.showsSelectionAd(): Boolean = when (this) {
+    ElectoralRollStep.State,
+    ElectoralRollStep.Year,
+    ElectoralRollStep.RollType,
+    ElectoralRollStep.District,
+    ElectoralRollStep.Assembly,
+    ElectoralRollStep.Parts -> true
+    ElectoralRollStep.Captcha,
+    ElectoralRollStep.Success -> false
+}
 private val ChoiceAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -139,7 +145,6 @@ fun PdfScreen(
     viewModel: ElectoralRollViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
-    val activity = LocalContext.current as? Activity
     var openedDownloads by remember { mutableStateOf(false) }
 
     fun handleBack() {
@@ -170,13 +175,19 @@ fun PdfScreen(
             )
         },
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(WizardSurface),
         ) {
+            if (uiState.step.showsSelectionAd()) {
+                AdMobInlineBanner(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
             AnimatedContent(
+                modifier = Modifier.weight(1f),
                 targetState = uiState.step,
                 transitionSpec = {
                     (slideInHorizontally { it / 4 } + fadeIn())
@@ -188,10 +199,7 @@ fun PdfScreen(
                     ElectoralRollStep.State -> StateStep(uiState, viewModel::selectState)
                     ElectoralRollStep.Year -> YearStep(uiState, viewModel::selectYear)
                     ElectoralRollStep.RollType -> RollTypeStep(uiState, viewModel::selectRollType)
-                    ElectoralRollStep.District -> DistrictStep(uiState) { district ->
-                        activity?.let { AdManager.showInterstitial(it) { viewModel.selectDistrict(district) } }
-                            ?: viewModel.selectDistrict(district)
-                    }
+                    ElectoralRollStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
                     ElectoralRollStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
                     ElectoralRollStep.Parts -> PartsStep(
                         uiState = uiState,
@@ -432,8 +440,6 @@ private fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> U
         loading = uiState.isLoading && uiState.states.isEmpty(),
         message = uiState.message,
         showSearch = false,
-        headerAd = { AdMobBannerAd() },
-        showInlineNativeAds = true,
         onSelected = onSelected,
     )
 }
@@ -446,7 +452,6 @@ private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
         headerIcon = Icons.Outlined.CalendarMonth,
         loading = uiState.isLoading,
         message = uiState.message,
-        headerAd = { AdMobBannerAd() },
     ) {
         itemsIndexed(uiState.years, key = { _, year -> year }) { index, year ->
             ChoiceCard(
@@ -457,9 +462,7 @@ private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
                 onClick = { onSelected(year) },
             )
         }
-        if (uiState.years.isNotEmpty()) {
-            item { AdMobNativeAd() }
-        }
+
     }
 }
 
@@ -468,23 +471,20 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
     ChoiceListScaffold(
         title = "Select Roll Type",
         subtitle = "Loaded dynamically for ${uiState.selectedYear ?: ""}.",
-        headerIcon = Icons.Outlined.FactCheck,
+        headerIcon = Icons.AutoMirrored.Outlined.FactCheck,
         loading = uiState.isLoading,
         message = uiState.message,
-        headerAd = { AdMobBannerAd() },
     ) {
         itemsIndexed(uiState.rollTypes, key = { _, rollType -> rollType.id }) { index, rollType ->
             ChoiceCard(
                 title = rollType.displayName,
                 subtitle = null,
-                icon = Icons.Outlined.FactCheck,
+                icon = Icons.AutoMirrored.Outlined.FactCheck,
                 accentIndex = index,
                 onClick = { onSelected(rollType) },
             )
         }
-        if (uiState.rollTypes.isNotEmpty()) {
-            item { AdMobNativeAd() }
-        }
+
     }
 }
 
@@ -502,8 +502,6 @@ private fun DistrictStep(uiState: ElectoralRollUiState, onSelected: (DistrictDto
         loading = uiState.isLoading && uiState.districts.isEmpty(),
         message = uiState.message,
         selectedSummary = uiState.selectedSummary(),
-        headerAd = { AdMobBannerAd() },
-        showInlineNativeAds = true,
         onSelected = onSelected,
     )
 }
@@ -522,8 +520,6 @@ private fun AssemblyStep(uiState: ElectoralRollUiState, onSelected: (AssemblyDto
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
         message = uiState.message,
         selectedSummary = uiState.selectedSummary(),
-        headerAd = { AdMobBannerAd() },
-        showInlineNativeAds = true,
         onSelected = onSelected,
     )
 }
@@ -551,7 +547,6 @@ private fun PartsStep(
             loading = uiState.isLoading && uiState.parts.isEmpty(),
             message = uiState.message,
             selectedSummary = uiState.selectedSummary(),
-            headerAd = { AdMobBannerAd() },
             trailingHeader = {
                 OutlinedTextField(
                     value = query,
@@ -577,7 +572,6 @@ private fun PartsStep(
         ) {
             itemsIndexed(filtered, key = { _, part -> part.partNumber }) { index, part ->
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (index > 0 && index % 7 == 0) AdMobNativeAd()
                     PartChoiceCard(
                         part = part,
                         selected = part.partNumber in uiState.selectedPartNumbers,
@@ -684,7 +678,6 @@ private fun CaptchaStep(
                 }
             }
         }
-        item { AdMobNativeAd() }
         item {
             AnimatedVisibility(visible = uiState.downloadItems.isNotEmpty() || uiState.isDownloading) {
                 DownloadPanel(
@@ -815,9 +808,6 @@ private fun <T> SearchableChoiceScreen(
     loading: Boolean,
     message: String?,
     selectedSummary: String? = null,
-    headerAd: (@Composable ColumnScope.() -> Unit)? = null,
-    showInlineNativeAds: Boolean = false,
-    inlineNativeEvery: Int = 6,
     headerIcon: ImageVector,
     itemIcon: ImageVector,
     onSelected: (T) -> Unit,
@@ -838,7 +828,6 @@ private fun <T> SearchableChoiceScreen(
         loading = loading,
         message = message,
         selectedSummary = selectedSummary,
-        headerAd = headerAd,
         trailingHeader = if (showSearch) {
             {
                 OutlinedTextField(
@@ -858,9 +847,8 @@ private fun <T> SearchableChoiceScreen(
             }
         } else null,
     ) {
-        itemsIndexed(filtered) { index, item ->
+        itemsIndexed(filtered, key = { _, item -> itemTitle(item) }) { index, item ->
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (showInlineNativeAds && index > 0 && index % inlineNativeEvery == 0) AdMobNativeAd()
                 ChoiceCard(
                     title = itemTitle(item),
                     subtitle = itemSubtitle(item),
@@ -881,7 +869,6 @@ private fun ChoiceListScaffold(
     loading: Boolean,
     message: String?,
     selectedSummary: String? = null,
-    headerAd: (@Composable ColumnScope.() -> Unit)? = null,
     trailingHeader: (@Composable ColumnScope.() -> Unit)? = null,
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
@@ -907,7 +894,6 @@ private fun ChoiceListScaffold(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                headerAd?.invoke(this)
                 trailingHeader?.invoke(this)
             }
         }

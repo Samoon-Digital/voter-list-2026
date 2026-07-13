@@ -2,7 +2,7 @@ package com.samoondigital.yojnaplus.core.navigation
 
 import android.net.Uri
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Article
+import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
@@ -33,7 +33,7 @@ enum class TopLevelDestination(
     val icon: ImageVector,
 ) {
     HOME(Routes.HOME, "Home", Icons.Outlined.Home),
-    NEWS(Routes.NEWS, "News", Icons.Outlined.Article),
+    NEWS(Routes.NEWS, "News", Icons.AutoMirrored.Outlined.Article),
     NOTIFICATIONS(Routes.NOTIFICATIONS, "Alerts", Icons.Outlined.Notifications),
     SETTINGS(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
 }

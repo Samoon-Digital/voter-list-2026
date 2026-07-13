@@ -12,23 +12,15 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.ads.AdManager
+import com.samoondigital.yojnaplus.ads.ConsentManager
 import com.samoondigital.yojnaplus.core.navigation.AppNavHost
 import com.samoondigital.yojnaplus.core.ui.theme.VoterList2026Theme
 import dagger.hilt.android.AndroidEntryPoint
 
-/**
- * The single Activity in the app. All UI is Compose; every feature is a Screen
- * reached through [AppNavHost].
- */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
-
-    override fun onResume() {
-        super.onResume()
-        AdManager.showAppOpenIfReady(this)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -37,12 +29,13 @@ class MainActivity : ComponentActivity() {
             val systemDark = isSystemInDarkTheme()
             val darkMode by viewModel.darkMode.collectAsStateWithLifecycle()
             VoterList2026Theme(darkTheme = darkMode ?: systemDark) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
+                Surface(modifier = Modifier.fillMaxSize()) {
                     AppNavHost()
                 }
             }
+        }
+        ConsentManager.gatherConsent(this) {
+            AdManager.initialize(application)
         }
     }
 }

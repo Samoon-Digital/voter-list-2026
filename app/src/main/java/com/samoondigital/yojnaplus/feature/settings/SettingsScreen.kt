@@ -1,5 +1,7 @@
 package com.samoondigital.yojnaplus.feature.settings
 
+import android.app.Activity
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,14 +14,18 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.BuildConfig
+import com.samoondigital.yojnaplus.ads.AdManager
+import com.samoondigital.yojnaplus.ads.ConsentManager
 
 @Composable
 fun SettingsScreen(
@@ -28,6 +34,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
 
     Column(
         modifier = modifier
@@ -52,6 +59,23 @@ fun SettingsScreen(
             onCheckedChange = viewModel::setNotifications,
         )
         HorizontalDivider()
+
+        if (ConsentManager.isPrivacyOptionsRequired()) {
+            SettingAction(
+                title = "Privacy choices",
+                subtitle = "Manage advertising privacy preferences",
+                onClick = { activity?.let(ConsentManager::showPrivacyOptions) },
+            )
+            HorizontalDivider()
+        }
+        if (BuildConfig.DEBUG) {
+            SettingAction(
+                title = "Ad Inspector",
+                subtitle = "Inspect test-ad requests and adapters",
+                onClick = { activity?.let(AdManager::openAdInspector) },
+            )
+            HorizontalDivider()
+        }
 
         Spacer(Modifier.height(24.dp))
         Text(
@@ -84,5 +108,31 @@ private fun SettingToggle(
             )
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun SettingAction(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = onClick) {
+            Text("Open")
+        }
     }
 }

@@ -2,198 +2,184 @@ package com.samoondigital.yojnaplus.ads
 
 import android.app.Activity
 import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.util.Log
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdLoader
 import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.appopen.AppOpenAd
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
-import com.google.android.gms.ads.nativead.NativeAd
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.google.android.gms.ads.ResponseInfo
+import com.samoondigital.yojnaplus.BuildConfig
 
 object AdUnitIds {
-    const val Native = "ca-app-pub-1638673809508848/4367138885"
-    const val Banner = "ca-app-pub-1638673809508848/3437200595"
-    const val Interstitial = ""
-    const val AppOpen = ""
+    val banner: String = BuildConfig.ADMOB_BANNER_AD_UNIT_ID
+    val native: String = BuildConfig.ADMOB_NATIVE_AD_UNIT_ID
 }
 
 object AdManager {
-    private const val Tag = "AdManager"
-    private const val NativePoolSize = 4
-    private const val AppOpenCooldownMs = 60_000L
-    private val main = Handler(Looper.getMainLooper())
-    private val lock = Any()
-    private val nativePool = ArrayDeque<NativeAd>()
-    private val _nativeSignal = MutableStateFlow(0L)
-    val nativeSignal: StateFlow<Long> = _nativeSignal
+    private const val Tag = "AdMob"
+    private const val GoogleDemoPublisher = "ca-app-pub-3940256099942544"
+    private const val ManifestAppIdKey = "com.google.android.gms.ads.APPLICATION_ID"
 
-    private lateinit var app: Application
-    private var initialized = false
-    private var nativeLoading = 0
-    private var nativeFailures = 0
-    private var interstitial: InterstitialAd? = null
-    private var interstitialLoading = false
-    private var interstitialFailures = 0
-    private var appOpen: AppOpenAd? = null
-    private var appOpenLoading = false
-    private var appOpenShowing = false
-    private var appOpenFailures = 0
-    private var lastFullScreenAt = 0L
+    private enum class InitializationState { NotStarted, Initializing, Initialized }
+
+    private class PendingLoad(val execute: () -> Unit)
+
+    private val lock = Any()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val pendingLoads = mutableSetOf<PendingLoad>()
+    private var state = InitializationState.NotStarted
+    private var application: Application? = null
 
     fun initialize(application: Application) {
-        if (initialized) return
-        initialized = true
-        app = application
-        MobileAds.initialize(application) {
-            log("MobileAds initialized")
-            warmNativePool()
-            preloadInterstitial()
-            preloadAppOpen()
+        val shouldInitialize = synchronized(lock) {
+            if (state != InitializationState.NotStarted) {
+                false
+            } else {
+                this.application = application
+                state = InitializationState.Initializing
+                true
+            }
+        }
+        if (!shouldInitialize) return
+
+        validateConfiguration(application)
+        Log.d(Tag, "initialize sdk=${MobileAds.getVersion()} package=${application.packageName} applicationId=${BuildConfig.APPLICATION_ID} debug=${BuildConfig.DEBUG} testAds=${BuildConfig.ADMOB_USES_TEST_ADS}")
+        MobileAds.initialize(application) { initializationStatus ->
+            val loads = synchronized(lock) {
+                state = InitializationState.Initialized
+                pendingLoads.toList().also { pendingLoads.clear() }
+            }
+            logInitialization(initializationStatus)
+            postToMain { loads.forEach { it.execute() } }
         }
     }
 
-    fun takeNativeAd(): NativeAd? = synchronized(lock) { nativePool.removeFirstOrNull() }
-        .also { warmNativePool() }
+    fun loadWhenReady(
+        format: String,
+        adUnitId: String,
+        isActive: () -> Boolean,
+        load: (AdRequest) -> Unit,
+    ): () -> Unit {
+        val pending = PendingLoad {
+            if (isActive()) {
+                logRequest(format, adUnitId)
+                load(AdRequest.Builder().build())
+            }
+        }
+        val runNow = synchronized(lock) {
+            if (state == InitializationState.Initialized) {
+                true
+            } else {
+                pendingLoads += pending
+                false
+            }
+        }
+        if (runNow) postToMain(pending.execute)
+        return { synchronized(lock) { pendingLoads.remove(pending) } }
+    }
 
-    fun warmNativePool() {
-        if (!initialized || AdUnitIds.Native.isBlank()) return
-        synchronized(lock) {
-            while (nativePool.size + nativeLoading < NativePoolSize) {
-                nativeLoading++
-                loadNative()
+    fun onAdLoaded(format: String, adUnitId: String, responseInfo: ResponseInfo?) {
+        Log.d(Tag, "loaded format=$format unit=$adUnitId")
+        logResponse(format, adUnitId, responseInfo)
+    }
+
+    fun onAdFailed(format: String, adUnitId: String, error: LoadAdError) {
+        val diagnosis = when {
+            error.message.contains("Publisher data not found", ignoreCase = true) ->
+                "publisher-data-missing: verify the unit, AdMob app/package pairing, account setup, and Policy Center"
+            error.code == 3 -> "no-fill: this can be inventory-related; inspect ResponseInfo and Ad Inspector"
+            else -> "load-failed"
+        }
+        Log.w(
+            Tag,
+            "$diagnosis format=$format unit=$adUnitId code=${error.code} domain=${error.domain} message=${error.message} cause=${error.cause}",
+        )
+        logResponse(format, adUnitId, error.responseInfo)
+    }
+
+    fun openAdInspector(activity: Activity) {
+        if (!BuildConfig.DEBUG) return
+        MobileAds.openAdInspector(activity) { error ->
+            if (error == null) {
+                Log.d(Tag, "Ad Inspector closed")
+            } else {
+                Log.w(Tag, "Ad Inspector error code=${error.code} domain=${error.domain} message=${error.message}")
             }
         }
     }
 
-    fun preloadInterstitial() {
-        if (!initialized || AdUnitIds.Interstitial.isBlank() || interstitial != null || interstitialLoading) return
-        interstitialLoading = true
-        InterstitialAd.load(app, AdUnitIds.Interstitial, AdRequest.Builder().build(), object : InterstitialAdLoadCallback() {
-            override fun onAdLoaded(ad: InterstitialAd) {
-                interstitial = ad
-                interstitialLoading = false
-                interstitialFailures = 0
-                log("Interstitial loaded")
-            }
+    private fun validateConfiguration(context: Context) {
+        val manifestAppId = runCatching {
+            @Suppress("DEPRECATION")
+            context.packageManager
+                .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
+                .metaData
+                ?.getString(ManifestAppIdKey)
+        }.getOrNull()
+        val demoValues = listOf(BuildConfig.ADMOB_APP_ID, AdUnitIds.banner, AdUnitIds.native)
+            .all { it.startsWith(GoogleDemoPublisher) }
 
-            override fun onAdFailedToLoad(error: LoadAdError) {
-                interstitialLoading = false
-                interstitial = null
-                retry(++interstitialFailures) { preloadInterstitial() }
-                warn("Interstitial failed: ${error.message}")
-            }
-        })
-    }
-
-    fun showInterstitial(activity: Activity, then: () -> Unit) {
-        val ad = interstitial ?: return then().also { preloadInterstitial() }
-        interstitial = null
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-            override fun onAdImpression() { log("Interstitial impression") }
-            override fun onAdClicked() { log("Interstitial clicked") }
-            override fun onAdDismissedFullScreenContent() = finish()
-            override fun onAdFailedToShowFullScreenContent(error: AdError) = finish().also { warn("Interstitial show failed: ${error.message}") }
-            private fun finish() {
-                lastFullScreenAt = SystemClock.elapsedRealtime()
-                preloadInterstitial()
-                then()
-            }
+        if (manifestAppId != BuildConfig.ADMOB_APP_ID) {
+            Log.e(Tag, "configuration-error: manifestAppId=$manifestAppId does not match BuildConfig appId=${BuildConfig.ADMOB_APP_ID}")
         }
-        log("Interstitial show")
-        ad.show(activity)
-    }
-
-    fun preloadAppOpen() {
-        if (!initialized || AdUnitIds.AppOpen.isBlank() || appOpen != null || appOpenLoading) return
-        appOpenLoading = true
-        AppOpenAd.load(app, AdUnitIds.AppOpen, AdRequest.Builder().build(), object : AppOpenAd.AppOpenAdLoadCallback() {
-            override fun onAdLoaded(ad: AppOpenAd) {
-                appOpen = ad
-                appOpenLoading = false
-                appOpenFailures = 0
-                log("AppOpen loaded")
-            }
-
-            override fun onAdFailedToLoad(error: LoadAdError) {
-                appOpenLoading = false
-                appOpen = null
-                retry(++appOpenFailures) { preloadAppOpen() }
-                warn("AppOpen failed: ${error.message}")
-            }
-        })
-    }
-
-    fun showAppOpenIfReady(activity: Activity) {
-        val now = SystemClock.elapsedRealtime()
-        if (appOpenShowing || now - lastFullScreenAt < AppOpenCooldownMs) return
-        val ad = appOpen ?: return preloadAppOpen()
-        appOpen = null
-        appOpenShowing = true
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-            override fun onAdImpression() { log("AppOpen impression") }
-            override fun onAdClicked() { log("AppOpen clicked") }
-            override fun onAdDismissedFullScreenContent() = done("dismissed")
-            override fun onAdFailedToShowFullScreenContent(error: AdError) = done("show failed: ${error.message}")
-            private fun done(msg: String) {
-                log("AppOpen $msg")
-                appOpenShowing = false
-                lastFullScreenAt = SystemClock.elapsedRealtime()
-                preloadAppOpen()
-            }
+        if (context.packageName != BuildConfig.APPLICATION_ID) {
+            Log.e(Tag, "configuration-error: runtime package=${context.packageName} does not match BuildConfig applicationId=${BuildConfig.APPLICATION_ID}")
         }
-        log("AppOpen show")
-        ad.show(activity)
-    }
-
-    fun destroy() {
-        synchronized(lock) {
-            nativePool.forEach { it.destroy() }
-            nativePool.clear()
+        if (BuildConfig.ADMOB_USES_TEST_ADS != demoValues) {
+            Log.e(Tag, "configuration-error: test/release AdMob values are mixed for buildType=${BuildConfig.BUILD_TYPE}")
         }
-        interstitial = null
-        appOpen = null
+        if (AdUnitIds.banner.isBlank() || AdUnitIds.native.isBlank()) {
+            Log.e(Tag, "configuration-error: banner and native ad unit IDs must both be configured")
+        }
     }
 
-    private fun loadNative() {
-        AdLoader.Builder(app, AdUnitIds.Native)
-            .forNativeAd { ad ->
-                synchronized(lock) {
-                    nativeLoading--
-                    nativeFailures = 0
-                    nativePool.addLast(ad)
-                }
-                _nativeSignal.value++
-                log("Native loaded")
-                warmNativePool()
+    private fun logRequest(format: String, adUnitId: String) {
+        val context = application
+        Log.d(
+            Tag,
+            "request format=$format unit=$adUnitId appId=${BuildConfig.ADMOB_APP_ID} package=${context?.packageName} applicationId=${BuildConfig.APPLICATION_ID} buildType=${BuildConfig.BUILD_TYPE} debug=${BuildConfig.DEBUG} testAds=${BuildConfig.ADMOB_USES_TEST_ADS} initialized=${isInitialized()} network=${context?.let(::networkDescription)} sdk=${MobileAds.getVersion()}",
+        )
+    }
+
+    private fun logInitialization(initializationStatus: com.google.android.gms.ads.initialization.InitializationStatus) {
+        initializationStatus.adapterStatusMap.forEach { (adapter, status) ->
+            Log.d(
+                Tag,
+                "adapter adapter=$adapter state=${status.initializationState} latencyMs=${status.latency} description=${status.description}",
+            )
+        }
+    }
+
+    private fun logResponse(format: String, adUnitId: String, responseInfo: ResponseInfo?) {
+        val loadedAdapter = responseInfo?.loadedAdapterResponseInfo
+        Log.d(
+            Tag,
+            "response format=$format unit=$adUnitId responseId=${responseInfo?.responseId} mediationAdapter=${responseInfo?.mediationAdapterClassName} loadedAdapter=${loadedAdapter?.adapterClassName} loadedSource=${loadedAdapter?.adSourceName} latencyMs=${loadedAdapter?.latencyMillis} adapters=${responseInfo?.adapterResponses}",
+        )
+    }
+
+    private fun isInitialized(): Boolean = synchronized(lock) { state == InitializationState.Initialized }
+
+    private fun postToMain(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
+    }
+
+    private fun networkDescription(context: Context): String {
+        val manager = context.getSystemService(ConnectivityManager::class.java) ?: return "unavailable"
+        val capabilities = manager.getNetworkCapabilities(manager.activeNetwork) ?: return "offline"
+        return buildString {
+            when {
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> append("wifi")
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> append("cellular")
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> append("ethernet")
+                else -> append("other")
             }
-            .withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    synchronized(lock) { nativeLoading-- }
-                    retry(++nativeFailures) { warmNativePool() }
-                    warn("Native failed: ${error.message}")
-                }
-
-                override fun onAdImpression() { log("Native impression") }
-                override fun onAdClicked() { log("Native clicked") }
-            })
-            .build()
-            .loadAd(AdRequest.Builder().build())
+            append(if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) ":validated" else ":unvalidated")
+        }
     }
-
-    private fun retry(failures: Int, block: () -> Unit) {
-        main.postDelayed(block, listOf(5_000L, 15_000L, 30_000L, 60_000L).getOrElse(failures - 1) { 60_000L })
-    }
-
-    private fun log(message: String) = Log.d(Tag, message)
-    private fun warn(message: String) = Log.w(Tag, message)
 }

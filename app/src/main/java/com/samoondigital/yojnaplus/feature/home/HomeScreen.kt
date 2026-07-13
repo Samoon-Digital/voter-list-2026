@@ -26,7 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
@@ -359,7 +359,7 @@ private fun SecureReliableCard() {
             }
 
             Icon(
-                imageVector = Icons.Outlined.KeyboardArrowRight,
+                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color(0xFF6544C6),
                 modifier = Modifier.size(32.dp),
@@ -454,7 +454,7 @@ private fun LegalContactRow(
             )
         }
         Icon(
-            imageVector = Icons.Outlined.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
             contentDescription = null,
             tint = Color(0xFF6544C6),
             modifier = Modifier.size(20.dp),

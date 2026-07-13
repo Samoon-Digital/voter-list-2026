@@ -20,7 +20,7 @@ import javax.inject.Singleton
 
 @Singleton
 class PdfDownloadManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) {
     private val downloadManager =
         context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager

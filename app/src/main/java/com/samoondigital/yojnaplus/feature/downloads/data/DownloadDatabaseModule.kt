@@ -16,7 +16,6 @@ object DownloadDatabaseModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "yojna-plus.db")
-            .fallbackToDestructiveMigration()
             .build()
 
     @Provides

@@ -17,7 +17,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 /** User preferences persisted with Jetpack DataStore. */
 @Singleton
 class SettingsDataStore @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) {
     private object Keys {
         val DARK_MODE = booleanPreferencesKey("dark_mode")

@@ -1,5 +1,13 @@
 import java.util.Properties
 import java.io.FileInputStream
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+val DebugAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
+val DebugBannerAdUnitId = "ca-app-pub-3940256099942544/9214589741"
+val DebugNativeAdUnitId = "ca-app-pub-3940256099942544/2247696110"
+val ReleaseAdMobAppId = "ca-app-pub-1638673809508848~3940017763"
+val ReleaseBannerAdUnitId = "ca-app-pub-1638673809508848/3437200595"
+val ReleaseNativeAdUnitId = "ca-app-pub-1638673809508848/4367138885"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -45,28 +53,34 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            isMinifyEnabled = false
+            buildConfigField("String", "ADMOB_APP_ID", "\"$DebugAdMobAppId\"")
+            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$DebugBannerAdUnitId\"")
+            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$DebugNativeAdUnitId\"")
+            buildConfigField("boolean", "ADMOB_USES_TEST_ADS", "true")
+            manifestPlaceholders["admobAppId"] = DebugAdMobAppId
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            buildConfigField("String", "ADMOB_APP_ID", "\"$ReleaseAdMobAppId\"")
+            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$ReleaseBannerAdUnitId\"")
+            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$ReleaseNativeAdUnitId\"")
+            buildConfigField("boolean", "ADMOB_USES_TEST_ADS", "false")
+            manifestPlaceholders["admobAppId"] = ReleaseAdMobAppId
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
         }
-        debug {
-            applicationIdSuffix = ".debug"
-            isMinifyEnabled = false
-        }
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     buildFeatures {
@@ -78,6 +92,12 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -128,6 +148,7 @@ dependencies {
     implementation(libs.pdfium.android)
     implementation(libs.mlkit.text.recognition.devanagari)
     implementation(libs.play.services.ads)
+    implementation(libs.ump)
 
     // Testing
     testImplementation(libs.junit)

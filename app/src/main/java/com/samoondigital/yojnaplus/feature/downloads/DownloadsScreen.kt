@@ -199,7 +199,11 @@ private fun DownloadsContent(
                                 onPause = { onPause(download.id) },
                                 onResume = { onResume(download.id) },
                             )
-                            if ((index + 1) % 2 == 0) AdMobNativeAd()
+                        }
+                    }
+                    if (state.downloads.size >= 5) {
+                        item(key = "downloads-native-ad") {
+                            AdMobNativeAd()
                         }
                     }
                 }
