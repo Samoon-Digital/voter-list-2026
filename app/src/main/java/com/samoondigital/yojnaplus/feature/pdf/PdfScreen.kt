@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -99,7 +101,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.samoondigital.yojnaplus.core.ui.components.AdMobInlineBanner
+import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
+import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
 import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.PartDto
@@ -118,16 +121,7 @@ private val WizardInk = Color(0xFF090B1F)
 private val WizardMuted = Color(0xFF686A8D)
 private val WizardSurface = Color(0xFFFCFCFF)
 private val WizardStroke = Color(0xFFE3E2F5)
-private fun ElectoralRollStep.showsSelectionAd(): Boolean = when (this) {
-    ElectoralRollStep.State,
-    ElectoralRollStep.Year,
-    ElectoralRollStep.RollType,
-    ElectoralRollStep.District,
-    ElectoralRollStep.Assembly,
-    ElectoralRollStep.Parts -> true
-    ElectoralRollStep.Captcha,
-    ElectoralRollStep.Success -> false
-}
+private const val NativeAdInterval = 7
 private val ChoiceAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -181,11 +175,6 @@ fun PdfScreen(
                 .padding(padding)
                 .background(WizardSurface),
         ) {
-            if (uiState.step.showsSelectionAd()) {
-                AdMobInlineBanner(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
             AnimatedContent(
                 modifier = Modifier.weight(1f),
                 targetState = uiState.step,
@@ -452,7 +441,8 @@ private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
         headerIcon = Icons.Outlined.CalendarMonth,
         loading = uiState.isLoading,
         message = uiState.message,
-    ) {
+        headerNativeAdKey = "year-${uiState.selectedState?.stateName}-${uiState.years.size}",
+    ) { _ ->
         itemsIndexed(uiState.years, key = { _, year -> year }) { index, year ->
             ChoiceCard(
                 title = year.toString(),
@@ -474,7 +464,8 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
         headerIcon = Icons.AutoMirrored.Outlined.FactCheck,
         loading = uiState.isLoading,
         message = uiState.message,
-    ) {
+        headerNativeAdKey = "roll-type-${uiState.selectedYear}-${uiState.rollTypes.size}",
+    ) { _ ->
         itemsIndexed(uiState.rollTypes, key = { _, rollType -> rollType.id }) { index, rollType ->
             ChoiceCard(
                 title = rollType.displayName,
@@ -678,6 +669,9 @@ private fun CaptchaStep(
                 }
             }
         }
+        item(key = "captcha-native-ad") {
+            AdMobNativeAd(placementKey = "captcha-${uiState.selectedSummary().orEmpty()}")
+        }
         item {
             AnimatedVisibility(visible = uiState.downloadItems.isNotEmpty() || uiState.isDownloading) {
                 DownloadPanel(
@@ -870,14 +864,17 @@ private fun ChoiceListScaffold(
     message: String?,
     selectedSummary: String? = null,
     trailingHeader: (@Composable ColumnScope.() -> Unit)? = null,
-    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+    headerNativeAdKey: String? = null,
+    content: androidx.compose.foundation.lazy.LazyListScope.(LazyListState) -> Unit,
 ) {
+    val listState = rememberLazyListState()
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
+        item(key = "choice-header-$title") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 StepHeading(
                     icon = headerIcon,
@@ -897,11 +894,37 @@ private fun ChoiceListScaffold(
                 trailingHeader?.invoke(this)
             }
         }
-        content()
-        item { Spacer(Modifier.height(88.dp)) }
+        headerNativeAdKey?.let { placementKey ->
+            val adItemKey = "$placementKey-native-ad"
+            item(key = adItemKey) {
+                LazyNativeAdItem(
+                    listState = listState,
+                    itemKey = adItemKey,
+                    placementKey = placementKey,
+                )
+            }
+        }
+        content(listState)
+        item(key = "choice-bottom-space-$title") { Spacer(Modifier.height(88.dp)) }
     }
 }
 
+private fun androidx.compose.foundation.lazy.LazyListScope.NativeAdInsertion(
+    listState: LazyListState,
+    prefix: String,
+    index: Int,
+    suffix: Any,
+) {
+    if ((index + 1) % NativeAdInterval != 0) return
+    val adItemKey = "native-$prefix-${index + 1}-$suffix"
+    item(key = adItemKey) {
+        LazyNativeAdItem(
+            listState = listState,
+            itemKey = adItemKey,
+            placementKey = adItemKey,
+        )
+    }
+}
 @Composable
 private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
     Row(

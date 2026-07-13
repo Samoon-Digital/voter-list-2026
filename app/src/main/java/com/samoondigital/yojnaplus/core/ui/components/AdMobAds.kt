@@ -1,4 +1,4 @@
-package com.samoondigital.yojnaplus.core.ui.components
+﻿package com.samoondigital.yojnaplus.core.ui.components
 
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -10,25 +10,23 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdLoader
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.nativead.AdChoicesView
 import com.google.android.gms.ads.nativead.MediaView
@@ -41,123 +39,57 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 @Composable
-fun AdMobInlineBanner(modifier: Modifier = Modifier) {
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val widthDp = maxWidth.value.roundToInt()
-        if (widthDp > 0) {
-            InlineBannerContent(adWidthDp = widthDp)
-        }
+fun LazyNativeAdItem(
+    listState: LazyListState,
+    itemKey: Any,
+    placementKey: String,
+    modifier: Modifier = Modifier,
+) {
+    var isVisible by remember(itemKey) { mutableStateOf(false) }
+    LaunchedEffect(listState, itemKey) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.any { it.key == itemKey } }
+            .collect { visible -> if (visible) isVisible = true }
     }
+    AdMobNativeAd(
+        placementKey = placementKey,
+        enabled = isVisible,
+        modifier = modifier,
+    )
 }
 
 @Composable
-private fun InlineBannerContent(adWidthDp: Int) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val adUnitId = AdUnitIds.banner
-    val adSize = remember(adWidthDp) {
-        AdSize.getInlineAdaptiveBannerAdSize(adWidthDp, 90)
-    }
-    val adView = remember(context, adUnitId, adSize) {
-        AdView(context).apply {
-            this.adUnitId = adUnitId
-            setAdSize(adSize)
-        }
-    }
-    var isLoaded by remember(adView) { mutableStateOf(false) }
-    val disposed = remember(adView) { AtomicBoolean(false) }
-
-    DisposableEffect(adView, lifecycleOwner) {
-        disposed.set(false)
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> adView.resume()
-                Lifecycle.Event.ON_PAUSE -> adView.pause()
-                else -> Unit
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        adView.adListener = object : AdListener() {
-            override fun onAdLoaded() {
-                isLoaded = true
-                AdManager.onAdLoaded("inline-banner", adUnitId, adView.responseInfo)
-            }
-
-            override fun onAdFailedToLoad(error: LoadAdError) {
-                isLoaded = false
-                AdManager.onAdFailed("inline-banner", adUnitId, error)
-            }
-
-            override fun onAdImpression() { android.util.Log.d("AdMob", "impression format=inline-banner unit=$adUnitId") }
-
-            override fun onAdClicked() { android.util.Log.d("AdMob", "clicked format=inline-banner unit=$adUnitId") }
-        }
-        adView.resume()
-        val cancelLoad = AdManager.loadWhenReady(
-            format = "inline-banner",
-            adUnitId = adUnitId,
-            isActive = { !disposed.get() },
-            load = adView::loadAd,
-        )
-        onDispose {
-            disposed.set(true)
-            cancelLoad()
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            (adView.parent as? ViewGroup)?.removeView(adView)
-            adView.destroy()
-        }
-    }
-
-    if (isLoaded) {
-        AndroidView(
-            factory = { adView },
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-        )
-    }
-}
-
-@Composable
-fun AdMobNativeAd(modifier: Modifier = Modifier) {
+fun AdMobNativeAd(
+    modifier: Modifier = Modifier,
+    placementKey: String = "native-default",
+    enabled: Boolean = true,
+) {
     val context = LocalContext.current
     val adUnitId = AdUnitIds.native
-    var nativeAd by remember(adUnitId) { mutableStateOf<NativeAd?>(null) }
-    val disposed = remember(adUnitId) { AtomicBoolean(false) }
+    var nativeAd by remember(placementKey) { mutableStateOf<NativeAd?>(null) }
+    val disposed = remember(placementKey) { AtomicBoolean(false) }
 
-    DisposableEffect(context, adUnitId) {
+    DisposableEffect(context, placementKey, enabled) {
         disposed.set(false)
-        val adLoader = AdLoader.Builder(context, adUnitId)
-            .forNativeAd { loadedAd ->
-                if (disposed.get()) {
-                    loadedAd.destroy()
-                } else {
+        if (!enabled) {
+            onDispose { disposed.set(true) }
+        } else {
+            val loader = NativeAdLoader(
+                context = context,
+                adUnitId = adUnitId,
+                placementKey = placementKey,
+                isActive = { !disposed.get() },
+                onLoaded = { loadedAd ->
                     nativeAd?.destroy()
                     nativeAd = loadedAd
-                    AdManager.onAdLoaded("native", adUnitId, loadedAd.responseInfo)
-                }
+                },
+            )
+            val cancelLoad = loader.load()
+            onDispose {
+                disposed.set(true)
+                cancelLoad()
+                nativeAd?.destroy()
+                nativeAd = null
             }
-            .withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    AdManager.onAdFailed("native", adUnitId, error)
-                }
-
-                override fun onAdImpression() { android.util.Log.d("AdMob", "impression format=native unit=$adUnitId") }
-
-                override fun onAdClicked() { android.util.Log.d("AdMob", "clicked format=native unit=$adUnitId") }
-            })
-            .build()
-        val cancelLoad = AdManager.loadWhenReady(
-            format = "native",
-            adUnitId = adUnitId,
-            isActive = { !disposed.get() },
-            load = adLoader::loadAd,
-        )
-        onDispose {
-            disposed.set(true)
-            cancelLoad()
-            nativeAd?.destroy()
-            nativeAd = null
         }
     }
 
@@ -168,6 +100,46 @@ fun AdMobNativeAd(modifier: Modifier = Modifier) {
             modifier = modifier
                 .fillMaxWidth()
                 .wrapContentHeight(),
+        )
+    }
+}
+
+private class NativeAdLoader(
+    private val context: android.content.Context,
+    private val adUnitId: String,
+    private val placementKey: String,
+    private val isActive: () -> Boolean,
+    private val onLoaded: (NativeAd) -> Unit,
+) {
+    fun load(): () -> Unit {
+        val adLoader = AdLoader.Builder(context, adUnitId)
+            .forNativeAd { loadedAd ->
+                if (isActive()) {
+                    onLoaded(loadedAd)
+                    AdManager.onAdLoaded("native", adUnitId, loadedAd.responseInfo)
+                } else {
+                    loadedAd.destroy()
+                }
+            }
+            .withAdListener(object : AdListener() {
+                override fun onAdFailedToLoad(error: LoadAdError) {
+                    AdManager.onAdFailed("native", adUnitId, error)
+                }
+
+                override fun onAdImpression() {
+                    android.util.Log.d("AdMob", "impression format=native placement=$placementKey unit=$adUnitId")
+                }
+
+                override fun onAdClicked() {
+                    android.util.Log.d("AdMob", "clicked format=native placement=$placementKey unit=$adUnitId")
+                }
+            })
+            .build()
+        return AdManager.loadWhenReady(
+            format = "native",
+            adUnitId = adUnitId,
+            isActive = isActive,
+            load = { request: AdRequest -> adLoader.loadAd(request) },
         )
     }
 }

@@ -173,7 +173,15 @@ private fun DownloadsContent(
         ) { target ->
             when (target) {
                 "loading" -> LoadingState()
-                "empty" -> EmptyState(hasQuery = state.query.isNotBlank())
+                "empty" -> Column(Modifier.fillMaxSize()) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        EmptyState(hasQuery = state.query.isNotBlank())
+                    }
+                    AdMobNativeAd(
+                        placementKey = "downloads-empty-${state.query.isNotBlank()}",
+                        modifier = Modifier.padding(bottom = 18.dp),
+                    )
+                }
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 18.dp),
@@ -199,11 +207,9 @@ private fun DownloadsContent(
                                 onPause = { onPause(download.id) },
                                 onResume = { onResume(download.id) },
                             )
-                        }
-                    }
-                    if (state.downloads.size >= 5) {
-                        item(key = "downloads-native-ad") {
-                            AdMobNativeAd()
+                            if (index == 0) {
+                                AdMobNativeAd(placementKey = "downloads-after-first-${download.id}")
+                            }
                         }
                     }
                 }

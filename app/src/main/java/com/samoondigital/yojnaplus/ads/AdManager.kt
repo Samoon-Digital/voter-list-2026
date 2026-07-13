@@ -25,7 +25,7 @@ object AdUnitIds {
 
     fun expectedFor(format: String): String? = when (format) {
         "app-open" -> appOpen
-        "banner", "inline-banner" -> banner
+        "banner" -> banner
         "interstitial" -> interstitial
         "native" -> native
         else -> null
