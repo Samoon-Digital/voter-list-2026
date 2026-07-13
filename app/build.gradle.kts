@@ -35,8 +35,8 @@ android {
         applicationId = ProductionPackageName
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "3.3.2"
+        versionCode = 20
+        versionName = "3.3.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -150,6 +150,8 @@ dependencies {
     implementation(libs.pdfium.android)
     implementation(libs.mlkit.text.recognition.devanagari)
     implementation(libs.play.services.ads)
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
     implementation(libs.ump)
 
     // Firebase
