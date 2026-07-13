@@ -52,6 +52,7 @@ import com.samoondigital.yojnaplus.R
 import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
 import com.samoondigital.yojnaplus.core.ui.theme.Green
 import com.samoondigital.yojnaplus.core.ui.theme.GreenContainer
+import com.samoondigital.yojnaplus.notifications.NotificationPermissionPrompt
 
 @Composable
 fun HomeScreen(
@@ -60,6 +61,8 @@ fun HomeScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
+    NotificationPermissionPrompt()
+
     Column(
         modifier = modifier
             .fillMaxSize()

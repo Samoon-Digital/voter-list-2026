@@ -16,6 +16,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 // Load signing config from key.properties (kept in repo root per project requirement).
@@ -150,6 +151,11 @@ dependencies {
     implementation(libs.mlkit.text.recognition.devanagari)
     implementation(libs.play.services.ads)
     implementation(libs.ump)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.messaging)
 
     // Testing
     testImplementation(libs.junit)
