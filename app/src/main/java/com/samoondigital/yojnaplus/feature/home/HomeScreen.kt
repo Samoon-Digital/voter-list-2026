@@ -74,8 +74,7 @@ fun HomeScreen(
         modifier = modifier
             .fillMaxSize()
             .background(Color.White)
-            .verticalScroll(rememberScrollState())
-            .padding(contentPadding),
+            .verticalScroll(rememberScrollState()),
     ) {
         HomeHeader(
             onOpenDownloads = onOpenDownloads,
