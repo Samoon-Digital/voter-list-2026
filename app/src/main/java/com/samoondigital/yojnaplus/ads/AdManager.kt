@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.ads
 
+import android.Manifest
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -13,26 +14,52 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.ResponseInfo
+import com.google.android.gms.ads.initialization.InitializationStatus
 import com.samoondigital.yojnaplus.BuildConfig
 
 object AdUnitIds {
+    val appOpen: String = BuildConfig.ADMOB_APP_OPEN_AD_UNIT_ID
     val banner: String = BuildConfig.ADMOB_BANNER_AD_UNIT_ID
+    val interstitial: String = BuildConfig.ADMOB_INTERSTITIAL_AD_UNIT_ID
     val native: String = BuildConfig.ADMOB_NATIVE_AD_UNIT_ID
+
+    fun expectedFor(format: String): String? = when (format) {
+        "app-open" -> appOpen
+        "banner", "inline-banner" -> banner
+        "interstitial" -> interstitial
+        "native" -> native
+        else -> null
+    }
+}
+
+private object ProductionAdMobConfig {
+    const val PackageName = "com.samoondigital.yojnaplus"
+    const val AppId = "ca-app-pub-1638673809508848~3940017763"
+    const val AppOpen = "ca-app-pub-1638673809508848/5780292909"
+    const val Banner = "ca-app-pub-1638673809508848/5540207067"
+    const val Interstitial = "ca-app-pub-1638673809508848/8518136887"
+    const val Native = "ca-app-pub-1638673809508848/3565193102"
 }
 
 object AdManager {
     private const val Tag = "AdMob"
-    private const val GoogleDemoPublisher = "ca-app-pub-3940256099942544"
     private const val ManifestAppIdKey = "com.google.android.gms.ads.APPLICATION_ID"
 
     private enum class InitializationState { NotStarted, Initializing, Initialized }
 
     private class PendingLoad(val execute: () -> Unit)
 
+    private data class ValidationResult(
+        val valid: Boolean,
+        val manifestAppId: String?,
+        val reasons: List<String>,
+    )
+
     private val lock = Any()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val pendingLoads = mutableSetOf<PendingLoad>()
     private var state = InitializationState.NotStarted
+    private var adRequestsAllowed = false
     private var application: Application? = null
 
     fun initialize(application: Application) {
@@ -45,18 +72,28 @@ object AdManager {
                 true
             }
         }
-        if (!shouldInitialize) return
-
-        validateConfiguration(application)
-        Log.d(Tag, "initialize sdk=${MobileAds.getVersion()} package=${application.packageName} applicationId=${BuildConfig.APPLICATION_ID} debug=${BuildConfig.DEBUG} testAds=${BuildConfig.ADMOB_USES_TEST_ADS}")
-        MobileAds.initialize(application) { initializationStatus ->
-            val loads = synchronized(lock) {
-                state = InitializationState.Initialized
-                pendingLoads.toList().also { pendingLoads.clear() }
-            }
-            logInitialization(initializationStatus)
-            postToMain { loads.forEach { it.execute() } }
+        if (!shouldInitialize) {
+            Log.d(Tag, "initialize skipped reason=already-started state=$state")
+            return
         }
+
+        logValidation("startup", null, validateRuntime(application, null, null, requireInitialized = false))
+        Log.d(
+            Tag,
+            "initialize-start sdk=${MobileAds.getVersion()} package=${application.packageName} applicationId=${BuildConfig.APPLICATION_ID} buildType=${BuildConfig.BUILD_TYPE} debug=${BuildConfig.DEBUG}",
+        )
+        MobileAds.initialize(application) { initializationStatus ->
+            synchronized(lock) { state = InitializationState.Initialized }
+            Log.d(Tag, "initialize-finished sdk=${MobileAds.getVersion()} state=initialized")
+            logInitialization(initializationStatus)
+            drainPendingLoadsIfReady()
+        }
+    }
+
+    fun allowAdRequests() {
+        synchronized(lock) { adRequestsAllowed = true }
+        Log.d(Tag, "consent-gate-open canRequestAds=true")
+        drainPendingLoadsIfReady()
     }
 
     fun loadWhenReady(
@@ -66,16 +103,40 @@ object AdManager {
         load: (AdRequest) -> Unit,
     ): () -> Unit {
         val pending = PendingLoad {
-            if (isActive()) {
-                logRequest(format, adUnitId)
-                load(AdRequest.Builder().build())
+            val app = application
+            if (!isActive()) {
+                Log.d(Tag, "request-skipped format=$format unit=$adUnitId reason=inactive")
+                return@PendingLoad
             }
+            if (app == null) {
+                Log.e(Tag, "request-skipped format=$format unit=$adUnitId reason=application-null")
+                return@PendingLoad
+            }
+            val validation = validateRuntime(app, format, adUnitId, requireInitialized = true)
+            if (!validation.valid) {
+                logValidation("request", format, validation)
+                return@PendingLoad
+            }
+            logValidation("request", format, validation)
+            logRequestStarted(format, adUnitId, app)
+            runCatching { load(AdRequest.Builder().build()) }
+                .onFailure { throwable ->
+                    Log.e(
+                        Tag,
+                        "request-finished status=exception format=$format unit=$adUnitId exception=${throwable.message}",
+                        throwable,
+                    )
+                }
         }
         val runNow = synchronized(lock) {
-            if (state == InitializationState.Initialized) {
+            if (state == InitializationState.Initialized && adRequestsAllowed) {
                 true
             } else {
                 pendingLoads += pending
+                Log.d(
+                    Tag,
+                    "request-queued format=$format unit=$adUnitId initialized=${state == InitializationState.Initialized} consentReady=$adRequestsAllowed",
+                )
                 false
             }
         }
@@ -84,7 +145,7 @@ object AdManager {
     }
 
     fun onAdLoaded(format: String, adUnitId: String, responseInfo: ResponseInfo?) {
-        Log.d(Tag, "loaded format=$format unit=$adUnitId")
+        Log.d(Tag, "request-finished status=success format=$format unit=$adUnitId")
         logResponse(format, adUnitId, responseInfo)
     }
 
@@ -92,61 +153,136 @@ object AdManager {
         val diagnosis = when {
             error.message.contains("Publisher data not found", ignoreCase = true) ->
                 "publisher-data-missing: verify the unit, AdMob app/package pairing, account setup, and Policy Center"
-            error.code == 3 -> "no-fill: this can be inventory-related; inspect ResponseInfo and Ad Inspector"
+            error.code == 3 -> "no-fill: inspect ResponseInfo, Ad Inspector, serving limits, and policy/account state"
+            error.code == 2 -> "network-error: verify device connectivity, DNS/VPN/firewall, and Google Play services"
             else -> "load-failed"
         }
         Log.w(
             Tag,
-            "$diagnosis format=$format unit=$adUnitId code=${error.code} domain=${error.domain} message=${error.message} cause=${error.cause}",
+            "request-finished status=failure diagnosis=$diagnosis format=$format unit=$adUnitId code=${error.code} domain=${error.domain} message=${error.message} cause=${error.cause} error=$error",
+            RuntimeException("Ad load failure stack trace"),
         )
         logResponse(format, adUnitId, error.responseInfo)
     }
 
     fun openAdInspector(activity: Activity) {
-        if (!BuildConfig.DEBUG) return
+        if (!BuildConfig.DEBUG) {
+            Log.d(Tag, "ad-inspector-skipped reason=debug-only buildType=${BuildConfig.BUILD_TYPE}")
+            return
+        }
         MobileAds.openAdInspector(activity) { error ->
             if (error == null) {
-                Log.d(Tag, "Ad Inspector closed")
+                Log.d(Tag, "ad-inspector-closed")
             } else {
-                Log.w(Tag, "Ad Inspector error code=${error.code} domain=${error.domain} message=${error.message}")
+                Log.w(Tag, "ad-inspector-error code=${error.code} domain=${error.domain} message=${error.message}")
             }
         }
     }
 
-    private fun validateConfiguration(context: Context) {
-        val manifestAppId = runCatching {
-            @Suppress("DEPRECATION")
-            context.packageManager
-                .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
-                .metaData
-                ?.getString(ManifestAppIdKey)
-        }.getOrNull()
-        val demoValues = listOf(BuildConfig.ADMOB_APP_ID, AdUnitIds.banner, AdUnitIds.native)
-            .all { it.startsWith(GoogleDemoPublisher) }
-
-        if (manifestAppId != BuildConfig.ADMOB_APP_ID) {
-            Log.e(Tag, "configuration-error: manifestAppId=$manifestAppId does not match BuildConfig appId=${BuildConfig.ADMOB_APP_ID}")
+    private fun drainPendingLoadsIfReady() {
+        val loads = synchronized(lock) {
+            if (state == InitializationState.Initialized && adRequestsAllowed) {
+                pendingLoads.toList().also { pendingLoads.clear() }
+            } else {
+                emptyList()
+            }
         }
-        if (context.packageName != BuildConfig.APPLICATION_ID) {
-            Log.e(Tag, "configuration-error: runtime package=${context.packageName} does not match BuildConfig applicationId=${BuildConfig.APPLICATION_ID}")
-        }
-        if (BuildConfig.ADMOB_USES_TEST_ADS != demoValues) {
-            Log.e(Tag, "configuration-error: test/release AdMob values are mixed for buildType=${BuildConfig.BUILD_TYPE}")
-        }
-        if (AdUnitIds.banner.isBlank() || AdUnitIds.native.isBlank()) {
-            Log.e(Tag, "configuration-error: banner and native ad unit IDs must both be configured")
-        }
+        if (loads.isNotEmpty()) postToMain { loads.forEach { it.execute() } }
     }
 
-    private fun logRequest(format: String, adUnitId: String) {
+    private fun validateRuntime(
+        context: Context,
+        format: String?,
+        adUnitId: String?,
+        requireInitialized: Boolean,
+    ): ValidationResult {
+        val manifestAppId = manifestAppId(context)
+        val configuredIds = linkedMapOf(
+            "appId" to BuildConfig.ADMOB_APP_ID,
+            "appOpen" to AdUnitIds.appOpen,
+            "banner" to AdUnitIds.banner,
+            "interstitial" to AdUnitIds.interstitial,
+            "native" to AdUnitIds.native,
+        )
+        val reasons = mutableListOf<String>()
+
+        if (context.packageName != ProductionAdMobConfig.PackageName) {
+            reasons += "runtime package ${context.packageName} != ${ProductionAdMobConfig.PackageName}"
+        }
+        if (BuildConfig.APPLICATION_ID != ProductionAdMobConfig.PackageName) {
+            reasons += "BuildConfig.APPLICATION_ID ${BuildConfig.APPLICATION_ID} != ${ProductionAdMobConfig.PackageName}"
+        }
+        if (manifestAppId != ProductionAdMobConfig.AppId) {
+            reasons += "manifest App ID $manifestAppId != ${ProductionAdMobConfig.AppId}"
+        }
+        if (BuildConfig.ADMOB_APP_ID != ProductionAdMobConfig.AppId) {
+            reasons += "BuildConfig ADMOB_APP_ID ${BuildConfig.ADMOB_APP_ID} != ${ProductionAdMobConfig.AppId}"
+        }
+        if (AdUnitIds.appOpen != ProductionAdMobConfig.AppOpen) {
+            reasons += "App Open ID ${AdUnitIds.appOpen} != ${ProductionAdMobConfig.AppOpen}"
+        }
+        if (AdUnitIds.banner != ProductionAdMobConfig.Banner) {
+            reasons += "Banner ID ${AdUnitIds.banner} != ${ProductionAdMobConfig.Banner}"
+        }
+        if (AdUnitIds.interstitial != ProductionAdMobConfig.Interstitial) {
+            reasons += "Interstitial ID ${AdUnitIds.interstitial} != ${ProductionAdMobConfig.Interstitial}"
+        }
+        if (AdUnitIds.native != ProductionAdMobConfig.Native) {
+            reasons += "Native ID ${AdUnitIds.native} != ${ProductionAdMobConfig.Native}"
+        }
+        configuredIds.forEach { (name, value) ->
+            if (value.isBlank()) reasons += "$name is blank"
+        }
+        if (format != null && adUnitId != null) {
+            val expectedForFormat = AdUnitIds.expectedFor(format)
+            if (expectedForFormat == null) {
+                reasons += "unknown ad format $format"
+            } else if (expectedForFormat != adUnitId) {
+                reasons += "requested $format unit $adUnitId != expected $expectedForFormat"
+            }
+        }
+        if (!hasPermission(context, Manifest.permission.INTERNET)) {
+            reasons += "missing android.permission.INTERNET"
+        }
+        if (!hasPermission(context, Manifest.permission.ACCESS_NETWORK_STATE)) {
+            reasons += "missing android.permission.ACCESS_NETWORK_STATE"
+        }
+        if (requireInitialized && !isInitialized()) {
+            reasons += "Google Mobile Ads SDK is not initialized"
+        }
+
+        return ValidationResult(reasons.isEmpty(), manifestAppId, reasons)
+    }
+
+    private fun logValidation(stage: String, format: String?, validation: ValidationResult) {
+        val status = if (validation.valid) "passed" else "failed"
         val context = application
+        val details = buildString {
+            append("validation-$status stage=$stage")
+            format?.let { append(" format=$it") }
+            append(" package=${context?.packageName}")
+            append(" applicationId=${BuildConfig.APPLICATION_ID}")
+            append(" manifestAppId=${validation.manifestAppId}")
+            append(" buildType=${BuildConfig.BUILD_TYPE}")
+            append(" initialized=${isInitialized()}")
+            append(" appId=${BuildConfig.ADMOB_APP_ID}")
+            append(" appOpen=${AdUnitIds.appOpen}")
+            append(" banner=${AdUnitIds.banner}")
+            append(" interstitial=${AdUnitIds.interstitial}")
+            append(" native=${AdUnitIds.native}")
+            if (!validation.valid) append(" reasons=${validation.reasons.joinToString("; ")}")
+        }
+        if (validation.valid) Log.d(Tag, details) else Log.e(Tag, details)
+    }
+
+    private fun logRequestStarted(format: String, adUnitId: String, context: Context) {
         Log.d(
             Tag,
-            "request format=$format unit=$adUnitId appId=${BuildConfig.ADMOB_APP_ID} package=${context?.packageName} applicationId=${BuildConfig.APPLICATION_ID} buildType=${BuildConfig.BUILD_TYPE} debug=${BuildConfig.DEBUG} testAds=${BuildConfig.ADMOB_USES_TEST_ADS} initialized=${isInitialized()} network=${context?.let(::networkDescription)} sdk=${MobileAds.getVersion()}",
+            "request-started format=$format unit=$adUnitId appId=${BuildConfig.ADMOB_APP_ID} package=${context.packageName} applicationId=${BuildConfig.APPLICATION_ID} buildType=${BuildConfig.BUILD_TYPE} debug=${BuildConfig.DEBUG} initialized=${isInitialized()} consentReady=$adRequestsAllowed network=${networkDescription(context)} sdk=${MobileAds.getVersion()}",
         )
     }
 
-    private fun logInitialization(initializationStatus: com.google.android.gms.ads.initialization.InitializationStatus) {
+    private fun logInitialization(initializationStatus: InitializationStatus) {
         initializationStatus.adapterStatusMap.forEach { (adapter, status) ->
             Log.d(
                 Tag,
@@ -162,6 +298,17 @@ object AdManager {
             "response format=$format unit=$adUnitId responseId=${responseInfo?.responseId} mediationAdapter=${responseInfo?.mediationAdapterClassName} loadedAdapter=${loadedAdapter?.adapterClassName} loadedSource=${loadedAdapter?.adSourceName} latencyMs=${loadedAdapter?.latencyMillis} adapters=${responseInfo?.adapterResponses}",
         )
     }
+
+    private fun manifestAppId(context: Context): String? = runCatching {
+        @Suppress("DEPRECATION")
+        context.packageManager
+            .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
+            .metaData
+            ?.getString(ManifestAppIdKey)
+    }.getOrNull()
+
+    private fun hasPermission(context: Context, permission: String): Boolean =
+        context.packageManager.checkPermission(permission, context.packageName) == PackageManager.PERMISSION_GRANTED
 
     private fun isInitialized(): Boolean = synchronized(lock) { state == InitializationState.Initialized }
 

@@ -1,7 +1,7 @@
 package com.samoondigital.yojnaplus.feature.settings
 
 import android.app.Activity
-
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,6 +38,8 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? Activity
+    var inspectorTapCount by rememberSaveable { mutableStateOf(0) }
+    var inspectorUnlocked by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -68,10 +73,10 @@ fun SettingsScreen(
             )
             HorizontalDivider()
         }
-        if (BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG && inspectorUnlocked) {
             SettingAction(
                 title = "Ad Inspector",
-                subtitle = "Inspect test-ad requests and adapters",
+                subtitle = "Inspect production ad requests and adapters",
                 onClick = { activity?.let(AdManager::openAdInspector) },
             )
             HorizontalDivider()
@@ -82,6 +87,10 @@ fun SettingsScreen(
             "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clickable(enabled = BuildConfig.DEBUG) {
+                inspectorTapCount += 1
+                if (inspectorTapCount >= 7) inspectorUnlocked = true
+            },
         )
     }
 }

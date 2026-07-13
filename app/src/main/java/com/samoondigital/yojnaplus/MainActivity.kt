@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         ConsentManager.gatherConsent(this) {
-            AdManager.initialize(application)
+            AdManager.allowAdRequests()
         }
     }
 }

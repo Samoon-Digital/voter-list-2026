@@ -2,12 +2,12 @@ import java.util.Properties
 import java.io.FileInputStream
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-val DebugAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
-val DebugBannerAdUnitId = "ca-app-pub-3940256099942544/9214589741"
-val DebugNativeAdUnitId = "ca-app-pub-3940256099942544/2247696110"
-val ReleaseAdMobAppId = "ca-app-pub-1638673809508848~3940017763"
-val ReleaseBannerAdUnitId = "ca-app-pub-1638673809508848/3437200595"
-val ReleaseNativeAdUnitId = "ca-app-pub-1638673809508848/4367138885"
+val ProductionPackageName = "com.samoondigital.yojnaplus"
+val ProductionAdMobAppId = "ca-app-pub-1638673809508848~3940017763"
+val ProductionAppOpenAdUnitId = "ca-app-pub-1638673809508848/5780292909"
+val ProductionBannerAdUnitId = "ca-app-pub-1638673809508848/5540207067"
+val ProductionInterstitialAdUnitId = "ca-app-pub-1638673809508848/8518136887"
+val ProductionNativeAdUnitId = "ca-app-pub-1638673809508848/3565193102"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -27,11 +27,11 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.samoondigital.yojnaplus"
+    namespace = ProductionPackageName
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.samoondigital.yojnaplus"
+        applicationId = ProductionPackageName
         minSdk = 26
         targetSdk = 35
         versionCode = 19
@@ -54,22 +54,23 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
             isMinifyEnabled = false
-            buildConfigField("String", "ADMOB_APP_ID", "\"$DebugAdMobAppId\"")
-            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$DebugBannerAdUnitId\"")
-            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$DebugNativeAdUnitId\"")
-            buildConfigField("boolean", "ADMOB_USES_TEST_ADS", "true")
-            manifestPlaceholders["admobAppId"] = DebugAdMobAppId
+            buildConfigField("String", "ADMOB_APP_ID", "\"$ProductionAdMobAppId\"")
+            buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$ProductionAppOpenAdUnitId\"")
+            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$ProductionBannerAdUnitId\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$ProductionInterstitialAdUnitId\"")
+            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$ProductionNativeAdUnitId\"")
+            manifestPlaceholders["admobAppId"] = ProductionAdMobAppId
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            buildConfigField("String", "ADMOB_APP_ID", "\"$ReleaseAdMobAppId\"")
-            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$ReleaseBannerAdUnitId\"")
-            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$ReleaseNativeAdUnitId\"")
-            buildConfigField("boolean", "ADMOB_USES_TEST_ADS", "false")
-            manifestPlaceholders["admobAppId"] = ReleaseAdMobAppId
+            buildConfigField("String", "ADMOB_APP_ID", "\"$ProductionAdMobAppId\"")
+            buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$ProductionAppOpenAdUnitId\"")
+            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$ProductionBannerAdUnitId\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$ProductionInterstitialAdUnitId\"")
+            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$ProductionNativeAdUnitId\"")
+            manifestPlaceholders["admobAppId"] = ProductionAdMobAppId
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
