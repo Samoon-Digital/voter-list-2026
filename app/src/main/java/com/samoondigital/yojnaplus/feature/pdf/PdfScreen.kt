@@ -560,15 +560,23 @@ private fun PartsStep(
                     color = MaterialTheme.colorScheme.primary,
                 )
             },
-        ) {
-            itemsIndexed(filtered, key = { _, part -> part.partNumber }) { index, part ->
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PartChoiceCard(
-                        part = part,
-                        selected = part.partNumber in uiState.selectedPartNumbers,
-                        onClick = { onPartToggled(part.partNumber) },
-                    )
+        ) { listState ->
+            filtered.forEachIndexed { index, part ->
+                item(key = "part-${part.partNumber}") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PartChoiceCard(
+                            part = part,
+                            selected = part.partNumber in uiState.selectedPartNumbers,
+                            onClick = { onPartToggled(part.partNumber) },
+                        )
+                    }
                 }
+                NativeAdInsertion(
+                    listState = listState,
+                    prefix = "part",
+                    index = index,
+                    suffix = part.partNumber,
+                )
             }
         }
 
@@ -840,17 +848,26 @@ private fun <T> SearchableChoiceScreen(
                 )
             }
         } else null,
-    ) {
-        itemsIndexed(filtered, key = { _, item -> itemTitle(item) }) { index, item ->
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ChoiceCard(
-                    title = itemTitle(item),
-                    subtitle = itemSubtitle(item),
-                    icon = itemIcon,
-                    accentIndex = index,
-                    onClick = { onSelected(item) },
-                )
+    ) { listState ->
+        filtered.forEachIndexed { index, item ->
+            val titleKey = itemTitle(item)
+            item(key = "choice-$title-$index-$titleKey") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ChoiceCard(
+                        title = titleKey,
+                        subtitle = itemSubtitle(item),
+                        icon = itemIcon,
+                        accentIndex = index,
+                        onClick = { onSelected(item) },
+                    )
+                }
             }
+            NativeAdInsertion(
+                listState = listState,
+                prefix = title,
+                index = index,
+                suffix = titleKey,
+            )
         }
     }
 }
