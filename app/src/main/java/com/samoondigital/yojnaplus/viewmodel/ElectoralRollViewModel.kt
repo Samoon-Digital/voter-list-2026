@@ -256,13 +256,13 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     private fun loadDistricts(stateCd: String) = viewModelScope.launch {
-        runLoading("Loading districts") {
+        runLoading(null) {
             _state.update { it.copy(districts = repository.getDistricts(stateCd)) }
         }
     }
 
     private fun loadAssemblies(districtCd: String) = viewModelScope.launch {
-        runLoading("Loading assembly constituencies") {
+        runLoading(null) {
             _state.update { it.copy(assemblies = repository.getAssemblies(districtCd)) }
         }
     }
@@ -274,7 +274,7 @@ class ElectoralRollViewModel @Inject constructor(
         val selectedRollType = current.selectedRollType ?: return@launch
         val selectedYear = current.selectedYear ?: return@launch
 
-        runLoading("Loading village and part list") {
+        runLoading(null) {
             val languages = repository.getLanguages(
                 stateCd = selectedState.stateCd,
                 acNumber = selectedAssembly.asmblyNo,
@@ -513,7 +513,7 @@ class ElectoralRollViewModel @Inject constructor(
         }
     }
 
-    private suspend fun runLoading(message: String, block: suspend () -> Unit) {
+    private suspend fun runLoading(message: String?, block: suspend () -> Unit) {
         _state.update { it.copy(isLoading = true, message = message) }
         runCatching { block() }
             .onFailure { error ->
