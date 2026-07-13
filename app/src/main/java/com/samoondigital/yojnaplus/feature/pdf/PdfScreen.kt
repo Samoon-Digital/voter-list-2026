@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.pdf
 
+import android.app.Activity
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.activity.compose.BackHandler
@@ -98,9 +99,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
 import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
@@ -140,6 +143,7 @@ fun PdfScreen(
     viewModel: ElectoralRollViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
     var openedDownloads by remember { mutableStateOf(false) }
 
     fun handleBack() {
@@ -189,7 +193,11 @@ fun PdfScreen(
                     ElectoralRollStep.State -> StateStep(uiState, viewModel::selectState)
                     ElectoralRollStep.Year -> YearStep(uiState, viewModel::selectYear)
                     ElectoralRollStep.RollType -> RollTypeStep(uiState, viewModel::selectRollType)
-                    ElectoralRollStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
+                    ElectoralRollStep.District -> DistrictStep(uiState) { district ->
+                        InterstitialAdManager.showIfAvailable(activity) {
+                            viewModel.selectDistrict(district)
+                        }
+                    }
                     ElectoralRollStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
                     ElectoralRollStep.Parts -> PartsStep(
                         uiState = uiState,
