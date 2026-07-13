@@ -1,15 +1,16 @@
 package com.samoondigital.yojnaplus.feature.home
 
+import android.app.Activity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Link
@@ -32,9 +34,11 @@ import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,11 +47,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowInsetsControllerCompat
 import com.samoondigital.yojnaplus.R
 import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
 import com.samoondigital.yojnaplus.core.ui.theme.Green
@@ -92,129 +99,140 @@ fun HomeScreen(
 private fun HomeHeader(
     onOpenDownloads: () -> Unit,
 ) {
-    val downloadsInteractionSource = remember { MutableInteractionSource() }
+    HomeStatusBarEffect()
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(146.dp)
+            .height(140.dp)
             .background(
                 Brush.linearGradient(
-                    colors = listOf(Color(0xFF25108B), Color(0xFF5132C4)),
+                    colors = listOf(HomePurpleDark, HomePurple, Color(0xFF2E1B98)),
+                    start = Offset.Zero,
+                    end = Offset(950f, 360f),
                 ),
             ),
     ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
-            drawCircle(
-                color = Color.White.copy(alpha = 0.05f),
-                radius = size.width * 0.1f,
-                center = Offset(size.width * 0.52f, size.height * 0.2f),
-            )
-            drawCircle(
-                color = Color.White.copy(alpha = 0.04f),
-                radius = size.width * 0.08f,
-                center = Offset(size.width * 0.25f, size.height * 0.1f),
-            )
-
-            val dotRadius = 1.5.dp.toPx()
-            val startX = size.width - 42.dp.toPx()
-            val startY = 78.dp.toPx()
-            repeat(5) { row ->
-                repeat(6) { column ->
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.12f),
-                        radius = dotRadius,
-                        center = Offset(
-                            x = startX + column * 7.dp.toPx(),
-                            y = startY + row * 7.dp.toPx(),
-                        ),
-                    )
-                }
-            }
-
-            val waveTop = size.height - 23.dp.toPx()
-            val path = Path().apply {
-                moveTo(0f, waveTop)
-                cubicTo(
-                    size.width * 0.2f,
-                    waveTop - 9.dp.toPx(),
-                    size.width * 0.32f,
-                    waveTop + 10.dp.toPx(),
-                    size.width * 0.48f,
-                    waveTop,
-                )
-                cubicTo(
-                    size.width * 0.64f,
-                    waveTop - 11.dp.toPx(),
-                    size.width * 0.7f,
-                    waveTop + 8.dp.toPx(),
-                    size.width,
-                    waveTop - 1.dp.toPx(),
-                )
-                lineTo(size.width, size.height)
-                lineTo(0f, size.height)
-                close()
-            }
-            drawPath(path = path, color = Color.White)
-        }
+        HomeHeaderArtwork(modifier = Modifier.matchParentSize())
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 28.dp, start = 20.dp, end = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .statusBarsPadding()
+                .padding(start = 18.dp, top = 10.dp, end = 18.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 10.dp),
+                    .padding(top = 2.dp, end = 16.dp),
             ) {
                 Text(
                     text = stringResource(R.string.app_name),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
-                    fontSize = 18.sp,
-                    lineHeight = 22.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
                     text = stringResource(R.string.app_tagline),
-                    color = Color.White.copy(alpha = 0.78f),
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.76f),
+                    modifier = Modifier.padding(top = 1.dp),
                 )
             }
 
-            Column(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(
-                        interactionSource = downloadsInteractionSource,
-                        indication = null,
-                        onClick = onOpenDownloads,
-                    )
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            Surface(
+                onClick = onOpenDownloads,
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 8.dp,
+                modifier = Modifier.size(48.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Download,
-                    contentDescription = "Downloads",
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp),
-                )
-                Text(
-                    text = "Downloads",
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.FileDownload,
+                        contentDescription = "Downloads",
+                        tint = HomePurpleDark,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeHeaderArtwork(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        val wave = Path().apply {
+            moveTo(0f, h * 0.64f)
+            cubicTo(w * 0.10f, h * 0.46f, w * 0.15f, h * 0.78f, w * 0.28f, h * 0.58f)
+            cubicTo(w * 0.42f, h * 0.36f, w * 0.50f, h * 0.78f, w * 0.66f, h * 0.62f)
+            cubicTo(w * 0.78f, h * 0.50f, w * 0.88f, h * 0.80f, w, h * 0.56f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(wave, Color(0xFF5B49D7).copy(alpha = 0.30f))
+
+        val map = Path().apply {
+            moveTo(w * 0.68f, h * 0.20f)
+            cubicTo(w * 0.72f, h * 0.12f, w * 0.76f, h * 0.18f, w * 0.76f, h * 0.26f)
+            cubicTo(w * 0.83f, h * 0.25f, w * 0.89f, h * 0.35f, w * 0.86f, h * 0.44f)
+            cubicTo(w * 0.91f, h * 0.50f, w * 0.84f, h * 0.55f, w * 0.78f, h * 0.51f)
+            cubicTo(w * 0.74f, h * 0.58f, w * 0.66f, h * 0.53f, w * 0.70f, h * 0.45f)
+            cubicTo(w * 0.63f, h * 0.39f, w * 0.67f, h * 0.30f, w * 0.68f, h * 0.20f)
+            close()
+        }
+        drawPath(map, Color.White.copy(alpha = 0.13f))
+
+        val dotColor = Color.White.copy(alpha = 0.18f)
+        repeat(4) { row ->
+            repeat(4) { col ->
+                drawCircle(
+                    color = dotColor,
+                    radius = 4.3f,
+                    center = Offset(w * 0.90f + col * 22f, h * 0.60f + row * 22f),
                 )
             }
         }
     }
 }
 
+@Composable
+private fun HomeStatusBarEffect() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = (view.context as? Activity)?.window
+        if (window == null || view.isInEditMode) {
+            onDispose { }
+        } else {
+            @Suppress("DEPRECATION")
+            val previousColor = window.statusBarColor
+            val controller = WindowInsetsControllerCompat(window, view)
+            val previousLightStatusBars = controller.isAppearanceLightStatusBars
+            @Suppress("DEPRECATION")
+            window.statusBarColor = HomePurpleDark.toArgb()
+            controller.isAppearanceLightStatusBars = false
+
+            onDispose {
+                @Suppress("DEPRECATION")
+                window.statusBarColor = previousColor
+                controller.isAppearanceLightStatusBars = previousLightStatusBars
+            }
+        }
+    }
+}
+
+private val HomePurpleDark = Color(0xFF24106D)
+private val HomePurple = Color(0xFF4326B8)
 @Composable
 private fun VoterListPdfCard(onClick: () -> Unit) {
     Card(
