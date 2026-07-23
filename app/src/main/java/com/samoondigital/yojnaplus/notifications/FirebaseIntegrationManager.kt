@@ -35,7 +35,7 @@ object FirebaseIntegrationManager {
             Log.w(Tag, "fcm-registration source=$source status=empty")
             return
         }
-        Log.d(Tag, "fcm-registration source=$source installationId=$installationId")
+        Log.d(Tag, "fcm-registration source=$source status=received length=${installationId.length}")
         onRegistrationReadyForBackend(installationId, source)
     }
 

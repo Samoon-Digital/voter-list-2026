@@ -20,9 +20,3 @@
 -dontwarn org.bouncycastle.jsse.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
-
-# Google Mobile Ads / mediation response metadata used by runtime diagnostics.
--keep class com.google.android.gms.ads.** { *; }
--keep class com.google.ads.** { *; }
--dontwarn com.google.android.gms.ads.**
--dontwarn com.google.ads.**
