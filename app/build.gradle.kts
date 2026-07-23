@@ -29,12 +29,12 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = ProductionPackageName
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = ProductionPackageName
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 20
         versionName = "3.3.3"
 

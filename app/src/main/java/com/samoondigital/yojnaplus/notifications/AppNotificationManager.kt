@@ -22,8 +22,6 @@ object AppNotificationManager {
     private const val Tag = "AppNotificationManager"
 
     fun createNotificationChannel(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
         val channel = NotificationChannel(
             ChannelId,
             "Voter List Updates",
@@ -69,8 +67,12 @@ object AppNotificationManager {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
-        NotificationManagerCompat.from(context).notify(notificationId(data), notification)
-        Log.d(Tag, "notification-posted title=$title dataKeys=${data.keys}")
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId(data), notification)
+            Log.d(Tag, "notification-posted title=$title dataKeys=${data.keys}")
+        } catch (securityException: SecurityException) {
+            Log.w(Tag, "notification-skipped reason=permission-revoked", securityException)
+        }
     }
 
     fun canPostNotifications(context: Context): Boolean {

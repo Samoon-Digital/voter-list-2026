@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,7 +39,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? Activity
-    var inspectorTapCount by rememberSaveable { mutableStateOf(0) }
+    var inspectorTapCount by rememberSaveable { mutableIntStateOf(0) }
     var inspectorUnlocked by rememberSaveable { mutableStateOf(false) }
 
     Column(

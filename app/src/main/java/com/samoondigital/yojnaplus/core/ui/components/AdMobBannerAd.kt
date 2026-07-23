@@ -30,7 +30,7 @@ fun AdMobBannerAd(
         val adView = remember(placementKey, adWidth, adUnitId) {
             AdView(context).apply {
                 setAdUnitId(adUnitId)
-                setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, adWidth))
+                setAdSize(anchoredAdaptiveBannerSize(context, adWidth))
                 adListener = object : AdListener() {
                     override fun onAdLoaded() {
                         AdManager.onAdLoaded("banner", adUnitId, responseInfo)
@@ -73,4 +73,13 @@ fun AdMobBannerAd(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+@Suppress("DEPRECATION")
+private fun anchoredAdaptiveBannerSize(
+    context: android.content.Context,
+    adWidth: Int,
+): AdSize {
+    // Keep the production-tested banner height behavior; the non-deprecated large banner API changes sizing.
+    return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, adWidth)
 }

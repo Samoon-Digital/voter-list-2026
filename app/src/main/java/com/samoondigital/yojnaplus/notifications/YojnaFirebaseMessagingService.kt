@@ -11,6 +11,11 @@ class YojnaFirebaseMessagingService : FirebaseMessagingService() {
         FirebaseIntegrationManager.handleRegistration(installationId, source = "registered")
     }
 
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        FirebaseIntegrationManager.handleRegistration(token, source = "token-refresh")
+    }
+
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         val notification = message.notification
