@@ -8,6 +8,7 @@ val ProductionAppOpenAdUnitId = "ca-app-pub-1638673809508848/5780292909"
 val ProductionBannerAdUnitId = "ca-app-pub-1638673809508848/5540207067"
 val ProductionInterstitialAdUnitId = "ca-app-pub-1638673809508848/8518136887"
 val ProductionNativeAdUnitId = "ca-app-pub-1638673809508848/3565193102"
+val DebugBannerAdUnitId = "ca-app-pub-3940256099942544/9214589741"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -58,7 +59,7 @@ android {
             isMinifyEnabled = false
             buildConfigField("String", "ADMOB_APP_ID", "\"$ProductionAdMobAppId\"")
             buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$ProductionAppOpenAdUnitId\"")
-            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$ProductionBannerAdUnitId\"")
+            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$DebugBannerAdUnitId\"")
             buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$ProductionInterstitialAdUnitId\"")
             buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$ProductionNativeAdUnitId\"")
             manifestPlaceholders["admobAppId"] = ProductionAdMobAppId

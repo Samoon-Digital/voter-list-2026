@@ -1,16 +1,25 @@
 package com.samoondigital.yojnaplus.core.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
+import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import com.samoondigital.yojnaplus.feature.downloads.DownloadsScreen
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.news.NewsScreen
@@ -34,48 +43,66 @@ fun AppNavHost(modifier: Modifier = Modifier) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Routes.HOME,
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            composable(Routes.HOME) {
-                HomeScreen(
-                    onDownloadPdf = { navController.navigate(Routes.PDF) },
-                    onOpenDownloads = {
-                        navController.navigate(Routes.DOWNLOADS) {
-                            launchSingleTop = true
-                        }
-                    },
-                    contentPadding = innerPadding,
-                )
+        Box(Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = Routes.HOME,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                composable(Routes.HOME) {
+                    HomeScreen(
+                        onDownloadPdf = { navController.navigate(Routes.PDF) },
+                        onOpenDownloads = {
+                            navController.navigate(Routes.DOWNLOADS) {
+                                launchSingleTop = true
+                            }
+                        },
+                        contentPadding = innerPadding,
+                    )
+                }
+                composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }
+                composable(Routes.NOTIFICATIONS) { NotificationsScreen(contentPadding = innerPadding) }
+                composable(Routes.SETTINGS) { SettingsScreen(contentPadding = innerPadding) }
+                composable(Routes.PDF) {
+                    PdfScreen(
+                        onBack = { navController.popBackStack() },
+                        onDownloadsComplete = {
+                            navController.navigate(Routes.DOWNLOADS) {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+                composable(Routes.DOWNLOADS) {
+                    DownloadsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
+                composable(Routes.PDF_VIEWER_ROUTE) {
+                    PdfViewerScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
             }
-            composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }
-            composable(Routes.NOTIFICATIONS) { NotificationsScreen(contentPadding = innerPadding) }
-            composable(Routes.SETTINGS) { SettingsScreen(contentPadding = innerPadding) }
-            composable(Routes.PDF) {
-                PdfScreen(
-                    onBack = { navController.popBackStack() },
-                    onDownloadsComplete = {
-                        navController.navigate(Routes.DOWNLOADS) {
-                            launchSingleTop = true
-                        }
-                    },
-                )
-            }
-            composable(Routes.DOWNLOADS) {
-                DownloadsScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenPdf = { uri, title ->
-                        navController.navigate(Routes.pdfViewerRoute(uri, title))
-                    },
-                )
-            }
-            composable(Routes.PDF_VIEWER_ROUTE) {
-                PdfViewerScreen(
-                    onBack = { navController.popBackStack() },
-                )
+            if (currentRoute != null && currentRoute != Routes.HOME) {
+                BottomRouteBanner()
             }
         }
     }
+}
+
+@Composable
+private fun BoxScope.BottomRouteBanner() {
+    val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    AdMobBannerAd(
+        placementKey = "route-bottom-banner",
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .offset(y = -navigationBarHeight)
+            .fillMaxWidth(),
+    )
 }

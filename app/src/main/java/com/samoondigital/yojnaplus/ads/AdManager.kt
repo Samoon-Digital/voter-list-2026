@@ -37,6 +37,7 @@ private object ProductionAdMobConfig {
     const val AppId = "ca-app-pub-1638673809508848~3940017763"
     const val AppOpen = "ca-app-pub-1638673809508848/5780292909"
     const val Banner = "ca-app-pub-1638673809508848/5540207067"
+    const val DebugBanner = "ca-app-pub-3940256099942544/9214589741"
     const val Interstitial = "ca-app-pub-1638673809508848/8518136887"
     const val Native = "ca-app-pub-1638673809508848/3565193102"
 }
@@ -221,8 +222,9 @@ object AdManager {
         if (AdUnitIds.appOpen != ProductionAdMobConfig.AppOpen) {
             reasons += "App Open ID ${AdUnitIds.appOpen} != ${ProductionAdMobConfig.AppOpen}"
         }
-        if (AdUnitIds.banner != ProductionAdMobConfig.Banner) {
-            reasons += "Banner ID ${AdUnitIds.banner} != ${ProductionAdMobConfig.Banner}"
+        val expectedBanner = if (BuildConfig.DEBUG) ProductionAdMobConfig.DebugBanner else ProductionAdMobConfig.Banner
+        if (AdUnitIds.banner != expectedBanner) {
+            reasons += "Banner ID ${AdUnitIds.banner} != $expectedBanner"
         }
         if (AdUnitIds.interstitial != ProductionAdMobConfig.Interstitial) {
             reasons += "Interstitial ID ${AdUnitIds.interstitial} != ${ProductionAdMobConfig.Interstitial}"

@@ -104,7 +104,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
-import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
 import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
 import com.samoondigital.yojnaplus.model.AssemblyDto
@@ -437,7 +436,6 @@ private fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> U
         itemIcon = Icons.Outlined.Map,
         loading = uiState.isLoading && uiState.states.isEmpty(),
         message = uiState.message,
-        headerBannerPlacementKey = "pdf-state-list-banner",
         showSearch = false,
         onSelected = onSelected,
     )
@@ -503,7 +501,6 @@ private fun DistrictStep(uiState: ElectoralRollUiState, onSelected: (DistrictDto
         loading = uiState.isLoading && uiState.districts.isEmpty(),
         message = uiState.message,
         selectedSummary = uiState.selectedSummary(),
-        headerBannerPlacementKey = "pdf-district-list-banner",
         onSelected = onSelected,
     )
 }
@@ -522,7 +519,6 @@ private fun AssemblyStep(uiState: ElectoralRollUiState, onSelected: (AssemblyDto
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
         message = uiState.message,
         selectedSummary = uiState.selectedSummary(),
-        headerBannerPlacementKey = "pdf-assembly-list-banner",
         onSelected = onSelected,
     )
 }
@@ -550,7 +546,6 @@ private fun PartsStep(
             loading = uiState.isLoading && uiState.parts.isEmpty(),
             message = uiState.message,
             selectedSummary = uiState.selectedSummary(),
-            headerBannerPlacementKey = "pdf-parts-list-banner",
             trailingHeader = {
                 OutlinedTextField(
                     value = query,
@@ -823,7 +818,6 @@ private fun <T> SearchableChoiceScreen(
     loading: Boolean,
     message: String?,
     selectedSummary: String? = null,
-    headerBannerPlacementKey: String? = null,
     headerIcon: ImageVector,
     itemIcon: ImageVector,
     onSelected: (T) -> Unit,
@@ -844,7 +838,6 @@ private fun <T> SearchableChoiceScreen(
         loading = loading,
         message = message,
         selectedSummary = selectedSummary,
-        headerBannerPlacementKey = headerBannerPlacementKey,
         trailingHeader = if (showSearch) {
             {
                 OutlinedTextField(
@@ -896,7 +889,6 @@ private fun ChoiceListScaffold(
     message: String?,
     selectedSummary: String? = null,
     trailingHeader: (@Composable ColumnScope.() -> Unit)? = null,
-    headerBannerPlacementKey: String? = null,
     headerNativeAdKey: String? = null,
     content: androidx.compose.foundation.lazy.LazyListScope.(LazyListState) -> Unit,
 ) {
@@ -914,9 +906,6 @@ private fun ChoiceListScaffold(
                     title = title,
                     subtitle = subtitle,
                 )
-                headerBannerPlacementKey?.let { placementKey ->
-                    AdMobBannerAd(placementKey = placementKey)
-                }
                 if (loading) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
