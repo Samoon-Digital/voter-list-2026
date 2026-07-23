@@ -12,19 +12,20 @@ import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.appopen.AppOpenAd
 import com.google.android.gms.ads.appopen.AppOpenAd.AppOpenAdLoadCallback
+import java.lang.ref.WeakReference
 import kotlin.math.max
 import kotlin.math.min
 
 object AppOpenAdManager {
     private const val Tag = "AdMobAppOpen"
     private const val Format = "app-open"
-    private const val BackgroundThresholdMs = 25_000L
-    private const val CooldownMs = 7 * 60_000L
     private const val MaxAdAgeMs = 4 * 60 * 60_000L
+    private const val MaxShowsPerSession = 2
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private var appContext: Application? = null
+    private var currentActivityRef: WeakReference<Activity>? = null
     private var appOpenAd: AppOpenAd? = null
     private var loadTimeMs = 0L
     private var loading = false
@@ -32,18 +33,25 @@ object AppOpenAdManager {
     private var registered = false
     private var foregroundCount = 0
     private var sawFirstForeground = false
-    private var backgroundedAtMs = 0L
-    private var lastShownAtMs = 0L
+    private var sawFirstResume = false
+    private var isHomeVisible = false
+    private var homeOpportunityActive = true
+    private var shownCount = 0
+    private var shownFromHome = false
+    private var shownFromForeground = false
+    private var suppressNextResumeShow = false
     private var retryAttempt = 0
     private var retryRunnable: Runnable? = null
-    private var currentActivity: Activity? = null
 
     fun register(application: Application) {
         if (registered) return
         registered = true
         appContext = application
         application.registerActivityLifecycleCallbacks(callbacks)
-        Log.d(Tag, "registered backgroundThresholdMs=$BackgroundThresholdMs cooldownMs=$CooldownMs maxAdAgeMs=$MaxAdAgeMs")
+        Log.d(
+            Tag,
+            "registered maxAdAgeMs=$MaxAdAgeMs maxShowsPerSession=$MaxShowsPerSession",
+        )
         preload(application)
     }
 
@@ -52,18 +60,62 @@ object AppOpenAdManager {
         mainHandler.post { preloadOnMain() }
     }
 
+    fun setHomeScreenVisible(visible: Boolean) {
+        mainHandler.post {
+            val wasVisible = isHomeVisible
+            isHomeVisible = visible
+
+            if (wasVisible != visible) {
+                Log.d(
+                    Tag,
+                    "home-visibility visible=$visible loaded=${appOpenAd != null} homeOpportunityActive=$homeOpportunityActive shownCount=$shownCount",
+                )
+            }
+
+            if (!visible && homeOpportunityActive && !shownFromHome && shownCount == 0) {
+                homeOpportunityActive = false
+                Log.d(Tag, "home-show-window-closed action=cache-for-foreground")
+            }
+
+            if (visible) {
+                showIfAvailable(ShowSource.Home)
+            }
+        }
+    }
+
     private val callbacks = object : Application.ActivityLifecycleCallbacks {
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
 
         override fun onActivityStarted(activity: Activity) {
             val wasBackground = foregroundCount == 0
             foregroundCount += 1
-            currentActivity = activity
-            if (wasBackground) handleForeground(activity)
+            currentActivityRef = WeakReference(activity)
+
+            if (!wasBackground) return
+            if (!sawFirstForeground) {
+                sawFirstForeground = true
+                Log.d(Tag, "foreground-skipped reason=cold-start")
+                preload(activity.application)
+                return
+            }
+
+            showIfAvailable(ShowSource.Foreground)
         }
 
         override fun onActivityResumed(activity: Activity) {
-            currentActivity = activity
+            currentActivityRef = WeakReference(activity)
+            if (!sawFirstResume) {
+                sawFirstResume = true
+                Log.d(Tag, "resume-skipped reason=first-resume")
+                return
+            }
+            if (suppressNextResumeShow) {
+                suppressNextResumeShow = false
+                Log.d(Tag, "resume-skipped reason=post-ad-resume")
+                return
+            }
+
+            showIfAvailable(ShowSource.Foreground)
         }
 
         override fun onActivityPaused(activity: Activity) = Unit
@@ -71,98 +123,116 @@ object AppOpenAdManager {
         override fun onActivityStopped(activity: Activity) {
             foregroundCount = max(0, foregroundCount - 1)
             if (foregroundCount == 0) {
-                backgroundedAtMs = SystemClock.elapsedRealtime()
-                Log.d(Tag, "backgrounded atMs=$backgroundedAtMs")
+                Log.d(Tag, "backgrounded")
             }
         }
 
         override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
         override fun onActivityDestroyed(activity: Activity) {
-            if (currentActivity === activity) currentActivity = null
+            if (currentActivityRef?.get() === activity) currentActivityRef = null
         }
     }
 
-    private fun handleForeground(activity: Activity) {
-        if (!sawFirstForeground) {
-            sawFirstForeground = true
-            Log.d(Tag, "show-skipped reason=cold-start")
-            preload(activity.application)
+    private fun showIfAvailable(source: ShowSource) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { showIfAvailable(source) }
             return
         }
-
-        val now = SystemClock.elapsedRealtime()
-        val backgroundDurationMs = if (backgroundedAtMs > 0L) now - backgroundedAtMs else 0L
-        if (backgroundDurationMs < BackgroundThresholdMs) {
-            Log.d(Tag, "show-skipped reason=background-too-short durationMs=$backgroundDurationMs")
-            preload(activity.application)
-            return
-        }
-
-        val cooldownRemainingMs = CooldownMs - (now - lastShownAtMs)
-        if (lastShownAtMs > 0L && cooldownRemainingMs > 0L) {
-            Log.d(Tag, "show-skipped reason=cooldown remainingMs=$cooldownRemainingMs")
-            preload(activity.application)
-            return
-        }
-
-        showIfAvailable(activity)
-    }
-
-    private fun showIfAvailable(activity: Activity) {
         if (showing) {
-            Log.d(Tag, "show-skipped reason=already-showing")
+            Log.d(Tag, "show-skipped source=${source.logValue} reason=already-showing")
+            return
+        }
+        if (shownCount >= MaxShowsPerSession) {
+            Log.d(Tag, "show-skipped source=${source.logValue} reason=session-cap count=$shownCount")
+            return
+        }
+        if (shownFromForeground) {
+            Log.d(Tag, "show-skipped source=${source.logValue} reason=foreground-already-shown")
+            return
+        }
+        if (source == ShowSource.Home && (!isHomeVisible || !homeOpportunityActive || shownFromHome)) {
+            Log.d(
+                Tag,
+                "show-skipped source=home reason=not-eligible visible=$isHomeVisible homeOpportunityActive=$homeOpportunityActive shownFromHome=$shownFromHome",
+            )
+            return
+        }
+
+        val activity = currentActivityRef?.get()
+        if (activity == null || activity.isFinishing || activity.isDestroyed) {
+            Log.d(Tag, "show-skipped source=${source.logValue} reason=activity-unavailable")
             return
         }
 
         val ad = appOpenAd
         if (ad == null) {
-            Log.d(Tag, "show-skipped reason=not-loaded")
-            preload(activity.application)
+            Log.d(Tag, "show-skipped source=${source.logValue} reason=not-loaded")
+            maybePreloadForFuture(source, activity.application)
             return
         }
 
         if (!isAdFresh()) {
-            Log.d(Tag, "show-skipped reason=stale ageMs=${SystemClock.elapsedRealtime() - loadTimeMs}")
+            Log.d(Tag, "show-skipped source=${source.logValue} reason=stale ageMs=${SystemClock.elapsedRealtime() - loadTimeMs}")
             appOpenAd = null
-            preload(activity.application)
+            maybePreloadForFuture(source, activity.application)
             return
         }
 
         appOpenAd = null
         showing = true
+        if (source == ShowSource.Home) {
+            homeOpportunityActive = false
+        }
+
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdShowedFullScreenContent() {
-                Log.d(Tag, "show-started unit=${AdUnitIds.appOpen}")
+                suppressNextResumeShow = true
+                if (source == ShowSource.Home) {
+                    shownFromHome = true
+                } else {
+                    shownFromForeground = true
+                }
+                Log.d(Tag, "show-started source=${source.logValue} unit=${AdUnitIds.appOpen}")
             }
 
             override fun onAdDismissedFullScreenContent() {
                 showing = false
-                lastShownAtMs = SystemClock.elapsedRealtime()
-                Log.d(Tag, "show-dismissed unit=${AdUnitIds.appOpen}")
-                preload(activity.application)
+                shownCount += 1
+                Log.d(
+                    Tag,
+                    "show-dismissed source=${source.logValue} count=$shownCount unit=${AdUnitIds.appOpen}",
+                )
+                maybePreloadAfterShow(source, activity.application)
             }
 
             override fun onAdFailedToShowFullScreenContent(error: AdError) {
                 showing = false
-                Log.w(Tag, "show-failed unit=${AdUnitIds.appOpen} code=${error.code} domain=${error.domain} message=${error.message}")
-                preload(activity.application)
+                Log.w(
+                    Tag,
+                    "show-failed source=${source.logValue} unit=${AdUnitIds.appOpen} code=${error.code} domain=${error.domain} message=${error.message}",
+                )
+                maybePreloadAfterShow(source, activity.application)
             }
 
             override fun onAdImpression() {
-                Log.d(Tag, "impression format=app-open unit=${AdUnitIds.appOpen}")
+                Log.d(Tag, "impression format=app-open source=${source.logValue} unit=${AdUnitIds.appOpen}")
             }
 
             override fun onAdClicked() {
-                Log.d(Tag, "clicked format=app-open unit=${AdUnitIds.appOpen}")
+                Log.d(Tag, "clicked format=app-open source=${source.logValue} unit=${AdUnitIds.appOpen}")
             }
         }
 
         runCatching { ad.show(activity) }
             .onFailure { throwable ->
                 showing = false
-                Log.e(Tag, "show-exception unit=${AdUnitIds.appOpen} exception=${throwable.message}", throwable)
-                preload(activity.application)
+                Log.e(
+                    Tag,
+                    "show-exception source=${source.logValue} unit=${AdUnitIds.appOpen} exception=${throwable.message}",
+                    throwable,
+                )
+                maybePreloadAfterShow(source, activity.application)
             }
     }
 
@@ -170,6 +240,13 @@ object AppOpenAdManager {
         val context = appContext
         if (context == null) {
             Log.w(Tag, "preload-skipped reason=context-null")
+            return
+        }
+        if (!canLoadMore()) {
+            Log.d(
+                Tag,
+                "preload-skipped reason=session-state shownCount=$shownCount shownFromForeground=$shownFromForeground",
+            )
             return
         }
         if (loading) {
@@ -191,7 +268,7 @@ object AppOpenAdManager {
         AdManager.loadWhenReady(
             format = Format,
             adUnitId = AdUnitIds.appOpen,
-            isActive = { loading && appOpenAd == null },
+            isActive = { loading && appOpenAd == null && canLoadMore() },
         ) { request ->
             AppOpenAd.load(
                 context,
@@ -204,7 +281,11 @@ object AppOpenAdManager {
                         appOpenAd = ad
                         loadTimeMs = SystemClock.elapsedRealtime()
                         AdManager.onAdLoaded(Format, AdUnitIds.appOpen, ad.responseInfo)
-                        Log.d(Tag, "preload-finished status=success")
+                        Log.d(
+                            Tag,
+                            "preload-finished status=success homeVisible=$isHomeVisible homeOpportunityActive=$homeOpportunityActive shownCount=$shownCount",
+                        )
+                        if (isHomeVisible) showIfAvailable(ShowSource.Home)
                     }
 
                     override fun onAdFailedToLoad(error: LoadAdError) {
@@ -219,8 +300,26 @@ object AppOpenAdManager {
         }
     }
 
+    private fun maybePreloadForFuture(source: ShowSource, application: Application) {
+        if (source == ShowSource.Home || !shownFromForeground) preload(application)
+    }
+
+    private fun maybePreloadAfterShow(source: ShowSource, application: Application) {
+        if (source == ShowSource.Home && canLoadMore()) {
+            preload(application)
+        } else {
+            retryRunnable?.let(mainHandler::removeCallbacks)
+            retryRunnable = null
+            Log.d(
+                Tag,
+                "preload-skipped reason=post-show-policy source=${source.logValue} shownCount=$shownCount shownFromForeground=$shownFromForeground",
+            )
+        }
+    }
+
     private fun scheduleRetry() {
         val context = appContext ?: return
+        if (!canLoadMore()) return
         val delayMs = min(60_000L, 1_000L * (1 shl min(retryAttempt, 6)))
         retryRunnable?.let(mainHandler::removeCallbacks)
         retryRunnable = Runnable {
@@ -231,6 +330,14 @@ object AppOpenAdManager {
         mainHandler.postDelayed(retryRunnable!!, delayMs)
     }
 
+    private fun canLoadMore(): Boolean =
+        shownCount < MaxShowsPerSession && !shownFromForeground
+
     private fun isAdFresh(): Boolean =
         appOpenAd != null && SystemClock.elapsedRealtime() - loadTimeMs < MaxAdAgeMs
+
+    private enum class ShowSource(val logValue: String) {
+        Home("home"),
+        Foreground("foreground"),
+    }
 }
