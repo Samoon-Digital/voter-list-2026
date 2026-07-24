@@ -5,6 +5,8 @@
     <!-- Home cards -->
     <string name="voter_list_pdf">Voter List PDF</string>
     <string name="voter_list_pdf_desc">Download latest district / Assembly &amp; part-wise electoral roll PDF</string>
+    <string name="old_sir_list">Old SIR List</string>
+    <string name="old_sir_list_desc">Recommended for checking old SIR voter list PDFs quickly.</string>
     <string name="download_pdf">Download PDF</string>
 
     <!-- Sections / nav -->

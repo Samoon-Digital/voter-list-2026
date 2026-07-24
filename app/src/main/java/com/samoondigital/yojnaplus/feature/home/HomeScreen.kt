@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
@@ -83,6 +84,8 @@ fun HomeScreen(
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Spacer(Modifier.height(24.dp))
             VoterListPdfCard(onClick = onDownloadPdf)
+            Spacer(Modifier.height(16.dp))
+            OldSirListCard(onClick = onDownloadPdf)
             Spacer(Modifier.height(16.dp))
             AdMobNativeAd()
             Spacer(Modifier.height(18.dp))
@@ -232,8 +235,37 @@ private fun HomeStatusBarEffect() {
 
 private val HomePurpleDark = Color(0xFF24106D)
 private val HomePurple = Color(0xFF4326B8)
+
 @Composable
 private fun VoterListPdfCard(onClick: () -> Unit) {
+    HomePdfCard(
+        title = stringResource(R.string.voter_list_pdf),
+        description = stringResource(R.string.voter_list_pdf_desc),
+        actionLabel = stringResource(R.string.download_pdf),
+        showTrending = false,
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun OldSirListCard(onClick: () -> Unit) {
+    HomePdfCard(
+        title = stringResource(R.string.old_sir_list),
+        description = stringResource(R.string.old_sir_list_desc),
+        actionLabel = stringResource(R.string.download_pdf),
+        showTrending = true,
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun HomePdfCard(
+    title: String,
+    description: String,
+    actionLabel: String,
+    showTrending: Boolean,
+    onClick: () -> Unit,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -273,13 +305,38 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
                         .background(Color(0xFFE5F5EA))
                         .padding(start = 18.dp, top = 14.dp, end = 16.dp, bottom = 14.dp),
                 ) {
-                    Text(
-                        text = stringResource(R.string.voter_list_pdf),
-                        color = Green,
-                        fontSize = 21.sp,
-                        lineHeight = 25.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = title,
+                            color = Green,
+                            fontSize = 21.sp,
+                            lineHeight = 25.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (showTrending) {
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .background(Green.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.TrendingUp,
+                                    contentDescription = "Trending",
+                                    tint = Green,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    }
                     Spacer(Modifier.height(6.dp))
                     Box(
                         modifier = Modifier
@@ -289,7 +346,7 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.voter_list_pdf_desc),
+                        text = description,
                         color = Green,
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
@@ -308,7 +365,7 @@ private fun VoterListPdfCard(onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = stringResource(R.string.download_pdf),
+                        text = actionLabel,
                         color = Color.White,
                         fontSize = 15.sp,
                         lineHeight = 18.sp,
