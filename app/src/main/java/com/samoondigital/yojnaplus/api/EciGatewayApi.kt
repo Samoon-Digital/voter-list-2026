@@ -4,6 +4,10 @@ import com.samoondigital.yojnaplus.model.AcLanguageRequest
 import com.samoondigital.yojnaplus.model.CaptchaEncryptedDto
 import com.samoondigital.yojnaplus.model.EciEnvelope
 import com.samoondigital.yojnaplus.model.EncryptedBody
+import com.samoondigital.yojnaplus.model.OldSirAssemblyDto
+import com.samoondigital.yojnaplus.model.OldSirDistrictDto
+import com.samoondigital.yojnaplus.model.OldSirPartDto
+import com.samoondigital.yojnaplus.model.OldSirSectionRequest
 import com.samoondigital.yojnaplus.model.PartDto
 import com.samoondigital.yojnaplus.model.RollTypeDto
 import kotlinx.serialization.json.JsonElement
@@ -44,4 +48,25 @@ interface EciGatewayApi {
 
     @POST("api/v1/printing-publish/generate-published-pdfs")
     suspend fun generatePublishedPdfs(@Body body: EncryptedBody): EciEnvelope<List<JsonElement>>
+
+    @GET("api/v1/citizen/sir/getDistrict")
+    suspend fun getOldSirDistricts(@Header("state") stateCd: String): EciEnvelope<List<OldSirDistrictDto>>
+
+    @GET("api/v1/citizen/sir/getAsmblyByDist")
+    suspend fun getOldSirAssemblies(
+        @Header("state") stateCd: String,
+        @Query("District") districtNo: Int,
+    ): EciEnvelope<List<OldSirAssemblyDto>>
+
+    @GET("api/v1/citizen/sir/getPartByAc")
+    suspend fun getOldSirParts(
+        @Header("state") stateCd: String,
+        @Query("Asmbly") acNumber: Int,
+    ): EciEnvelope<List<OldSirPartDto>>
+
+    @POST("api/v1/citizen/sir/getSectionByAcAndPart")
+    suspend fun getOldSirSections(
+        @Header("state") stateCd: String,
+        @Body body: OldSirSectionRequest,
+    ): EciEnvelope<List<JsonElement>>
 }

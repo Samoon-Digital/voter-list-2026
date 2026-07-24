@@ -65,6 +65,7 @@ import com.samoondigital.yojnaplus.notifications.NotificationPermissionPrompt
 @Composable
 fun HomeScreen(
     onDownloadPdf: () -> Unit,
+    onOpenOldSir: () -> Unit,
     onOpenDownloads: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -85,7 +86,7 @@ fun HomeScreen(
             Spacer(Modifier.height(24.dp))
             VoterListPdfCard(onClick = onDownloadPdf)
             Spacer(Modifier.height(16.dp))
-            OldSirListCard(onClick = onDownloadPdf)
+            OldSirListCard(onClick = onOpenOldSir)
             Spacer(Modifier.height(16.dp))
             AdMobNativeAd()
             Spacer(Modifier.height(18.dp))

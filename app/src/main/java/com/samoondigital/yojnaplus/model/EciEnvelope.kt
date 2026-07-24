@@ -94,6 +94,51 @@ data class PartDto(
 )
 
 @Serializable
+data class OldSirDistrictDto(
+    val id: Int,
+    val districtNo: Int,
+    val districtNameHN: String? = null,
+    val distName: String? = null,
+    val stateCd: String? = null,
+) {
+    val displayName: String
+        get() = distName ?: districtNameHN ?: districtNo.toString()
+}
+
+@Serializable
+data class OldSirAssemblyDto(
+    val id: Int,
+    val distNo: Int? = null,
+    val acNo: Int,
+    val acName: String,
+    val acNameV1: String? = null,
+    val acType: String? = null,
+) {
+    val displayName: String
+        get() = "$acNo - $acName"
+}
+
+@Serializable
+data class OldSirPartDto(
+    val id: Int,
+    val distNo: Int? = null,
+    val acNumber: Int,
+    val partNumber: Int,
+    val partName: String,
+    val partNameV1: String? = null,
+    val oldPdfUrl: String? = null,
+) {
+    val displayName: String
+        get() = "Part $partNumber - $partName"
+}
+
+@Serializable
+data class OldSirSectionRequest(
+    val acNumber: Int,
+    val partNumber: Int,
+)
+
+@Serializable
 data class AcLanguageRequest(
     val stateCd: String,
     val acNumber: Int,

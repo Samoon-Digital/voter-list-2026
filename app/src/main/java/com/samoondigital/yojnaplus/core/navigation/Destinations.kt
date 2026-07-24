@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 object Routes {
     const val HOME = "home"
     const val PDF = "pdf"
+    const val OLD_SIR = "old_sir"
     const val DOWNLOADS = "downloads"
     const val PDF_VIEWER = "pdf_viewer"
     const val PDF_VIEWER_ROUTE = "$PDF_VIEWER/{uri}/{title}"

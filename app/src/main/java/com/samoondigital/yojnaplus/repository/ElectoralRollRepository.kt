@@ -7,6 +7,9 @@ import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.model.CaptchaData
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.GeneratePdfRequest
+import com.samoondigital.yojnaplus.model.OldSirAssemblyDto
+import com.samoondigital.yojnaplus.model.OldSirDistrictDto
+import com.samoondigital.yojnaplus.model.OldSirPartDto
 import com.samoondigital.yojnaplus.model.PartDto
 import com.samoondigital.yojnaplus.model.PartListRequest
 import com.samoondigital.yojnaplus.model.RollTypeDto
@@ -139,6 +142,22 @@ class ElectoralRollRepository @Inject constructor(
         )
     }
 
+    suspend fun getOldSirDistricts(stateCd: String): List<OldSirDistrictDto> =
+        gatewayApi.getOldSirDistricts(stateCd)
+            .requirePayload()
+            .sortedBy { it.districtNo }
+
+    suspend fun getOldSirAssemblies(stateCd: String, districtNo: Int): List<OldSirAssemblyDto> =
+        gatewayApi.getOldSirAssemblies(stateCd, districtNo)
+            .requirePayload()
+            .sortedBy { it.acNo }
+
+    suspend fun getOldSirParts(stateCd: String, acNumber: Int): List<OldSirPartDto> =
+        gatewayApi.getOldSirParts(stateCd, acNumber)
+            .requirePayload()
+            .filter { !it.oldPdfUrl.isNullOrBlank() }
+            .sortedBy { it.partNumber }
+
     private fun <T> com.samoondigital.yojnaplus.model.EciEnvelope<T>.requirePayload(): T {
         if (statusCode != null && statusCode != 200) {
             throw IllegalStateException(message ?: "Server error ($statusCode)")
@@ -150,7 +169,9 @@ class ElectoralRollRepository @Inject constructor(
         element: JsonElement,
         serializer: kotlinx.serialization.KSerializer<T>,
     ): List<T> {
-        val payload = (element as? JsonObject)?.get("payload") ?: element
+        val payload = (element as? JsonObject)?.get("payload")
+            ?: (element as? JsonObject)?.get("value")
+            ?: element
         return json.decodeFromJsonElement(ListSerializer(serializer), payload)
     }
 

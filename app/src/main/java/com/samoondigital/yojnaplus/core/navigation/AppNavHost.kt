@@ -24,6 +24,7 @@ import com.samoondigital.yojnaplus.feature.downloads.DownloadsScreen
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.news.NewsScreen
 import com.samoondigital.yojnaplus.feature.notifications.NotificationsScreen
+import com.samoondigital.yojnaplus.feature.oldsir.OldSirScreen
 import com.samoondigital.yojnaplus.feature.pdf.PdfScreen
 import com.samoondigital.yojnaplus.feature.pdfviewer.PdfViewerScreen
 import com.samoondigital.yojnaplus.feature.settings.SettingsScreen
@@ -52,12 +53,21 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.HOME) {
                     HomeScreen(
                         onDownloadPdf = { navController.navigate(Routes.PDF) },
+                        onOpenOldSir = { navController.navigate(Routes.OLD_SIR) },
                         onOpenDownloads = {
                             navController.navigate(Routes.DOWNLOADS) {
                                 launchSingleTop = true
                             }
                         },
                         contentPadding = innerPadding,
+                    )
+                }
+                composable(Routes.OLD_SIR) {
+                    OldSirScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
                     )
                 }
                 composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }

@@ -83,6 +83,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.Normalizer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -596,9 +598,13 @@ private class PdfDocument private constructor(
         private fun copyToViewerCache(context: Context, uri: Uri): File {
             val dir = File(context.cacheDir, "pdf_viewer").apply { mkdirs() }
             val target = File(dir, "viewer-${uri.toString().hashCode()}.pdf")
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                target.outputStream().use { output -> input.copyTo(output) }
-            } ?: throw IllegalStateException("Unable to read PDF file")
+            if (uri.scheme == "http" || uri.scheme == "https") {
+                copyRemotePdf(uri, target)
+            } else {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    target.outputStream().use { output -> input.copyTo(output) }
+                } ?: throw IllegalStateException("Unable to read PDF file")
+            }
 
             if (target.length() == 0L) {
                 target.delete()
@@ -609,6 +615,20 @@ private class PdfDocument private constructor(
                 throw IllegalStateException("Invalid PDF file")
             }
             return target
+        }
+
+        private fun copyRemotePdf(uri: Uri, target: File) {
+            val connection = URL(uri.toString().replace(" ", "%20")).openConnection() as HttpURLConnection
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 60_000
+            connection.setRequestProperty(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36",
+            )
+            connection.inputStream.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+            connection.disconnect()
         }
 
         private fun File.looksLikePdf(): Boolean {
