@@ -155,7 +155,6 @@ class ElectoralRollRepository @Inject constructor(
     suspend fun getOldSirParts(stateCd: String, acNumber: Int): List<OldSirPartDto> =
         gatewayApi.getOldSirParts(stateCd, acNumber)
             .requirePayload()
-            .filter { !it.oldPdfUrl.isNullOrBlank() }
             .sortedBy { it.partNumber }
 
     private fun <T> com.samoondigital.yojnaplus.model.EciEnvelope<T>.requirePayload(): T {

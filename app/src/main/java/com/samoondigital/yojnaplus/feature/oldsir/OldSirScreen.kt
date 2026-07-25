@@ -419,7 +419,10 @@ private fun PollingStationStep(
         loading = uiState.isLoading && uiState.parts.isEmpty(),
         message = uiState.message,
         selectedSummary = uiState.selectedPart?.displayName,
-        onSelected = onSelected,
+        onSelected = { part ->
+            onSelected(part)
+            onView(part)
+        },
         itemTrailing = { part ->
             if (part == uiState.selectedPart) {
                 Button(

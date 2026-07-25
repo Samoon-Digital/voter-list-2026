@@ -44,7 +44,7 @@ class OldSirViewModel @Inject constructor(
     }
 
     fun selectDistrict(district: OldSirDistrictDto) {
-        val stateCd = _state.value.selectedState?.stateCd ?: return
+        val stateCd = district.stateCd ?: _state.value.selectedState?.stateCd ?: return
         _state.update {
             it.resetAfterDistrict().copy(
                 step = OldSirStep.Assembly,
@@ -56,7 +56,7 @@ class OldSirViewModel @Inject constructor(
     }
 
     fun selectAssembly(assembly: OldSirAssemblyDto) {
-        val stateCd = _state.value.selectedState?.stateCd ?: return
+        val stateCd = _state.value.selectedDistrict?.stateCd ?: _state.value.selectedState?.stateCd ?: return
         _state.update {
             it.resetAfterAssembly().copy(
                 step = OldSirStep.PollingStation,
