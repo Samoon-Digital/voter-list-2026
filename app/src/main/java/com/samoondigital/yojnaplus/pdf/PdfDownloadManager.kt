@@ -50,6 +50,8 @@ class PdfDownloadManager @Inject constructor(
         if (downloadUri.host.equals(ECI_OLD_SIR_HOST, ignoreCase = true)) {
             // ECI's edge server rejects Android DownloadManager's default User-Agent.
             request.addRequestHeader("User-Agent", ECI_DOWNLOAD_USER_AGENT)
+        } else if (downloadUri.host.equals(UP_ROLL_HOST, ignoreCase = true)) {
+            request.addRequestHeader("User-Agent", UP_DOWNLOAD_USER_AGENT)
         }
         val id = downloadManager.enqueue(request)
         var completed = false
@@ -145,7 +147,10 @@ class PdfDownloadManager @Inject constructor(
 
     private companion object {
         const val ECI_OLD_SIR_HOST = "www.eci.gov.in"
+        const val UP_ROLL_HOST = "ceouttarpradesh.nic.in"
         const val ECI_DOWNLOAD_USER_AGENT = "curl/8.10.1 VoterList2026/Android"
+        const val UP_DOWNLOAD_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
     }
 }
 

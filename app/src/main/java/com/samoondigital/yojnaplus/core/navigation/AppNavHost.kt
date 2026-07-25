@@ -28,6 +28,7 @@ import com.samoondigital.yojnaplus.feature.oldsir.OldSirScreen
 import com.samoondigital.yojnaplus.feature.pdf.PdfScreen
 import com.samoondigital.yojnaplus.feature.pdfviewer.PdfViewerScreen
 import com.samoondigital.yojnaplus.feature.settings.SettingsScreen
+import com.samoondigital.yojnaplus.feature.up2003.UpRollScreen
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -64,6 +65,15 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
                 composable(Routes.OLD_SIR) {
                     OldSirScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenUttarPradesh = { navController.navigate(Routes.UP_2003) },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
+                composable(Routes.UP_2003) {
+                    UpRollScreen(
                         onBack = { navController.popBackStack() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))

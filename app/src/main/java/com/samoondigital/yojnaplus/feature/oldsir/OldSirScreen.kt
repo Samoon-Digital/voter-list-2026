@@ -87,6 +87,7 @@ private val OldSirMuted = Color(0xFF686A8D)
 private val OldSirSurface = Color(0xFFFCFCFF)
 private val OldSirStroke = Color(0xFFE3E2F5)
 private const val NativeAdInterval = 7
+private const val UttarPradeshStateCd = "S24"
 private val ChoiceAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -99,6 +100,7 @@ private val ChoiceAccents = listOf(
 @Composable
 fun OldSirScreen(
     onBack: () -> Unit,
+    onOpenUttarPradesh: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: OldSirViewModel = hiltViewModel(),
@@ -146,8 +148,16 @@ fun OldSirScreen(
                 when (step) {
                     OldSirStep.State -> StateStep(
                         uiState = uiState,
-                        onSelected = viewModel::selectState,
-                        itemEnabled = viewModel::isStateSupported,
+                        onSelected = { state ->
+                            if (state.stateCd == UttarPradeshStateCd) {
+                                onOpenUttarPradesh()
+                            } else {
+                                viewModel.selectState(state)
+                            }
+                        },
+                        itemEnabled = { state ->
+                            state.stateCd == UttarPradeshStateCd || viewModel.isStateSupported(state)
+                        },
                     )
                     OldSirStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
                     OldSirStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
