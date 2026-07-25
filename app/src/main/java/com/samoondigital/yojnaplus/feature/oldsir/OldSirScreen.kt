@@ -41,10 +41,9 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -55,12 +54,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -104,6 +105,14 @@ fun OldSirScreen(
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
 
+    LaunchedEffect(viewModel) {
+        viewModel.eventFlow.collect { event ->
+            when (event) {
+                is OldSirEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
+            }
+        }
+    }
+
     fun handleBack() {
         if (!viewModel.goBack()) onBack()
     }
@@ -117,22 +126,6 @@ fun OldSirScreen(
                 uiState = uiState,
                 onBack = ::handleBack,
             )
-        },
-        floatingActionButton = {
-            val part = uiState.selectedPart
-            val pdfUrl = part?.oldPdfUrl
-            if (uiState.step == OldSirStep.PollingStation && !pdfUrl.isNullOrBlank()) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        onOpenPdf(
-                            pdfUrl,
-                            "Old SIR Part ${part.partNumber}",
-                        )
-                    },
-                    icon = { Icon(Icons.Outlined.PictureAsPdf, contentDescription = null) },
-                    text = { Text("View PDF") },
-                )
-            }
         },
     ) { padding ->
         Column(
@@ -151,15 +144,16 @@ fun OldSirScreen(
                 label = "old-sir-step",
             ) { step ->
                 when (step) {
-                    OldSirStep.State -> StateStep(uiState, viewModel::selectState)
+                    OldSirStep.State -> StateStep(
+                        uiState = uiState,
+                        onSelected = viewModel::selectState,
+                        itemEnabled = viewModel::isStateSupported,
+                    )
                     OldSirStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
                     OldSirStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
                     OldSirStep.PollingStation -> PollingStationStep(
                         uiState = uiState,
-                        onSelected = viewModel::selectPart,
-                        onView = { part ->
-                            part.oldPdfUrl?.let { onOpenPdf(it, "Old SIR Part ${part.partNumber}") }
-                        },
+                        onSelected = viewModel::openPartPdf,
                     )
                 }
             }
@@ -350,7 +344,11 @@ private fun StepProgress(
 }
 
 @Composable
-private fun StateStep(uiState: OldSirUiState, onSelected: (StateDto) -> Unit) {
+private fun StateStep(
+    uiState: OldSirUiState,
+    onSelected: (StateDto) -> Unit,
+    itemEnabled: (StateDto) -> Boolean,
+) {
     SearchableChoiceScreen(
         title = "Select State",
         subtitle = "Choose the state where the old SIR roll is published.",
@@ -363,6 +361,7 @@ private fun StateStep(uiState: OldSirUiState, onSelected: (StateDto) -> Unit) {
         loading = uiState.isLoading && uiState.states.isEmpty(),
         message = uiState.message,
         showSearch = false,
+        itemEnabled = itemEnabled,
         onSelected = onSelected,
     )
 }
@@ -405,7 +404,6 @@ private fun AssemblyStep(uiState: OldSirUiState, onSelected: (OldSirAssemblyDto)
 private fun PollingStationStep(
     uiState: OldSirUiState,
     onSelected: (OldSirPartDto) -> Unit,
-    onView: (OldSirPartDto) -> Unit,
 ) {
     SearchableChoiceScreen(
         title = "Select Polling Station",
@@ -418,19 +416,32 @@ private fun PollingStationStep(
         itemIcon = Icons.Outlined.PictureAsPdf,
         loading = uiState.isLoading && uiState.parts.isEmpty(),
         message = uiState.message,
-        selectedSummary = uiState.selectedPart?.displayName,
-        onSelected = { part ->
-            onSelected(part)
-            onView(part)
-        },
+        itemTitleMaxLines = Int.MAX_VALUE,
+        onSelected = onSelected,
         itemTrailing = { part ->
-            if (part == uiState.selectedPart) {
-                Button(
-                    onClick = { onView(part) },
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+            if (uiState.downloadingPartNumber == part.partNumber) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("View")
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 3.dp,
+                    )
+                    Text(
+                        text = "${uiState.downloadProgress}%",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = OldSirPurple,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
+            } else {
+                Icon(
+                    Icons.Outlined.PictureAsPdf,
+                    contentDescription = null,
+                    tint = OldSirPurple,
+                    modifier = Modifier.size(24.dp),
+                )
             }
         },
     )
@@ -447,7 +458,8 @@ private fun <T> SearchableChoiceScreen(
     itemSubtitle: (T) -> String?,
     loading: Boolean,
     message: String?,
-    selectedSummary: String? = null,
+    itemTitleMaxLines: Int = 1,
+    itemEnabled: (T) -> Boolean = { true },
     headerIcon: ImageVector,
     itemIcon: ImageVector,
     itemTrailing: (@Composable (T) -> Unit)? = null,
@@ -468,7 +480,6 @@ private fun <T> SearchableChoiceScreen(
         headerIcon = headerIcon,
         loading = loading,
         message = message,
-        selectedSummary = selectedSummary,
         trailingHeader = if (showSearch) {
             {
                 OutlinedTextField(
@@ -496,6 +507,8 @@ private fun <T> SearchableChoiceScreen(
                     subtitle = itemSubtitle(item),
                     icon = itemIcon,
                     accentIndex = index,
+                    titleMaxLines = itemTitleMaxLines,
+                    enabled = itemEnabled(item),
                     trailing = itemTrailing?.let { trailing -> { trailing(item) } },
                     onClick = { onSelected(item) },
                 )
@@ -517,7 +530,6 @@ private fun ChoiceListScaffold(
     headerIcon: ImageVector,
     loading: Boolean,
     message: String?,
-    selectedSummary: String? = null,
     trailingHeader: (@Composable ColumnScope.() -> Unit)? = null,
     content: androidx.compose.foundation.lazy.LazyListScope.(LazyListState) -> Unit,
 ) {
@@ -545,21 +557,7 @@ private fun ChoiceListScaffold(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                selectedSummary?.let {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFF2EFFF),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = OldSirPurple,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(12.dp),
-                        )
-                    }
-                }
+
                 trailingHeader?.invoke(this)
                 HorizontalDivider(color = OldSirStroke)
             }
@@ -648,16 +646,20 @@ private fun ChoiceCard(
     onClick: () -> Unit,
     icon: ImageVector,
     accentIndex: Int,
+    titleMaxLines: Int = 1,
+    enabled: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val accent = ChoiceAccents[accentIndex % ChoiceAccents.size]
     ElevatedCard(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.45f)
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(8.dp),
@@ -693,7 +695,7 @@ private fun ChoiceCard(
                     style = MaterialTheme.typography.titleMedium,
                     color = OldSirInk,
                     fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
+                    maxLines = titleMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
                 subtitle?.takeIf { it.isNotBlank() }?.let {

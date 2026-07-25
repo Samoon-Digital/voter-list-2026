@@ -35,7 +35,8 @@ class PdfDownloadManager @Inject constructor(
             "https://voters.eci.gov.in/eroll/$cdnPath"
         }
         val fileName = sanitizeFileName(url.substringAfterLast('/').ifBlank { "electoral-roll.pdf" })
-        val request = DownloadManager.Request(Uri.parse(url))
+        val downloadUri = Uri.parse(url.replace(" ", "%20"))
+        val request = DownloadManager.Request(downloadUri)
             .setTitle(fileName)
             .setDescription("Downloading voter list PDF")
             .setMimeType("application/pdf")
@@ -46,6 +47,10 @@ class PdfDownloadManager @Inject constructor(
                 Environment.DIRECTORY_DOWNLOADS,
                 "VoterList2026/$fileName",
             )
+        if (downloadUri.host.equals(ECI_OLD_SIR_HOST, ignoreCase = true)) {
+            // ECI's edge server rejects Android DownloadManager's default User-Agent.
+            request.addRequestHeader("User-Agent", ECI_DOWNLOAD_USER_AGENT)
+        }
         val id = downloadManager.enqueue(request)
         var completed = false
         try {
@@ -137,6 +142,11 @@ class PdfDownloadManager @Inject constructor(
 
     private fun sanitizeFileName(value: String): String =
         value.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+
+    private companion object {
+        const val ECI_OLD_SIR_HOST = "www.eci.gov.in"
+        const val ECI_DOWNLOAD_USER_AGENT = "curl/8.10.1 VoterList2026/Android"
+    }
 }
 
 data class DownloadedPdf(

@@ -2,15 +2,19 @@ package com.samoondigital.yojnaplus.feature.oldsir
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.samoondigital.yojnaplus.feature.downloads.data.DownloadRepository
 import com.samoondigital.yojnaplus.model.OldSirAssemblyDto
 import com.samoondigital.yojnaplus.model.OldSirDistrictDto
 import com.samoondigital.yojnaplus.model.OldSirPartDto
 import com.samoondigital.yojnaplus.model.StateDto
+import com.samoondigital.yojnaplus.pdf.PdfDownloadManager
 import com.samoondigital.yojnaplus.repository.ElectoralRollRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -18,9 +22,13 @@ import javax.inject.Inject
 @HiltViewModel
 class OldSirViewModel @Inject constructor(
     private val repository: ElectoralRollRepository,
+    private val pdfDownloadManager: PdfDownloadManager,
+    private val downloadRepository: DownloadRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(OldSirUiState())
     val state: StateFlow<OldSirUiState> = _state.asStateFlow()
+    private val events = Channel<OldSirEvent>(Channel.BUFFERED)
+    val eventFlow = events.receiveAsFlow()
 
     init {
         loadStates()
@@ -32,7 +40,11 @@ class OldSirViewModel @Inject constructor(
         }
     }
 
+    fun isStateSupported(state: StateDto): Boolean =
+        repository.isOldSirStateSupported(state.stateCd)
+
     fun selectState(state: StateDto) {
+        if (!isStateSupported(state)) return
         _state.update {
             it.resetAfterState().copy(
                 step = OldSirStep.District,
@@ -67,8 +79,67 @@ class OldSirViewModel @Inject constructor(
         loadParts(stateCd, assembly.acNo)
     }
 
-    fun selectPart(part: OldSirPartDto) {
-        _state.update { it.copy(selectedPart = part, message = null) }
+    fun openPartPdf(part: OldSirPartDto) {
+        val current = _state.value
+        if (current.downloadingPartNumber != null) return
+        val stateCd = current.selectedState?.stateCd ?: return
+        val pdfUrl = repository.resolveOldSirPdfUrl(stateCd, part)
+        if (pdfUrl.isNullOrBlank()) {
+            _state.update {
+                it.copy(
+                    selectedPart = part,
+                    message = "ECI has not published a PDF for this polling station",
+                )
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            val recordId = downloadRepository.createPendingRecord(
+                district = current.selectedDistrict?.displayName.orEmpty(),
+                assembly = current.selectedAssembly?.displayName.orEmpty(),
+                village = part.partName,
+                partNumber = part.partNumber,
+            )
+            downloadRepository.markDownloading(recordId)
+            _state.update {
+                it.copy(
+                    selectedPart = part,
+                    downloadingPartNumber = part.partNumber,
+                    downloadProgress = 0,
+                    message = null,
+                )
+            }
+
+            runCatching {
+                pdfDownloadManager.downloadCdnPdf(pdfUrl) { progress ->
+                    _state.update { it.copy(downloadProgress = progress.coerceIn(0, 100)) }
+                    viewModelScope.launch {
+                        downloadRepository.updateProgress(recordId, progress)
+                    }
+                }
+            }.onSuccess { downloaded ->
+                downloadRepository.markCompleted(recordId, downloaded.fileName, downloaded.uri)
+                _state.update {
+                    it.copy(
+                        downloadingPartNumber = null,
+                        downloadProgress = 100,
+                        message = null,
+                    )
+                }
+                events.send(OldSirEvent.OpenPdf(downloaded.uri, "Old SIR Part ${part.partNumber}"))
+            }.onFailure { error ->
+                val message = error.userMessage("Unable to download PDF")
+                downloadRepository.markFailed(recordId, message)
+                _state.update {
+                    it.copy(
+                        downloadingPartNumber = null,
+                        downloadProgress = 0,
+                        message = message,
+                    )
+                }
+            }
+        }
     }
 
     fun goBack(): Boolean {
@@ -122,10 +193,13 @@ class OldSirViewModel @Inject constructor(
         _state.update { it.copy(isLoading = true, message = message) }
         runCatching { block() }
             .onFailure { error ->
-                _state.update { it.copy(message = error.message?.takeIf(String::isNotBlank) ?: "Request failed") }
+                _state.update { it.copy(message = error.userMessage("Request failed")) }
             }
         _state.update { it.copy(isLoading = false) }
     }
+
+    private fun Throwable.userMessage(fallback: String): String =
+        message?.takeIf { it.isNotBlank() } ?: fallback
 }
 
 enum class OldSirStep {
@@ -146,6 +220,8 @@ data class OldSirUiState(
     val selectedAssembly: OldSirAssemblyDto? = null,
     val selectedPart: OldSirPartDto? = null,
     val isLoading: Boolean = false,
+    val downloadingPartNumber: Int? = null,
+    val downloadProgress: Int = 0,
     val message: String? = null,
 ) {
     val stepNumber: Int
@@ -176,4 +252,8 @@ data class OldSirUiState(
         selectedPart = null,
         parts = emptyList(),
     )
+}
+
+sealed interface OldSirEvent {
+    data class OpenPdf(val uri: String, val title: String) : OldSirEvent
 }

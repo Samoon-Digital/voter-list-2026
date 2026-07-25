@@ -157,6 +157,30 @@ class ElectoralRollRepository @Inject constructor(
             .requirePayload()
             .sortedBy { it.partNumber }
 
+    fun isOldSirStateSupported(stateCd: String): Boolean {
+        val normalizedStateCd = stateCd.uppercase()
+        return normalizedStateCd == "S04" || oldSirPdfFolder(normalizedStateCd) != null
+    }
+
+    fun resolveOldSirPdfUrl(stateCd: String, part: OldSirPartDto): String? {
+        val normalizedStateCd = stateCd.uppercase()
+        if (normalizedStateCd == "S04") {
+            return part.oldPdfUrl?.trim()?.takeIf(String::isNotEmpty)
+        }
+        val folder = oldSirPdfFolder(normalizedStateCd) ?: return null
+        return "https://www.eci.gov.in/sir/$folder/$normalizedStateCd/data/OLDSIRROLL/" +
+            "$normalizedStateCd/${part.acNumber}/" +
+            "${normalizedStateCd}_${part.acNumber}_${part.partNumber}.pdf"
+    }
+
+    private fun oldSirPdfFolder(stateCd: String): String? = when (stateCd) {
+        "S01", "S02", "S03", "S05", "S07", "S08" -> "f1"
+        "S11", "S12", "S13", "S14", "S15", "S16", "S17", "S18", "S19" -> "f2"
+        "S20", "S21", "S22", "S23", "S26" -> "f3"
+        "S29", "U01", "U05", "U06", "U07", "U09" -> "f4"
+        else -> null
+    }
+
     private fun <T> com.samoondigital.yojnaplus.model.EciEnvelope<T>.requirePayload(): T {
         if (statusCode != null && statusCode != 200) {
             throw IllegalStateException(message ?: "Server error ($statusCode)")
