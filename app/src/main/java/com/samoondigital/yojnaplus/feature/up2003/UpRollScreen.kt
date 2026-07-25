@@ -8,6 +8,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.Path
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -143,16 +150,6 @@ fun UpRollScreen(
             }
         }
     }
-
-    if (uiState.isCaptchaVisible) {
-        CaptchaDialog(
-            uiState = uiState,
-            onInputChanged = viewModel::updateCaptchaInput,
-            onRefresh = viewModel::refreshCaptcha,
-            onDismiss = viewModel::dismissCaptcha,
-            onConfirm = viewModel::confirmCaptcha,
-        )
-    }
 }
 
 @Composable
@@ -172,36 +169,165 @@ private fun UpTopBar(
                 ),
             ),
     ) {
+        HeaderArtwork(modifier = Modifier.matchParentSize())
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 10.dp, top = 18.dp, end = 18.dp),
+                .statusBarsPadding()
+                .padding(start = 18.dp, top = 10.dp, end = 18.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White,
-                )
+            Surface(
+                onClick = onBack,
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 8.dp,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = UpPurpleDark,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
+
+            Spacer(Modifier.width(16.dp))
+
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(top = 3.dp, start = 4.dp),
+                    .padding(top = 2.dp),
             ) {
                 Text(
                     text = "Uttar Pradesh 2003",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
                     text = "Step ${uiState.stepNumber} of 3",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.78f),
+                    maxLines = 1,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.76f),
+                    modifier = Modifier.padding(top = 1.dp),
+                )
+                StepProgress(
+                    currentStep = uiState.stepNumber,
+                    totalSteps = 3,
+                    modifier = Modifier
+                        .padding(top = 7.dp)
+                        .fillMaxWidth(0.86f),
+                )
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 8.dp,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.PictureAsPdf,
+                        contentDescription = null,
+                        tint = UpPurpleDark,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderArtwork(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        val wave = Path().apply {
+            moveTo(0f, h * 0.64f)
+            cubicTo(w * 0.10f, h * 0.46f, w * 0.15f, h * 0.78f, w * 0.28f, h * 0.58f)
+            cubicTo(w * 0.42f, h * 0.36f, w * 0.50f, h * 0.78f, w * 0.66f, h * 0.62f)
+            cubicTo(w * 0.78f, h * 0.50f, w * 0.88f, h * 0.80f, w, h * 0.56f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(wave, Color(0xFF5B49D7).copy(alpha = 0.30f))
+
+        val map = Path().apply {
+            moveTo(w * 0.68f, h * 0.20f)
+            cubicTo(w * 0.72f, h * 0.12f, w * 0.76f, h * 0.18f, w * 0.76f, h * 0.26f)
+            cubicTo(w * 0.83f, h * 0.25f, w * 0.89f, h * 0.35f, w * 0.86f, h * 0.44f)
+            cubicTo(w * 0.91f, h * 0.50f, w * 0.84f, h * 0.55f, w * 0.78f, h * 0.51f)
+            cubicTo(w * 0.74f, h * 0.58f, w * 0.66f, h * 0.53f, w * 0.70f, h * 0.45f)
+            cubicTo(w * 0.63f, h * 0.39f, w * 0.67f, h * 0.30f, w * 0.68f, h * 0.20f)
+            close()
+        }
+        drawPath(map, Color.White.copy(alpha = 0.13f))
+    }
+}
+
+@Composable
+private fun StepProgress(
+    currentStep: Int,
+    totalSteps: Int,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.height(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(totalSteps) { index ->
+            val step = index + 1
+            val completed = step <= currentStep
+            Surface(
+                shape = CircleShape,
+                color = if (completed) Color.White else Color.Transparent,
+                border = if (completed) null else BorderStroke(2.dp, Color.White),
+                modifier = Modifier.size(if (step == currentStep) 13.dp else 11.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (completed) {
+                        if (step == currentStep) {
+                            Surface(
+                                shape = CircleShape,
+                                color = UpPurpleBright,
+                                modifier = Modifier.size(10.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(7.dp),
+                                    )
+                                }
+                            }
+                        } else {
+                            Icon(
+                                Icons.Outlined.Check,
+                                contentDescription = null,
+                                tint = UpPurpleDark,
+                                modifier = Modifier.size(7.dp),
+                            )
+                        }
+                    }
+                }
+            }
+            if (index != totalSteps - 1) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(1.dp)
+                        .background(if (step < currentStep) Color.White else Color.White.copy(alpha = 0.55f)),
                 )
             }
         }

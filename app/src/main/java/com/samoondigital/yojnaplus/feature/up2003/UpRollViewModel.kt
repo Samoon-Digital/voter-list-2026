@@ -57,15 +57,7 @@ class UpRollViewModel @Inject constructor(
 
     fun requestDownload(station: UpPollingStation) {
         if (_state.value.downloadingPartNumber != null) return
-        _state.update {
-            it.copy(
-                selectedStation = station,
-                captchaText = createCaptcha(),
-                captchaInput = "",
-                isCaptchaVisible = true,
-                message = null,
-            )
-        }
+        downloadStation(station)
     }
 
     fun updateCaptchaInput(value: String) {
@@ -203,10 +195,22 @@ class UpRollViewModel @Inject constructor(
     private suspend fun runLoading(message: String?, block: suspend () -> Unit) {
         _state.update { it.copy(isLoading = true, message = message) }
         runCatching { block() }
-            .onFailure { error ->
-                _state.update { it.copy(message = error.userMessage("Request failed")) }
+            .onSuccess {
+                _state.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        message = current.message.takeUnless { it == message },
+                    )
+                }
             }
-        _state.update { it.copy(isLoading = false) }
+            .onFailure { error ->
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        message = error.userMessage("Request failed"),
+                    )
+                }
+            }
     }
 
     private fun createCaptcha(): String =

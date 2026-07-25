@@ -12,6 +12,11 @@ import javax.inject.Singleton
 class UpRollRepository @Inject constructor(
     private val client: OkHttpClient,
 ) {
+    private val upClient = client.newBuilder().apply {
+        interceptors().clear()
+        networkInterceptors().clear()
+    }.build()
+
     suspend fun getDistricts(): List<UpDistrict> = withContext(Dispatchers.IO) {
         parseOptions(fetchPage(), DISTRICT_SELECT_ID)
             .filterNot { it.id.equals("Select District", ignoreCase = true) }
@@ -43,7 +48,7 @@ class UpRollRepository @Inject constructor(
             .upHeaders()
             .get()
             .build()
-        return client.newCall(request).execute().use { response ->
+        return upClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IllegalStateException("Unable to load UP voter list")
             response.body?.string().orEmpty()
         }
@@ -83,7 +88,7 @@ class UpRollRepository @Inject constructor(
             .header("Content-Type", "application/x-www-form-urlencoded")
             .post(form)
             .build()
-        return client.newCall(request).execute().use { response ->
+        return upClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IllegalStateException("Unable to load UP voter list")
             response.body?.string().orEmpty()
         }
@@ -133,7 +138,7 @@ class UpRollRepository @Inject constructor(
 
     private fun Request.Builder.upHeaders(): Request.Builder =
         header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-            .header("Origin", ROLL_ROOT)
+            .header("Origin", HOST_ROOT)
             .header("Referer", BASE_URL)
             .header("User-Agent", USER_AGENT)
 
@@ -148,6 +153,7 @@ class UpRollRepository @Inject constructor(
 
     private companion object {
         const val ROLL_ROOT = "https://ceouttarpradesh.nic.in/rollpdf"
+        const val HOST_ROOT = "https://ceouttarpradesh.nic.in"
         const val BASE_URL = "$ROLL_ROOT/rollpdf.aspx"
         const val DISTRICT_SELECT_ID = "ctl00_ContentPlaceHolder1_DDLDistrict"
         const val ASSEMBLY_SELECT_ID = "ctl00_ContentPlaceHolder1_DDL_AC"
