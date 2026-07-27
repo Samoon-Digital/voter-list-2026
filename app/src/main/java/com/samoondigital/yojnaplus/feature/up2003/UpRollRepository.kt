@@ -55,17 +55,14 @@ class UpRollRepository @Inject constructor(
     }
 
     private fun postDistrict(html: String, districtId: String): String {
-        val form = baseForm(html)
-            .add("__EVENTTARGET", DISTRICT_FIELD)
+        val form = baseForm(html, DISTRICT_FIELD)
             .add(DISTRICT_FIELD, districtId)
-            .add(ASSEMBLY_FIELD, "")
             .build()
         return postForm(form)
     }
 
     private fun postShow(html: String, districtId: String, acNumber: Int): String {
-        val form = baseForm(html)
-            .add("__EVENTTARGET", "")
+        val form = baseForm(html, "")
             .add(DISTRICT_FIELD, districtId)
             .add(ASSEMBLY_FIELD, acNumber.toString())
             .add("ctl00\$ContentPlaceHolder1\$Button1", "Show")
@@ -73,8 +70,9 @@ class UpRollRepository @Inject constructor(
         return postForm(form)
     }
 
-    private fun baseForm(html: String): FormBody.Builder =
+    private fun baseForm(html: String, eventTarget: String): FormBody.Builder =
         FormBody.Builder()
+            .add("__EVENTTARGET", eventTarget)
             .add("__EVENTARGUMENT", "")
             .add("__LASTFOCUS", "")
             .add("__VIEWSTATE", hiddenValue(html, "__VIEWSTATE"))
