@@ -29,6 +29,7 @@ import com.samoondigital.yojnaplus.feature.pdf.PdfScreen
 import com.samoondigital.yojnaplus.feature.pdfviewer.PdfViewerScreen
 import com.samoondigital.yojnaplus.feature.settings.SettingsScreen
 import com.samoondigital.yojnaplus.feature.up2003.UpRollScreen
+import com.samoondigital.yojnaplus.feature.webview.JammuKashmirWebViewScreen
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -67,6 +68,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                     OldSirScreen(
                         onBack = { navController.popBackStack() },
                         onOpenUttarPradesh = { navController.navigate(Routes.UP_2003) },
+                        onOpenJammuKashmir = { navController.navigate(Routes.JAMMU_KASHMIR_WEB) },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -78,6 +80,11 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
+                    )
+                }
+                composable(Routes.JAMMU_KASHMIR_WEB) {
+                    JammuKashmirWebViewScreen(
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }

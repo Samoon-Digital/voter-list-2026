@@ -17,6 +17,7 @@ object Routes {
     const val PDF = "pdf"
     const val OLD_SIR = "old_sir"
     const val UP_2003 = "up_2003"
+    const val JAMMU_KASHMIR_WEB = "jammu_kashmir_web"
     const val DOWNLOADS = "downloads"
     const val PDF_VIEWER = "pdf_viewer"
     const val PDF_VIEWER_ROUTE = "$PDF_VIEWER/{uri}/{title}"
