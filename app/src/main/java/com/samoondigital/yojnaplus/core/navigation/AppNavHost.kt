@@ -20,6 +20,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
+import com.samoondigital.yojnaplus.feature.chandigarh.ChandigarhScreen
 import com.samoondigital.yojnaplus.feature.downloads.DownloadsScreen
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.news.NewsScreen
@@ -70,7 +71,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onBack = { navController.popBackStack() },
                         onOpenUttarPradesh = { navController.navigate(Routes.UP_2003) },
                         onOpenJammuKashmir = { navController.navigate(Routes.JAMMU_KASHMIR_WEB) },
-                        onOpenChandigarh = { navController.navigate(Routes.CHANDIGARH_WEB) },
+                        onOpenChandigarh = { navController.navigate(Routes.CHANDIGARH_2002) },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -91,6 +92,14 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
                 composable(Routes.CHANDIGARH_WEB) {
                     ChandigarhWebViewScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
+                composable(Routes.CHANDIGARH_2002) {
+                    ChandigarhScreen(
                         onBack = { navController.popBackStack() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
