@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.up2003
 
+import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -12,7 +13,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.PictureAsPdf
@@ -175,7 +176,7 @@ private fun UpTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .stableStatusBarsPadding()
                 .padding(start = 18.dp, top = 10.dp, end = 18.dp),
             verticalAlignment = Alignment.Top,
         ) {
@@ -236,7 +237,7 @@ private fun UpTopBar(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Outlined.PictureAsPdf,
+                        Icons.Outlined.FileDownload,
                         contentDescription = "Open downloads",
                         tint = UpPurpleDark,
                         modifier = Modifier.size(26.dp),

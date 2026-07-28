@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.home
 
+import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.app.Activity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -121,7 +121,7 @@ private fun HomeHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .stableStatusBarsPadding()
                 .padding(start = 18.dp, top = 10.dp, end = 18.dp),
             verticalAlignment = Alignment.Top,
         ) {

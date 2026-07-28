@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.pdf
 
+import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.app.Activity
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -32,7 +33,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -252,7 +252,7 @@ private fun WizardHeroTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .stableStatusBarsPadding()
                 .padding(start = 18.dp, top = 10.dp, end = 18.dp),
             verticalAlignment = Alignment.Top,
         ) {

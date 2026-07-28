@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.webview
 
+import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
@@ -30,7 +31,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -429,7 +429,7 @@ private fun WebTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .stableStatusBarsPadding()
                 .padding(start = 18.dp, top = 10.dp, end = 18.dp),
             verticalAlignment = Alignment.Top,
         ) {

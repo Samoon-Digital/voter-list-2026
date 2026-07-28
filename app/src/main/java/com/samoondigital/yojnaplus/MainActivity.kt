@@ -1,4 +1,4 @@
-﻿package com.samoondigital.yojnaplus
+package com.samoondigital.yojnaplus
 
 import android.app.Activity
 import android.content.Intent
@@ -14,6 +14,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManager
@@ -49,6 +51,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        restoreDefaultSystemBarLayout()
         appUpdateManager = AppUpdateManagerFactory.create(this)
         checkForImmediateUpdate()
         setContent {
@@ -68,6 +71,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        restoreDefaultSystemBarLayout()
         resumeImmediateUpdateIfNeeded()
     }
 
@@ -75,6 +79,12 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleNotificationIntent(intent)
+    }
+
+    private fun restoreDefaultSystemBarLayout() {
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        ViewCompat.requestApplyInsets(window.decorView)
+        window.decorView.post { ViewCompat.requestApplyInsets(window.decorView) }
     }
 
     private fun checkForImmediateUpdate() {

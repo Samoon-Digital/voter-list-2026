@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.chandigarh
 
+import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -23,7 +24,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.PictureAsPdf
@@ -166,7 +167,7 @@ private fun ChandigarhTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .stableStatusBarsPadding()
                 .padding(start = 18.dp, top = 10.dp, end = 18.dp),
             verticalAlignment = Alignment.Top,
         ) {
@@ -227,7 +228,7 @@ private fun ChandigarhTopBar(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Outlined.PictureAsPdf,
+                        Icons.Outlined.FileDownload,
                         contentDescription = "Open downloads",
                         tint = ChandigarhPurpleDark,
                         modifier = Modifier.size(26.dp),

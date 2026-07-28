@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -279,8 +280,9 @@ private fun DownloadCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val sourceDescription = download.sourceDescription
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.size(48.dp),
                 ) {
@@ -301,6 +303,15 @@ private fun DownloadCard(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (sourceDescription.isNotBlank()) {
+                        Text(
+                            text = sourceDescription,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 DownloadActionMenu(
                     download = download,
@@ -436,3 +447,9 @@ private fun RenameDownloadDialog(
         },
     )
 }
+private val DownloadItemUi.sourceDescription: String
+    get() = listOf(district, assembly, village)
+        .map { it.trim() }
+        .filter { it.isNotBlank() && it != "--" }
+        .distinct()
+        .joinToString(" / ")

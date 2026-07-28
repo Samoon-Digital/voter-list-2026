@@ -7,6 +7,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
@@ -203,6 +205,7 @@ object AppOpenAdManager {
                     Tag,
                     "show-dismissed source=${source.logValue} count=$shownCount unit=${AdUnitIds.appOpen}",
                 )
+                activity.restoreDefaultSystemBarLayout()
                 maybePreloadAfterShow(source, activity.application)
             }
 
@@ -212,6 +215,7 @@ object AppOpenAdManager {
                     Tag,
                     "show-failed source=${source.logValue} unit=${AdUnitIds.appOpen} code=${error.code} domain=${error.domain} message=${error.message}",
                 )
+                activity.restoreDefaultSystemBarLayout()
                 maybePreloadAfterShow(source, activity.application)
             }
 
@@ -232,6 +236,7 @@ object AppOpenAdManager {
                     "show-exception source=${source.logValue} unit=${AdUnitIds.appOpen} exception=${throwable.message}",
                     throwable,
                 )
+                activity.restoreDefaultSystemBarLayout()
                 maybePreloadAfterShow(source, activity.application)
             }
     }
@@ -340,4 +345,9 @@ object AppOpenAdManager {
         Home("home"),
         Foreground("foreground"),
     }
+}
+private fun Activity.restoreDefaultSystemBarLayout() {
+    WindowCompat.setDecorFitsSystemWindows(window, true)
+    ViewCompat.requestApplyInsets(window.decorView)
+    window.decorView.post { ViewCompat.requestApplyInsets(window.decorView) }
 }

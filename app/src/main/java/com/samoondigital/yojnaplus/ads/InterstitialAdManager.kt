@@ -5,6 +5,8 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
@@ -62,6 +64,7 @@ object InterstitialAdManager {
 
                 override fun onAdDismissedFullScreenContent() {
                     Log.d(Tag, "show-dismissed unit=${AdUnitIds.interstitial}")
+                    activity.restoreDefaultSystemBarLayout()
                     clearAndPreload()
                     continueOnce()
                 }
@@ -71,6 +74,7 @@ object InterstitialAdManager {
                         Tag,
                         "show-failed unit=${AdUnitIds.interstitial} code=${error.code} domain=${error.domain} message=${error.message}",
                     )
+                    activity.restoreDefaultSystemBarLayout()
                     clearAndPreload()
                     continueOnce()
                 }
@@ -87,6 +91,7 @@ object InterstitialAdManager {
             runCatching { ad.show(activity) }
                 .onFailure { throwable ->
                     Log.e(Tag, "show-exception unit=${AdUnitIds.interstitial} exception=${throwable.message}", throwable)
+                    activity.restoreDefaultSystemBarLayout()
                     clearAndPreload()
                     continueOnce()
                 }
@@ -152,4 +157,9 @@ object InterstitialAdManager {
         Log.d(Tag, "preload-retry-scheduled attempt=$retryAttempt delayMs=$delayMs")
         mainHandler.postDelayed(retryRunnable!!, delayMs)
     }
+}
+private fun Activity.restoreDefaultSystemBarLayout() {
+    WindowCompat.setDecorFitsSystemWindows(window, true)
+    ViewCompat.requestApplyInsets(window.decorView)
+    window.decorView.post { ViewCompat.requestApplyInsets(window.decorView) }
 }

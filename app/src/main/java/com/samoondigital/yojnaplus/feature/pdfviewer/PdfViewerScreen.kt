@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.pdfviewer
 
+import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -26,7 +27,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -334,7 +334,7 @@ private fun PdfViewerTopBar(
             PdfViewerHeaderArtwork(modifier = Modifier.matchParentSize())
             Row(
                 modifier = Modifier
-                    .statusBarsPadding()
+                    .stableStatusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
