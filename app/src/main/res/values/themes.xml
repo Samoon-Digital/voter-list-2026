@@ -3,6 +3,7 @@
 
     <style name="Theme.VoterList2026" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/surface_light</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
     <!-- Splash screen using AndroidX core-splashscreen -->

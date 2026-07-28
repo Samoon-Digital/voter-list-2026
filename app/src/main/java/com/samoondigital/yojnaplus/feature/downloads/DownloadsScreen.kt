@@ -22,12 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Cancel
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.PictureAsPdf
@@ -37,7 +34,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -303,20 +299,6 @@ private fun DownloadCard(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(
-                        text = "${download.district} / ${download.assembly}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = download.village,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
                 DownloadActionMenu(
                     download = download,
@@ -328,19 +310,6 @@ private fun DownloadCard(
                     onCancel = onCancel,
                     onPause = onPause,
                     onResume = onResume,
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                StatusChip(download.status)
-                Text(
-                    text = download.fileSize,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
@@ -363,32 +332,6 @@ private fun DownloadCard(
             }
         }
     }
-}
-
-@Composable
-private fun StatusChip(status: DownloadStatusEntity) {
-    val color = when (status) {
-        DownloadStatusEntity.Completed -> MaterialTheme.colorScheme.primary
-        DownloadStatusEntity.Failed, DownloadStatusEntity.Missing, DownloadStatusEntity.Cancelled ->
-            MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.tertiary
-    }
-    AssistChip(
-        onClick = {},
-        leadingIcon = {
-            Icon(
-                status.icon,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-        },
-        label = { Text(status.label) },
-        border = null,
-        colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
-            labelColor = color,
-            leadingIconContentColor = color,
-        ),
-    )
 }
 
 @Composable
@@ -491,24 +434,3 @@ private fun RenameDownloadDialog(
         },
     )
 }
-
-private val DownloadStatusEntity.label: String
-    get() = when (this) {
-        DownloadStatusEntity.Waiting -> "Waiting"
-        DownloadStatusEntity.Downloading -> "Downloading"
-        DownloadStatusEntity.Completed -> "Completed"
-        DownloadStatusEntity.Failed -> "Failed"
-        DownloadStatusEntity.Cancelled -> "Cancelled"
-        DownloadStatusEntity.Missing -> "Missing"
-    }
-
-private val DownloadStatusEntity.icon: ImageVector
-    get() = when (this) {
-        DownloadStatusEntity.Waiting -> Icons.Outlined.HourglassEmpty
-        DownloadStatusEntity.Downloading -> Icons.Outlined.Refresh
-        DownloadStatusEntity.Completed -> Icons.Outlined.CheckCircle
-        DownloadStatusEntity.Failed -> Icons.Outlined.ErrorOutline
-        DownloadStatusEntity.Cancelled -> Icons.Outlined.Cancel
-        DownloadStatusEntity.Missing -> Icons.Outlined.ErrorOutline
-    }
-
