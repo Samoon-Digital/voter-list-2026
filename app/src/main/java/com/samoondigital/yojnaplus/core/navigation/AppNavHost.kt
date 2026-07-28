@@ -78,6 +78,11 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenDadraNagarHaveli = { navController.navigate(Routes.DADRA_NAGAR_HAVELI_WEB) },
                         onOpenGujarat = { navController.navigate(Routes.GUJARAT_WEB) },
                         onOpenJharkhand = { navController.navigate(Routes.JHARKHAND_2003) },
+                        onOpenDownloads = {
+                            navController.navigate(Routes.DOWNLOADS) {
+                                launchSingleTop = true
+                            }
+                        },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -86,6 +91,11 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.UP_2003) {
                     UpRollScreen(
                         onBack = { navController.popBackStack() },
+                        onOpenDownloads = {
+                            navController.navigate(Routes.DOWNLOADS) {
+                                launchSingleTop = true
+                            }
+                        },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -94,6 +104,11 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.JHARKHAND_2003) {
                     JharkhandScreen(
                         onBack = { navController.popBackStack() },
+                        onOpenDownloads = {
+                            navController.navigate(Routes.DOWNLOADS) {
+                                launchSingleTop = true
+                            }
+                        },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -115,6 +130,11 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.CHANDIGARH_2002) {
                     ChandigarhScreen(
                         onBack = { navController.popBackStack() },
+                        onOpenDownloads = {
+                            navController.navigate(Routes.DOWNLOADS) {
+                                launchSingleTop = true
+                            }
+                        },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },

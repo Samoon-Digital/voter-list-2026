@@ -88,6 +88,7 @@ private val Accents = listOf(
 @Composable
 fun ChandigarhScreen(
     onBack: () -> Unit,
+    onOpenDownloads: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ChandigarhViewModel = hiltViewModel(),
@@ -114,6 +115,7 @@ fun ChandigarhScreen(
             ChandigarhTopBar(
                 uiState = uiState,
                 onBack = ::handleBack,
+                onOpenDownloads = onOpenDownloads,
             )
         },
     ) { padding ->
@@ -145,6 +147,7 @@ fun ChandigarhScreen(
 private fun ChandigarhTopBar(
     uiState: ChandigarhUiState,
     onBack: () -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -216,6 +219,7 @@ private fun ChandigarhTopBar(
             }
 
             Surface(
+                onClick = onOpenDownloads,
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
@@ -224,7 +228,7 @@ private fun ChandigarhTopBar(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.PictureAsPdf,
-                        contentDescription = null,
+                        contentDescription = "Open downloads",
                         tint = ChandigarhPurpleDark,
                         modifier = Modifier.size(26.dp),
                     )

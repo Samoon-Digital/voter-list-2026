@@ -95,6 +95,7 @@ private val JhAccents = listOf(
 @Composable
 fun JharkhandScreen(
     onBack: () -> Unit,
+    onOpenDownloads: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: JharkhandViewModel = hiltViewModel(),
@@ -121,6 +122,7 @@ fun JharkhandScreen(
             JharkhandTopBar(
                 uiState = uiState,
                 onBack = ::handleBack,
+                onOpenDownloads = onOpenDownloads,
             )
         },
     ) { padding ->
@@ -158,6 +160,7 @@ fun JharkhandScreen(
 private fun JharkhandTopBar(
     uiState: JharkhandUiState,
     onBack: () -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -225,6 +228,7 @@ private fun JharkhandTopBar(
                 )
             }
             Surface(
+                onClick = onOpenDownloads,
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
@@ -233,7 +237,7 @@ private fun JharkhandTopBar(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.PictureAsPdf,
-                        contentDescription = null,
+                        contentDescription = "Open downloads",
                         tint = JhPurpleDark,
                         modifier = Modifier.size(26.dp),
                     )

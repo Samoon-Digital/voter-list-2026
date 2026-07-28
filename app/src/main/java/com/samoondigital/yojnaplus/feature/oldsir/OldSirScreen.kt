@@ -111,6 +111,7 @@ fun OldSirScreen(
     onOpenDadraNagarHaveli: () -> Unit,
     onOpenGujarat: () -> Unit,
     onOpenJharkhand: () -> Unit,
+    onOpenDownloads: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: OldSirViewModel = hiltViewModel(),
@@ -137,6 +138,7 @@ fun OldSirScreen(
             OldSirTopBar(
                 uiState = uiState,
                 onBack = ::handleBack,
+                onOpenDownloads = onOpenDownloads,
             )
         },
     ) { padding ->
@@ -195,6 +197,7 @@ fun OldSirScreen(
 private fun OldSirTopBar(
     uiState: OldSirUiState,
     onBack: () -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -266,6 +269,7 @@ private fun OldSirTopBar(
             }
 
             Surface(
+                onClick = onOpenDownloads,
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
@@ -274,7 +278,7 @@ private fun OldSirTopBar(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.PictureAsPdf,
-                        contentDescription = null,
+                        contentDescription = "Open downloads",
                         tint = OldSirPurpleDark,
                         modifier = Modifier.size(26.dp),
                     )

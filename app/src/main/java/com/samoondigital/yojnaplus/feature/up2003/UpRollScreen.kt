@@ -96,6 +96,7 @@ private val Accents = listOf(
 @Composable
 fun UpRollScreen(
     onBack: () -> Unit,
+    onOpenDownloads: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: UpRollViewModel = hiltViewModel(),
@@ -122,6 +123,7 @@ fun UpRollScreen(
             UpTopBar(
                 uiState = uiState,
                 onBack = ::handleBack,
+                onOpenDownloads = onOpenDownloads,
             )
         },
     ) { padding ->
@@ -154,6 +156,7 @@ fun UpRollScreen(
 private fun UpTopBar(
     uiState: UpRollUiState,
     onBack: () -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -225,6 +228,7 @@ private fun UpTopBar(
             }
 
             Surface(
+                onClick = onOpenDownloads,
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
@@ -233,7 +237,7 @@ private fun UpTopBar(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.PictureAsPdf,
-                        contentDescription = null,
+                        contentDescription = "Open downloads",
                         tint = UpPurpleDark,
                         modifier = Modifier.size(26.dp),
                     )

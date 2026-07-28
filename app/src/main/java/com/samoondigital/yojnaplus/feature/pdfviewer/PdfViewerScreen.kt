@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -57,7 +58,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -310,43 +314,96 @@ private fun PdfViewerTopBar(
     onShare: () -> Unit,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        color = Color.Transparent,
         tonalElevation = 3.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(PdfViewerPurpleDark, PdfViewerPurple, Color(0xFF2E1B98)),
+                        start = Offset.Zero,
+                        end = Offset(850f, 260f),
+                    ),
+                ),
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = pageLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onSearch) {
-                Icon(Icons.Outlined.Search, contentDescription = "Search text")
-            }
-            IconButton(onClick = onShare) {
-                Icon(Icons.Outlined.Share, contentDescription = "Share")
+            PdfViewerHeaderArtwork(modifier = Modifier.matchParentSize())
+            Row(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.White,
+                    )
+                    Text(
+                        text = pageLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.78f),
+                    )
+                }
+                IconButton(onClick = onSearch) {
+                    Icon(
+                        Icons.Outlined.Search,
+                        contentDescription = "Search text",
+                        tint = Color.White,
+                    )
+                }
+                IconButton(onClick = onShare) {
+                    Icon(
+                        Icons.Outlined.Share,
+                        contentDescription = "Share",
+                        tint = Color.White,
+                    )
+                }
             }
         }
     }
 }
 
+@Composable
+private fun PdfViewerHeaderArtwork(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val wave = Path().apply {
+            moveTo(0f, h * 0.58f)
+            cubicTo(w * 0.18f, h * 0.28f, w * 0.32f, h * 0.82f, w * 0.52f, h * 0.52f)
+            cubicTo(w * 0.68f, h * 0.30f, w * 0.82f, h * 0.78f, w, h * 0.46f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(wave, Color(0xFF5B49D7).copy(alpha = 0.26f))
+
+        val zigzag = Path().apply {
+            moveTo(w * 0.08f, h * 0.18f)
+            lineTo(w * 0.20f, h * 0.08f)
+            lineTo(w * 0.32f, h * 0.20f)
+            lineTo(w * 0.45f, h * 0.10f)
+            lineTo(w * 0.58f, h * 0.22f)
+            lineTo(w * 0.72f, h * 0.12f)
+            lineTo(w * 0.86f, h * 0.24f)
+        }
+        drawPath(zigzag, Color.White.copy(alpha = 0.08f))
+    }
+}
 @Composable
 private fun SearchPanel(
     value: String,
@@ -641,6 +698,8 @@ private class PdfDocument private constructor(
 }
 
 private const val PdfViewerLogTag = "PdfViewerScreen"
+private val PdfViewerPurpleDark = Color(0xFF2B137F)
+private val PdfViewerPurple = Color(0xFF4B2DBF)
 private const val OcrRenderWidth = 1800
 
 private fun String.normalizedForSearch(): String =
