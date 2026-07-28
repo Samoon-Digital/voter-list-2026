@@ -7,6 +7,8 @@ import android.net.Uri
 import android.os.Build
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.DownloadListener
+import android.webkit.URLUtil
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -46,10 +48,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,11 +67,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
 
 private const val JammuKashmirUrl = "https://ceo.jk.gov.in/namesearch/"
+private const val ChandigarhUrl = "https://ceochandigarh.gov.in/pages/intensive"
 private val WebPurple = Color(0xFF3522A8)
 private val WebPurpleDark = Color(0xFF20106F)
-private val WebPurpleBright = Color(0xFF7C5CFF)
 private val WebSurface = Color(0xFFFCFCFF)
 private val WebMuted = Color(0xFF686A8D)
 
@@ -75,12 +81,62 @@ fun JammuKashmirWebViewScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    OfficialWebViewScreen(
+        screenTitle = "Jammu & Kashmir",
+        fallbackPageTitle = "Jammu & Kashmir",
+        statusText = "Official voter search",
+        startUrl = JammuKashmirUrl,
+        onBack = onBack,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun ChandigarhWebViewScreen(
+    onBack: () -> Unit,
+    onOpenPdf: (uri: String, title: String) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ChandigarhWebViewViewModel = hiltViewModel(),
+) {
+    val downloadState by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.eventFlow.collect { event ->
+            when (event) {
+                is WebPdfDownloadEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
+            }
+        }
+    }
+
+    OfficialWebViewScreen(
+        screenTitle = "Chandigarh 2002",
+        fallbackPageTitle = "Chandigarh 2002",
+        statusText = "Official electoral roll PDF page",
+        startUrl = ChandigarhUrl,
+        onBack = onBack,
+        onDownloadRequested = viewModel::downloadPdf,
+        downloadState = downloadState,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun OfficialWebViewScreen(
+    screenTitle: String,
+    fallbackPageTitle: String,
+    statusText: String,
+    startUrl: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDownloadRequested: ((url: String, contentDisposition: String?, mimeType: String?) -> Unit)? = null,
+    downloadState: WebPdfDownloadUiState? = null,
+) {
     val context = LocalContext.current
     var webView by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
     var progress by remember { mutableIntStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
-    var pageTitle by remember { mutableStateOf("Jammu & Kashmir") }
+    var pageTitle by remember { mutableStateOf(fallbackPageTitle) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     fun handleBack() {
@@ -105,10 +161,12 @@ fun JammuKashmirWebViewScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             WebTopBar(
-                title = pageTitle.ifBlank { "Jammu & Kashmir" },
+                screenTitle = screenTitle,
+                title = pageTitle.ifBlank { fallbackPageTitle },
                 progress = progress,
                 isLoading = isLoading,
                 canGoBack = canGoBack,
+                statusText = statusText,
                 onBack = ::handleBack,
                 onRefresh = {
                     errorMessage = null
@@ -123,7 +181,8 @@ fun JammuKashmirWebViewScreen(
                 .padding(padding)
                 .background(WebSurface),
         ) {
-            JammuKashmirWebView(
+            OfficialWebView(
+                startUrl = startUrl,
                 onWebViewReady = { webView = it },
                 onPageStarted = {
                     isLoading = true
@@ -133,7 +192,7 @@ fun JammuKashmirWebViewScreen(
                 onPageFinished = { view, title ->
                     isLoading = false
                     canGoBack = view.canGoBack()
-                    pageTitle = title?.takeIf { it.isNotBlank() } ?: "Jammu & Kashmir"
+                    pageTitle = title?.takeIf { it.isNotBlank() } ?: fallbackPageTitle
                 },
                 onProgressChanged = {
                     progress = it
@@ -144,6 +203,7 @@ fun JammuKashmirWebViewScreen(
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
                 },
+                onDownloadRequested = onDownloadRequested,
                 onError = {
                     isLoading = false
                     errorMessage = it
@@ -158,11 +218,20 @@ fun JammuKashmirWebViewScreen(
                     message = message,
                     onRetry = {
                         errorMessage = null
-                        webView?.loadUrl(JammuKashmirUrl)
+                        webView?.loadUrl(startUrl)
                     },
                     modifier = Modifier
                         .align(Alignment.Center)
                         .padding(24.dp),
+                )
+            }
+
+            downloadState?.takeIf { it.isDownloading || !it.message.isNullOrBlank() }?.let { state ->
+                DownloadOverlay(
+                    state = state,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 88.dp),
                 )
             }
         }
@@ -171,15 +240,19 @@ fun JammuKashmirWebViewScreen(
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun JammuKashmirWebView(
+private fun OfficialWebView(
+    startUrl: String,
     onWebViewReady: (WebView) -> Unit,
     onPageStarted: () -> Unit,
     onPageFinished: (WebView, String?) -> Unit,
     onProgressChanged: (Int) -> Unit,
     onOpenExternal: (String) -> Unit,
     onError: (String) -> Unit,
+    onDownloadRequested: ((url: String, contentDisposition: String?, mimeType: String?) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    val currentOnDownloadRequested by rememberUpdatedState(onDownloadRequested)
+
     AndroidView(
         modifier = modifier,
         factory = { context ->
@@ -196,6 +269,8 @@ private fun JammuKashmirWebView(
                     settings.useWideViewPort = true
                     settings.builtInZoomControls = true
                     settings.displayZoomControls = false
+                    settings.javaScriptCanOpenWindowsAutomatically = true
+                    settings.setSupportMultipleWindows(false)
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         settings.safeBrowsingEnabled = true
@@ -204,6 +279,16 @@ private fun JammuKashmirWebView(
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                     }
                     CookieManager.getInstance().setAcceptCookie(true)
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                    setDownloadListener(
+                        DownloadListener { url, _, contentDisposition, mimeType, _ ->
+                            if (url.isPdfUrl(mimeType)) {
+                                currentOnDownloadRequested?.invoke(url, contentDisposition, mimeType)
+                            } else {
+                                onOpenExternal(url)
+                            }
+                        },
+                    )
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                             onPageStarted()
@@ -218,11 +303,16 @@ private fun JammuKashmirWebView(
                             request: WebResourceRequest,
                         ): Boolean {
                             val url = request.url.toString()
-                            return if (url.startsWith("http://") || url.startsWith("https://")) {
-                                false
-                            } else {
-                                onOpenExternal(url)
-                                true
+                            return when {
+                                url.isPdfUrl(null) -> {
+                                    currentOnDownloadRequested?.invoke(url, null, "application/pdf")
+                                    true
+                                }
+                                url.startsWith("http://") || url.startsWith("https://") -> false
+                                else -> {
+                                    onOpenExternal(url)
+                                    true
+                                }
                             }
                         }
 
@@ -242,7 +332,7 @@ private fun JammuKashmirWebView(
                         }
                     }
                     onWebViewReady(this)
-                    loadUrl(JammuKashmirUrl)
+                    loadUrl(startUrl)
                 }
             }.getOrElse { error: Throwable ->
                 FrameLayout(context).apply {
@@ -256,12 +346,15 @@ private fun JammuKashmirWebView(
         },
     )
 }
+
 @Composable
 private fun WebTopBar(
+    screenTitle: String,
     title: String,
     progress: Int,
     isLoading: Boolean,
     canGoBack: Boolean,
+    statusText: String,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
 ) {
@@ -311,7 +404,7 @@ private fun WebTopBar(
                     .padding(top = 2.dp),
             ) {
                 Text(
-                    text = "Jammu & Kashmir",
+                    text = screenTitle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleMedium,
@@ -338,7 +431,7 @@ private fun WebTopBar(
                     )
                 } else {
                     Text(
-                        text = if (canGoBack) "Back opens previous page" else "Official voter search",
+                        text = if (canGoBack) "Previous page available" else statusText,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelSmall,
@@ -362,6 +455,56 @@ private fun WebTopBar(
                         modifier = Modifier.size(24.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadOverlay(
+    state: WebPdfDownloadUiState,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = Color.White,
+        border = BorderStroke(1.dp, Color(0xFFE3E2F5)),
+        shadowElevation = 8.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (state.isDownloading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = WebPurple,
+                    )
+                }
+                Text(
+                    text = state.message.orEmpty(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = WebPurpleDark,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            if (state.isDownloading) {
+                LinearProgressIndicator(
+                    progress = { state.progress / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
+                    color = WebPurple,
+                    trackColor = Color(0xFFE3E2F5),
+                )
             }
         }
     }
@@ -438,3 +581,8 @@ private fun WebErrorState(
         }
     }
 }
+
+private fun String.isPdfUrl(mimeType: String?): Boolean =
+    mimeType.equals("application/pdf", ignoreCase = true) ||
+        URLUtil.guessFileName(this, null, mimeType).endsWith(".pdf", ignoreCase = true) ||
+        substringBefore('?').endsWith(".pdf", ignoreCase = true)

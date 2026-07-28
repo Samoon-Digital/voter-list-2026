@@ -52,6 +52,9 @@ class PdfDownloadManager @Inject constructor(
             request.addRequestHeader("User-Agent", ECI_DOWNLOAD_USER_AGENT)
         } else if (downloadUri.host.equals(UP_ROLL_HOST, ignoreCase = true)) {
             request.addRequestHeader("User-Agent", UP_DOWNLOAD_USER_AGENT)
+        } else if (downloadUri.host.equals(CHANDIGARH_ROLL_HOST, ignoreCase = true)) {
+            request.addRequestHeader("User-Agent", CHANDIGARH_DOWNLOAD_USER_AGENT)
+            request.addRequestHeader("Referer", "https://ceochandigarh.gov.in/pages/intensive")
         }
         val id = downloadManager.enqueue(request)
         var completed = false
@@ -148,9 +151,11 @@ class PdfDownloadManager @Inject constructor(
     private companion object {
         const val ECI_OLD_SIR_HOST = "www.eci.gov.in"
         const val UP_ROLL_HOST = "ceouttarpradesh.nic.in"
+        const val CHANDIGARH_ROLL_HOST = "ceochandigarh.gov.in"
         const val ECI_DOWNLOAD_USER_AGENT = "curl/8.10.1 VoterList2026/Android"
         const val UP_DOWNLOAD_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
+        const val CHANDIGARH_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
     }
 }
 
