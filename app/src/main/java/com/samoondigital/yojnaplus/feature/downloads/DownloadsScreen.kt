@@ -1,7 +1,7 @@
 package com.samoondigital.yojnaplus.feature.downloads
 
 import android.app.Activity
-
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
@@ -82,6 +82,8 @@ fun DownloadsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? Activity
     val snackbarHostState = remember { SnackbarHostState() }
+
+    BackHandler(onBack = onBack)
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collectLatest { event ->

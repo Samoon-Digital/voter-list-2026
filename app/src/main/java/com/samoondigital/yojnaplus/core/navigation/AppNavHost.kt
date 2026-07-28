@@ -47,6 +47,19 @@ fun AppNavHost(modifier: Modifier = Modifier) {
             AppOpenAdManager.setHomeScreenVisible(route == Routes.HOME)
         }
     }
+    fun navigateToHome() {
+        navController.navigate(Routes.HOME) {
+            popUpTo(Routes.HOME) { inclusive = false }
+            launchSingleTop = true
+        }
+    }
+
+    fun navigateToDownloads() {
+        navController.navigate(Routes.DOWNLOADS) {
+            popUpTo(Routes.HOME) { inclusive = false }
+            launchSingleTop = true
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -61,11 +74,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                     HomeScreen(
                         onDownloadPdf = { navController.navigate(Routes.PDF) },
                         onOpenOldSir = { navController.navigate(Routes.OLD_SIR) },
-                        onOpenDownloads = {
-                            navController.navigate(Routes.DOWNLOADS) {
-                                launchSingleTop = true
-                            }
-                        },
+                        onOpenDownloads = { navigateToDownloads() },
                         contentPadding = innerPadding,
                     )
                 }
@@ -78,11 +87,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenDadraNagarHaveli = { navController.navigate(Routes.DADRA_NAGAR_HAVELI_WEB) },
                         onOpenGujarat = { navController.navigate(Routes.GUJARAT_WEB) },
                         onOpenJharkhand = { navController.navigate(Routes.JHARKHAND_2003) },
-                        onOpenDownloads = {
-                            navController.navigate(Routes.DOWNLOADS) {
-                                launchSingleTop = true
-                            }
-                        },
+                        onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -91,11 +96,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.UP_2003) {
                     UpRollScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenDownloads = {
-                            navController.navigate(Routes.DOWNLOADS) {
-                                launchSingleTop = true
-                            }
-                        },
+                        onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -104,11 +105,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.JHARKHAND_2003) {
                     JharkhandScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenDownloads = {
-                            navController.navigate(Routes.DOWNLOADS) {
-                                launchSingleTop = true
-                            }
-                        },
+                        onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -130,11 +127,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.CHANDIGARH_2002) {
                     ChandigarhScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenDownloads = {
-                            navController.navigate(Routes.DOWNLOADS) {
-                                launchSingleTop = true
-                            }
-                        },
+                        onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -159,16 +152,12 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.PDF) {
                     PdfScreen(
                         onBack = { navController.popBackStack() },
-                        onDownloadsComplete = {
-                            navController.navigate(Routes.DOWNLOADS) {
-                                launchSingleTop = true
-                            }
-                        },
+                        onDownloadsComplete = { navigateToDownloads() },
                     )
                 }
                 composable(Routes.DOWNLOADS) {
                     DownloadsScreen(
-                        onBack = { navController.popBackStack() },
+                        onBack = { navigateToHome() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -176,7 +165,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
                 composable(Routes.PDF_VIEWER_ROUTE) {
                     PdfViewerScreen(
-                        onBack = { navController.popBackStack() },
+                        onBack = { navigateToDownloads() },
                     )
                 }
             }
