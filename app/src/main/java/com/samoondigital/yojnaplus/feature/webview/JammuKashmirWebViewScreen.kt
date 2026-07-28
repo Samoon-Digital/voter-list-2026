@@ -71,6 +71,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 private const val JammuKashmirUrl = "https://ceo.jk.gov.in/namesearch/"
 private const val ChandigarhUrl = "https://ceochandigarh.gov.in/pages/intensive"
+private const val DadraNagarHaveliUrl = "https://ceoddd.in/"
 private val WebPurple = Color(0xFF3522A8)
 private val WebPurpleDark = Color(0xFF20106F)
 private val WebSurface = Color(0xFFFCFCFF)
@@ -115,6 +116,43 @@ fun ChandigarhWebViewScreen(
         startUrl = ChandigarhUrl,
         onBack = onBack,
         onDownloadRequested = viewModel::downloadPdf,
+        downloadState = downloadState,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun DadraNagarHaveliWebViewScreen(
+    onBack: () -> Unit,
+    onOpenPdf: (uri: String, title: String) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ChandigarhWebViewViewModel = hiltViewModel(),
+) {
+    val downloadState by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.eventFlow.collect { event ->
+            when (event) {
+                is WebPdfDownloadEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
+            }
+        }
+    }
+
+    OfficialWebViewScreen(
+        screenTitle = "Dadra & Nagar Haveli",
+        fallbackPageTitle = "Dadra & Nagar Haveli",
+        statusText = "Official EPIC, details and polling station search",
+        startUrl = DadraNagarHaveliUrl,
+        onBack = onBack,
+        onDownloadRequested = { url, contentDisposition, mimeType ->
+            viewModel.downloadPdf(
+                url = url,
+                contentDisposition = contentDisposition,
+                mimeType = mimeType,
+                district = "Dadra & Nagar Haveli and Daman & Diu",
+                assembly = "Official WebView PDF",
+            )
+        },
         downloadState = downloadState,
         modifier = modifier,
     )

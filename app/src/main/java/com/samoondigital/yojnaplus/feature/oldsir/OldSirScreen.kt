@@ -90,6 +90,7 @@ private const val NativeAdInterval = 7
 private const val UttarPradeshStateCd = "S24"
 private const val JammuKashmirStateCd = "U08"
 private const val ChandigarhStateCd = "U02"
+private const val DadraNagarHaveliStateCd = "U03"
 private val ChoiceAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -105,7 +106,8 @@ fun OldSirScreen(
     onOpenUttarPradesh: () -> Unit,
     onOpenJammuKashmir: () -> Unit,
     onOpenChandigarh: () -> Unit,
-onOpenPdf: (uri: String, title: String) -> Unit,
+    onOpenDadraNagarHaveli: () -> Unit,
+    onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: OldSirViewModel = hiltViewModel(),
 ) {
@@ -157,14 +159,16 @@ onOpenPdf: (uri: String, title: String) -> Unit,
                                 UttarPradeshStateCd -> onOpenUttarPradesh()
                                 JammuKashmirStateCd -> onOpenJammuKashmir()
                                 ChandigarhStateCd -> onOpenChandigarh()
-else -> viewModel.selectState(state)
+                                DadraNagarHaveliStateCd -> onOpenDadraNagarHaveli()
+                                else -> viewModel.selectState(state)
                             }
                         },
                         itemEnabled = { state ->
                             state.stateCd == UttarPradeshStateCd ||
                                 state.stateCd == JammuKashmirStateCd ||
                                 state.stateCd == ChandigarhStateCd ||
-viewModel.isStateSupported(state)
+                                state.stateCd == DadraNagarHaveliStateCd ||
+                                viewModel.isStateSupported(state)
                         },
                     )
                     OldSirStep.District -> DistrictStep(uiState, viewModel::selectDistrict)

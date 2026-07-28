@@ -27,18 +27,29 @@ class ChandigarhWebViewViewModel @Inject constructor(
     private val events = Channel<WebPdfDownloadEvent>(Channel.BUFFERED)
     val eventFlow = events.receiveAsFlow()
 
-    fun downloadPdf(url: String, contentDisposition: String?, mimeType: String?) {
+    fun downloadPdf(
+        url: String,
+        contentDisposition: String?,
+        mimeType: String?,
+        district: String = "Chandigarh",
+        assembly: String = "Intensive revision 2002",
+    ) {
         if (_state.value.isDownloading || !url.startsWith("http", ignoreCase = true)) return
         val fileName = URLUtil.guessFileName(url, contentDisposition, mimeType).let { guessed ->
             if (guessed.endsWith(".pdf", ignoreCase = true)) guessed else "$guessed.pdf"
         }
-        download(url = url, fileName = fileName)
+        download(url = url, fileName = fileName, district = district, assembly = assembly)
     }
 
-    private fun download(url: String, fileName: String) = viewModelScope.launch {
+    private fun download(
+        url: String,
+        fileName: String,
+        district: String,
+        assembly: String,
+    ) = viewModelScope.launch {
         val recordId = downloadRepository.createPendingRecord(
-            district = "Chandigarh",
-            assembly = "Intensive revision 2002",
+            district = district,
+            assembly = assembly,
             village = fileName.removeSuffix(".pdf"),
             partNumber = 0,
         )

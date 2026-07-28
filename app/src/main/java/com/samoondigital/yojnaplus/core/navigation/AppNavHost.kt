@@ -31,6 +31,7 @@ import com.samoondigital.yojnaplus.feature.pdfviewer.PdfViewerScreen
 import com.samoondigital.yojnaplus.feature.settings.SettingsScreen
 import com.samoondigital.yojnaplus.feature.up2003.UpRollScreen
 import com.samoondigital.yojnaplus.feature.webview.ChandigarhWebViewScreen
+import com.samoondigital.yojnaplus.feature.webview.DadraNagarHaveliWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.JammuKashmirWebViewScreen
 
 @Composable
@@ -72,6 +73,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenUttarPradesh = { navController.navigate(Routes.UP_2003) },
                         onOpenJammuKashmir = { navController.navigate(Routes.JAMMU_KASHMIR_WEB) },
                         onOpenChandigarh = { navController.navigate(Routes.CHANDIGARH_2002) },
+                        onOpenDadraNagarHaveli = { navController.navigate(Routes.DADRA_NAGAR_HAVELI_WEB) },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -100,6 +102,14 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
                 composable(Routes.CHANDIGARH_2002) {
                     ChandigarhScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
+                composable(Routes.DADRA_NAGAR_HAVELI_WEB) {
+                    DadraNagarHaveliWebViewScreen(
                         onBack = { navController.popBackStack() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
