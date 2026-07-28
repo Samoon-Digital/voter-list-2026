@@ -79,8 +79,17 @@ class PdfDownloadManager @Inject constructor(
         base64Pdf: String,
         fileName: String,
         onProgress: (Int) -> Unit,
+    ): DownloadedPdf = savePdfBytes(
+        bytes = Base64.decode(base64Pdf, Base64.DEFAULT),
+        fileName = fileName,
+        onProgress = onProgress,
+    )
+
+    suspend fun savePdfBytes(
+        bytes: ByteArray,
+        fileName: String,
+        onProgress: (Int) -> Unit,
     ): DownloadedPdf = withContext(Dispatchers.IO) {
-        val bytes = Base64.decode(base64Pdf, Base64.DEFAULT)
         val safeName = sanitizeFileName(fileName.ifBlank { "electoral-roll.pdf" })
             .let { if (it.endsWith(".pdf", ignoreCase = true)) it else "$it.pdf" }
         val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

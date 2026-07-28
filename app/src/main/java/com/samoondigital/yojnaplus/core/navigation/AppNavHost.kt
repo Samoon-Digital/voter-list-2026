@@ -23,6 +23,7 @@ import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import com.samoondigital.yojnaplus.feature.chandigarh.ChandigarhScreen
 import com.samoondigital.yojnaplus.feature.downloads.DownloadsScreen
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
+import com.samoondigital.yojnaplus.feature.jharkhand.JharkhandScreen
 import com.samoondigital.yojnaplus.feature.news.NewsScreen
 import com.samoondigital.yojnaplus.feature.notifications.NotificationsScreen
 import com.samoondigital.yojnaplus.feature.oldsir.OldSirScreen
@@ -32,6 +33,7 @@ import com.samoondigital.yojnaplus.feature.settings.SettingsScreen
 import com.samoondigital.yojnaplus.feature.up2003.UpRollScreen
 import com.samoondigital.yojnaplus.feature.webview.ChandigarhWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.DadraNagarHaveliWebViewScreen
+import com.samoondigital.yojnaplus.feature.webview.GujaratWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.JammuKashmirWebViewScreen
 
 @Composable
@@ -74,6 +76,8 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenJammuKashmir = { navController.navigate(Routes.JAMMU_KASHMIR_WEB) },
                         onOpenChandigarh = { navController.navigate(Routes.CHANDIGARH_2002) },
                         onOpenDadraNagarHaveli = { navController.navigate(Routes.DADRA_NAGAR_HAVELI_WEB) },
+                        onOpenGujarat = { navController.navigate(Routes.GUJARAT_WEB) },
+                        onOpenJharkhand = { navController.navigate(Routes.JHARKHAND_2003) },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
@@ -81,6 +85,14 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
                 composable(Routes.UP_2003) {
                     UpRollScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
+                composable(Routes.JHARKHAND_2003) {
+                    JharkhandScreen(
                         onBack = { navController.popBackStack() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
@@ -114,6 +126,11 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
+                    )
+                }
+                composable(Routes.GUJARAT_WEB) {
+                    GujaratWebViewScreen(
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }

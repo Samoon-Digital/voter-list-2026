@@ -1,5 +1,7 @@
-package com.samoondigital.yojnaplus.feature.oldsir
+package com.samoondigital.yojnaplus.feature.jharkhand
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -10,11 +12,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,25 +29,28 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -61,39 +66,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
-import com.samoondigital.yojnaplus.model.OldSirAssemblyDto
-import com.samoondigital.yojnaplus.model.OldSirDistrictDto
-import com.samoondigital.yojnaplus.model.OldSirPartDto
-import com.samoondigital.yojnaplus.model.StateDto
 
-private val OldSirPurple = Color(0xFF3522A8)
-private val OldSirPurpleDark = Color(0xFF20106F)
-private val OldSirPurpleBright = Color(0xFF7C5CFF)
-private val OldSirInk = Color(0xFF090B1F)
-private val OldSirMuted = Color(0xFF686A8D)
-private val OldSirSurface = Color(0xFFFCFCFF)
-private val OldSirStroke = Color(0xFFE3E2F5)
-private const val NativeAdInterval = 7
-private const val UttarPradeshStateCd = "S24"
-private const val JammuKashmirStateCd = "U08"
-private const val ChandigarhStateCd = "U02"
-private const val DadraNagarHaveliStateCd = "U03"
-private const val GujaratStateCd = "S06"
-private const val JharkhandStateCd = "S27"
-private val ChoiceAccents = listOf(
+private val JhPurple = Color(0xFF3522A8)
+private val JhPurpleDark = Color(0xFF20106F)
+private val JhPurpleBright = Color(0xFF7C5CFF)
+private val JhInk = Color(0xFF090B1F)
+private val JhMuted = Color(0xFF686A8D)
+private val JhSurface = Color(0xFFFCFCFF)
+private val JhStroke = Color(0xFFE3E2F5)
+private val JhAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
     Color(0xFFD66C2E),
@@ -103,24 +97,18 @@ private val ChoiceAccents = listOf(
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun OldSirScreen(
+fun JharkhandScreen(
     onBack: () -> Unit,
-    onOpenUttarPradesh: () -> Unit,
-    onOpenJammuKashmir: () -> Unit,
-    onOpenChandigarh: () -> Unit,
-    onOpenDadraNagarHaveli: () -> Unit,
-    onOpenGujarat: () -> Unit,
-    onOpenJharkhand: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: OldSirViewModel = hiltViewModel(),
+    viewModel: JharkhandViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
-                is OldSirEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
+                is JharkhandEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
             }
         }
     }
@@ -134,7 +122,7 @@ fun OldSirScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            OldSirTopBar(
+            JharkhandTopBar(
                 uiState = uiState,
                 onBack = ::handleBack,
             )
@@ -144,7 +132,7 @@ fun OldSirScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(OldSirSurface),
+                .background(JhSurface),
         ) {
             AnimatedContent(
                 modifier = Modifier.weight(1f),
@@ -153,37 +141,17 @@ fun OldSirScreen(
                     (slideInHorizontally { it / 4 } + fadeIn())
                         .togetherWith(slideOutHorizontally { -it / 4 } + fadeOut())
                 },
-                label = "old-sir-step",
+                label = "jharkhand-step",
             ) { step ->
                 when (step) {
-                    OldSirStep.State -> StateStep(
+                    JharkhandStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
+                    JharkhandStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
+                    JharkhandStep.Part -> PartStep(uiState, viewModel::selectPart)
+                    JharkhandStep.Captcha -> CaptchaStep(
                         uiState = uiState,
-                        onSelected = { state ->
-                            when (state.stateCd) {
-                                UttarPradeshStateCd -> onOpenUttarPradesh()
-                                JammuKashmirStateCd -> onOpenJammuKashmir()
-                                ChandigarhStateCd -> onOpenChandigarh()
-                                DadraNagarHaveliStateCd -> onOpenDadraNagarHaveli()
-                                GujaratStateCd -> onOpenGujarat()
-                                JharkhandStateCd -> onOpenJharkhand()
-                                else -> viewModel.selectState(state)
-                            }
-                        },
-                        itemEnabled = { state ->
-                            state.stateCd == UttarPradeshStateCd ||
-                                state.stateCd == JammuKashmirStateCd ||
-                                state.stateCd == ChandigarhStateCd ||
-                                state.stateCd == DadraNagarHaveliStateCd ||
-                                state.stateCd == GujaratStateCd ||
-                                state.stateCd == JharkhandStateCd ||
-                                viewModel.isStateSupported(state)
-                        },
-                    )
-                    OldSirStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
-                    OldSirStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
-                    OldSirStep.PollingStation -> PollingStationStep(
-                        uiState = uiState,
-                        onSelected = viewModel::openPartPdf,
+                        onCaptchaChanged = viewModel::updateCaptchaInput,
+                        onRefreshCaptcha = viewModel::refreshCaptcha,
+                        onDownload = viewModel::confirmCaptcha,
                     )
                 }
             }
@@ -192,8 +160,8 @@ fun OldSirScreen(
 }
 
 @Composable
-private fun OldSirTopBar(
-    uiState: OldSirUiState,
+private fun JharkhandTopBar(
+    uiState: JharkhandUiState,
     onBack: () -> Unit,
 ) {
     Box(
@@ -202,14 +170,13 @@ private fun OldSirTopBar(
             .height(140.dp)
             .background(
                 Brush.linearGradient(
-                    colors = listOf(OldSirPurpleDark, OldSirPurple, Color(0xFF2E1B98)),
+                    colors = listOf(JhPurpleDark, JhPurple, Color(0xFF2E1B98)),
                     start = Offset.Zero,
                     end = Offset(950f, 360f),
                 ),
             ),
     ) {
         HeaderArtwork(modifier = Modifier.matchParentSize())
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -228,21 +195,19 @@ private fun OldSirTopBar(
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = OldSirPurpleDark,
+                        tint = JhPurpleDark,
                         modifier = Modifier.size(24.dp),
                     )
                 }
             }
-
             Spacer(Modifier.width(16.dp))
-
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = 2.dp),
             ) {
                 Text(
-                    text = "Old SIR List",
+                    text = "Jharkhand 2003",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleMedium,
@@ -264,7 +229,6 @@ private fun OldSirTopBar(
                         .fillMaxWidth(0.86f),
                 )
             }
-
             Surface(
                 shape = CircleShape,
                 color = Color.White,
@@ -275,7 +239,7 @@ private fun OldSirTopBar(
                     Icon(
                         Icons.Outlined.PictureAsPdf,
                         contentDescription = null,
-                        tint = OldSirPurpleDark,
+                        tint = JhPurpleDark,
                         modifier = Modifier.size(26.dp),
                     )
                 }
@@ -289,7 +253,6 @@ private fun HeaderArtwork(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-
         val wave = Path().apply {
             moveTo(0f, h * 0.64f)
             cubicTo(w * 0.10f, h * 0.46f, w * 0.15f, h * 0.78f, w * 0.28f, h * 0.58f)
@@ -300,17 +263,6 @@ private fun HeaderArtwork(modifier: Modifier = Modifier) {
             close()
         }
         drawPath(wave, Color(0xFF5B49D7).copy(alpha = 0.30f))
-
-        val map = Path().apply {
-            moveTo(w * 0.68f, h * 0.20f)
-            cubicTo(w * 0.72f, h * 0.12f, w * 0.76f, h * 0.18f, w * 0.76f, h * 0.26f)
-            cubicTo(w * 0.83f, h * 0.25f, w * 0.89f, h * 0.35f, w * 0.86f, h * 0.44f)
-            cubicTo(w * 0.91f, h * 0.50f, w * 0.84f, h * 0.55f, w * 0.78f, h * 0.51f)
-            cubicTo(w * 0.74f, h * 0.58f, w * 0.66f, h * 0.53f, w * 0.70f, h * 0.45f)
-            cubicTo(w * 0.63f, h * 0.39f, w * 0.67f, h * 0.30f, w * 0.68f, h * 0.20f)
-            close()
-        }
-        drawPath(map, Color.White.copy(alpha = 0.13f))
     }
 }
 
@@ -338,7 +290,7 @@ private fun StepProgress(
                         if (step == currentStep) {
                             Surface(
                                 shape = CircleShape,
-                                color = OldSirPurpleBright,
+                                color = JhPurpleBright,
                                 modifier = Modifier.size(10.dp),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -354,7 +306,7 @@ private fun StepProgress(
                             Icon(
                                 Icons.Outlined.Check,
                                 contentDescription = null,
-                                tint = OldSirPurpleDark,
+                                tint = JhPurpleDark,
                                 modifier = Modifier.size(7.dp),
                             )
                         }
@@ -374,38 +326,15 @@ private fun StepProgress(
 }
 
 @Composable
-private fun StateStep(
-    uiState: OldSirUiState,
-    onSelected: (StateDto) -> Unit,
-    itemEnabled: (StateDto) -> Boolean,
-) {
-    SearchableChoiceScreen(
-        title = "Select State",
-        subtitle = "Choose the state where the old SIR roll is published.",
-        queryPlaceholder = "Search state",
-        items = uiState.states,
-        itemTitle = StateDto::stateName,
-        itemSubtitle = { null },
-        headerIcon = Icons.Outlined.Map,
-        itemIcon = Icons.Outlined.Map,
-        loading = uiState.isLoading && uiState.states.isEmpty(),
-        message = uiState.message,
-        showSearch = false,
-        itemEnabled = itemEnabled,
-        onSelected = onSelected,
-    )
-}
-
-@Composable
-private fun DistrictStep(uiState: OldSirUiState, onSelected: (OldSirDistrictDto) -> Unit) {
-    SearchableChoiceScreen(
+private fun DistrictStep(uiState: JharkhandUiState, onSelected: (JharkhandDistrict) -> Unit) {
+    ChoiceScreen(
         title = "Select District",
-        subtitle = uiState.selectedState?.stateName ?: "Choose district",
+        subtitle = "Electoral Roll 2003",
         queryPlaceholder = "Search district",
         items = uiState.districts,
-        itemTitle = OldSirDistrictDto::displayName,
-        itemSubtitle = { "District ${it.districtNo}" },
-        headerIcon = Icons.Outlined.LocationOn,
+        itemTitle = JharkhandDistrict::name,
+        itemSubtitle = { "District ${it.id}" },
+        headerIcon = Icons.Outlined.Map,
         itemIcon = Icons.Outlined.LocationOn,
         loading = uiState.isLoading && uiState.districts.isEmpty(),
         message = uiState.message,
@@ -414,14 +343,14 @@ private fun DistrictStep(uiState: OldSirUiState, onSelected: (OldSirDistrictDto)
 }
 
 @Composable
-private fun AssemblyStep(uiState: OldSirUiState, onSelected: (OldSirAssemblyDto) -> Unit) {
-    SearchableChoiceScreen(
-        title = "Select Assembly Constituency",
-        subtitle = uiState.selectedDistrict?.displayName ?: "Choose assembly constituency",
+private fun AssemblyStep(uiState: JharkhandUiState, onSelected: (JharkhandAssembly) -> Unit) {
+    ChoiceScreen(
+        title = "Select Assembly",
+        subtitle = uiState.selectedDistrict?.name ?: "Choose assembly",
         queryPlaceholder = "Search assembly",
         items = uiState.assemblies,
-        itemTitle = OldSirAssemblyDto::displayName,
-        itemSubtitle = { it.acType?.takeIf(String::isNotBlank) },
+        itemTitle = JharkhandAssembly::displayName,
+        itemSubtitle = { null },
         headerIcon = Icons.Outlined.AccountBalance,
         itemIcon = Icons.Outlined.AccountBalance,
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
@@ -431,68 +360,170 @@ private fun AssemblyStep(uiState: OldSirUiState, onSelected: (OldSirAssemblyDto)
 }
 
 @Composable
-private fun PollingStationStep(
-    uiState: OldSirUiState,
-    onSelected: (OldSirPartDto) -> Unit,
-) {
-    SearchableChoiceScreen(
-        title = "Select Polling Station",
-        subtitle = uiState.selectedAssembly?.displayName ?: "Choose polling station",
-        queryPlaceholder = "Search polling station",
+private fun PartStep(uiState: JharkhandUiState, onSelected: (JharkhandPart) -> Unit) {
+    ChoiceScreen(
+        title = "Select Part",
+        subtitle = uiState.selectedAssembly?.displayName ?: "Choose part",
+        queryPlaceholder = "Search part",
         items = uiState.parts,
-        itemTitle = OldSirPartDto::displayName,
-        itemSubtitle = { it.oldPdfUrl?.substringAfterLast('/') },
+        itemTitle = JharkhandPart::displayName,
+        itemSubtitle = { "Assembly ${uiState.selectedAssembly?.id.orEmpty()}" },
         headerIcon = Icons.Outlined.PictureAsPdf,
         itemIcon = Icons.Outlined.PictureAsPdf,
         loading = uiState.isLoading && uiState.parts.isEmpty(),
         message = uiState.message,
-        itemTitleMaxLines = Int.MAX_VALUE,
         onSelected = onSelected,
-        itemTrailing = { part ->
-            if (uiState.downloadingPartNumber == part.partNumber) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 3.dp,
-                    )
-                    Text(
-                        text = "${uiState.downloadProgress}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = OldSirPurple,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            } else {
-                Icon(
-                    Icons.Outlined.PictureAsPdf,
-                    contentDescription = null,
-                    tint = OldSirPurple,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-        },
     )
 }
 
 @Composable
-private fun <T> SearchableChoiceScreen(
+private fun CaptchaStep(
+    uiState: JharkhandUiState,
+    onCaptchaChanged: (String) -> Unit,
+    onRefreshCaptcha: () -> Unit,
+    onDownload: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item(key = "captcha-header") {
+            StepHeading(
+                icon = Icons.Outlined.PictureAsPdf,
+                title = "Enter Captcha",
+                subtitle = uiState.selectedPart?.displayName ?: "Verify before download",
+            )
+        }
+        item(key = "captcha-progress") {
+            if (uiState.isLoading || uiState.isDownloading) {
+                LinearProgressIndicator(
+                    progress = { if (uiState.isDownloading) uiState.downloadProgress / 100f else 0f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            uiState.message?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (message.contains("success", ignoreCase = true)) JhPurple else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        }
+        item(key = "captcha-card") {
+            ElevatedCard(
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF4F2FF),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(72.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                CaptchaImage(uiState.captchaImageBase64)
+                            }
+                        }
+                        IconButton(
+                            onClick = onRefreshCaptcha,
+                            enabled = !uiState.isLoading && !uiState.isDownloading,
+                        ) {
+                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh captcha")
+                        }
+                    }
+                    OutlinedTextField(
+                        value = uiState.captchaInput,
+                        onValueChange = onCaptchaChanged,
+                        label = { Text("Captcha") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                        colors = searchFieldColors(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = onDownload,
+                        enabled = uiState.captchaInput.isNotBlank() &&
+                            uiState.captchaImageBase64 != null &&
+                            !uiState.isLoading &&
+                            !uiState.isDownloading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                    ) {
+                        if (uiState.isDownloading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 3.dp,
+                                color = Color.White,
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("${uiState.downloadProgress}%")
+                        } else {
+                            Icon(Icons.Outlined.Download, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Download PDF")
+                        }
+                    }
+                }
+            }
+        }
+        item(key = "captcha-space") { Spacer(Modifier.height(88.dp)) }
+    }
+}
+
+@Composable
+private fun CaptchaImage(base64Captcha: String?) {
+    val bitmap = remember(base64Captcha) {
+        runCatching {
+            val bytes = Base64.decode(base64Captcha.orEmpty(), Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }.getOrNull()
+    }
+    if (bitmap == null) {
+        if (base64Captcha == null) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp)
+        } else {
+            Text(
+                text = "Captcha unavailable",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    } else {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "Captcha",
+            modifier = Modifier.height(56.dp),
+        )
+    }
+}
+
+@Composable
+private fun <T> ChoiceScreen(
     title: String,
     subtitle: String,
     queryPlaceholder: String,
-    showSearch: Boolean = true,
     items: List<T>,
     itemTitle: (T) -> String,
     itemSubtitle: (T) -> String?,
     loading: Boolean,
     message: String?,
-    itemTitleMaxLines: Int = 1,
-    itemEnabled: (T) -> Boolean = { true },
     headerIcon: ImageVector,
     itemIcon: ImageVector,
-    itemTrailing: (@Composable (T) -> Unit)? = null,
     onSelected: (T) -> Unit,
 ) {
     var query by remember(title) { mutableStateOf("") }
@@ -504,19 +535,26 @@ private fun <T> SearchableChoiceScreen(
         }
     }
 
-    ChoiceListScaffold(
-        title = title,
-        subtitle = subtitle,
-        headerIcon = headerIcon,
-        loading = loading,
-        message = message,
-        trailingHeader = if (showSearch) {
-            {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item(key = "jh-header-$title") {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                StepHeading(headerIcon, title, subtitle)
+                if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                message?.takeUnless { loading }?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
                     leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                    trailingIcon = { Icon(Icons.Outlined.Tune, contentDescription = null, tint = OldSirPurple) },
                     placeholder = { Text(queryPlaceholder) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
@@ -526,91 +564,22 @@ private fun <T> SearchableChoiceScreen(
                         .fillMaxWidth()
                         .height(54.dp),
                 )
+                HorizontalDivider(color = JhStroke)
             }
-        } else null,
-    ) { listState ->
-        filtered.forEachIndexed { index, item ->
-            val titleKey = itemTitle(item)
-            item(key = "old-sir-$title-$index-$titleKey") {
-                ChoiceCard(
-                    title = titleKey,
-                    subtitle = itemSubtitle(item),
-                    icon = itemIcon,
-                    accentIndex = index,
-                    titleMaxLines = itemTitleMaxLines,
-                    enabled = itemEnabled(item),
-                    trailing = itemTrailing?.let { trailing -> { trailing(item) } },
-                    onClick = { onSelected(item) },
-                )
-            }
-            NativeAdInsertion(
-                listState = listState,
-                prefix = title,
-                index = index,
-                suffix = titleKey,
+        }
+        itemsIndexed(
+            items = filtered,
+            key = { index, item -> "jh-$title-$index-${itemTitle(item)}" },
+        ) { index, item ->
+            ChoiceCard(
+                title = itemTitle(item),
+                subtitle = itemSubtitle(item),
+                icon = itemIcon,
+                accentIndex = index,
+                onClick = { onSelected(item) },
             )
         }
-    }
-}
-
-@Composable
-private fun ChoiceListScaffold(
-    title: String,
-    subtitle: String,
-    headerIcon: ImageVector,
-    loading: Boolean,
-    message: String?,
-    trailingHeader: (@Composable ColumnScope.() -> Unit)? = null,
-    content: androidx.compose.foundation.lazy.LazyListScope.(LazyListState) -> Unit,
-) {
-    val listState = rememberLazyListState()
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        item(key = "old-sir-header-$title") {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                StepHeading(
-                    icon = headerIcon,
-                    title = title,
-                    subtitle = subtitle,
-                )
-                if (loading) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                }
-                message?.takeUnless { loading }?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-
-                trailingHeader?.invoke(this)
-                HorizontalDivider(color = OldSirStroke)
-            }
-        }
-        content(listState)
-        item(key = "old-sir-bottom-space-$title") { Spacer(Modifier.height(88.dp)) }
-    }
-}
-
-private fun androidx.compose.foundation.lazy.LazyListScope.NativeAdInsertion(
-    listState: LazyListState,
-    prefix: String,
-    index: Int,
-    suffix: Any,
-) {
-    if ((index + 1) % NativeAdInterval != 0) return
-    val adItemKey = "old-sir-native-$prefix-${index + 1}-$suffix"
-    item(key = adItemKey) {
-        LazyNativeAdItem(
-            listState = listState,
-            itemKey = adItemKey,
-            placementKey = adItemKey,
-        )
+        item(key = "jh-bottom-space-$title") { Spacer(Modifier.height(88.dp)) }
     }
 }
 
@@ -630,7 +599,7 @@ private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = OldSirPurple,
+                    tint = JhPurple,
                     modifier = Modifier.size(28.dp),
                 )
             }
@@ -639,7 +608,7 @@ private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = OldSirInk,
+                color = JhInk,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -648,7 +617,7 @@ private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = OldSirMuted,
+                color = JhMuted,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -657,39 +626,21 @@ private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
 }
 
 @Composable
-private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = OldSirStroke,
-    unfocusedBorderColor = OldSirStroke,
-    focusedLeadingIconColor = OldSirMuted,
-    unfocusedLeadingIconColor = OldSirMuted,
-    focusedPlaceholderColor = OldSirMuted,
-    unfocusedPlaceholderColor = OldSirMuted,
-    cursorColor = OldSirPurple,
-    focusedTextColor = OldSirInk,
-    unfocusedTextColor = OldSirInk,
-)
-
-@Composable
 private fun ChoiceCard(
     title: String,
     subtitle: String?,
     onClick: () -> Unit,
     icon: ImageVector,
     accentIndex: Int,
-    titleMaxLines: Int = 1,
-    enabled: Boolean = true,
-    trailing: (@Composable () -> Unit)? = null,
 ) {
-    val accent = ChoiceAccents[accentIndex % ChoiceAccents.size]
+    val accent = JhAccents[accentIndex % JhAccents.size]
     ElevatedCard(
         onClick = onClick,
-        enabled = enabled,
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.45f)
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(8.dp),
@@ -723,9 +674,9 @@ private fun ChoiceCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = OldSirInk,
+                    color = JhInk,
                     fontWeight = FontWeight.ExtraBold,
-                    maxLines = titleMaxLines,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 subtitle?.takeIf { it.isNotBlank() }?.let {
@@ -733,22 +684,31 @@ private fun ChoiceCard(
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = OldSirInk,
+                        color = JhInk,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            if (trailing != null) {
-                trailing()
-            } else {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowForward,
-                    contentDescription = null,
-                    tint = OldSirPurple,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
+            Icon(
+                Icons.AutoMirrored.Outlined.ArrowForward,
+                contentDescription = null,
+                tint = JhPurple,
+                modifier = Modifier.size(24.dp),
+            )
         }
     }
 }
+
+@Composable
+private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = JhStroke,
+    unfocusedBorderColor = JhStroke,
+    focusedLeadingIconColor = JhMuted,
+    unfocusedLeadingIconColor = JhMuted,
+    focusedPlaceholderColor = JhMuted,
+    unfocusedPlaceholderColor = JhMuted,
+    cursorColor = JhPurple,
+    focusedTextColor = JhInk,
+    unfocusedTextColor = JhInk,
+)

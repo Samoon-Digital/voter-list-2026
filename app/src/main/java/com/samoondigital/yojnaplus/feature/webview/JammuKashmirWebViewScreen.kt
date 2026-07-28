@@ -72,6 +72,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 private const val JammuKashmirUrl = "https://ceo.jk.gov.in/namesearch/"
 private const val ChandigarhUrl = "https://ceochandigarh.gov.in/pages/intensive"
 private const val DadraNagarHaveliUrl = "https://ceoddd.in/"
+private const val GujaratUrl = "https://chunavsetu-search.gujarat.gov.in/SearchEPIC.aspx"
 private val WebPurple = Color(0xFF3522A8)
 private val WebPurpleDark = Color(0xFF20106F)
 private val WebSurface = Color(0xFFFCFCFF)
@@ -154,6 +155,21 @@ fun DadraNagarHaveliWebViewScreen(
             )
         },
         downloadState = downloadState,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun GujaratWebViewScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OfficialWebViewScreen(
+        screenTitle = "Gujarat",
+        fallbackPageTitle = "Gujarat",
+        statusText = "Official Chunav Setu voter search",
+        startUrl = GujaratUrl,
+        onBack = onBack,
         modifier = modifier,
     )
 }
