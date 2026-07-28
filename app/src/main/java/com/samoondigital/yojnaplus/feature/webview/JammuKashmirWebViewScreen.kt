@@ -73,6 +73,7 @@ private const val JammuKashmirUrl = "https://ceo.jk.gov.in/namesearch/"
 private const val ChandigarhUrl = "https://ceochandigarh.gov.in/pages/intensive"
 private const val DadraNagarHaveliUrl = "https://ceoddd.in/"
 private const val GujaratUrl = "https://chunavsetu-search.gujarat.gov.in/SearchEPIC.aspx"
+private const val KarnatakaUrl = "https://ceo.karnataka.gov.in/voter_list.html"
 private val WebPurple = Color(0xFF3522A8)
 private val WebPurpleDark = Color(0xFF20106F)
 private val WebSurface = Color(0xFFFCFCFF)
@@ -174,6 +175,42 @@ fun GujaratWebViewScreen(
     )
 }
 
+@Composable
+fun KarnatakaWebViewScreen(
+    onBack: () -> Unit,
+    onOpenPdf: (uri: String, title: String) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ChandigarhWebViewViewModel = hiltViewModel(),
+) {
+    val downloadState by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.eventFlow.collect { event ->
+            when (event) {
+                is WebPdfDownloadEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
+            }
+        }
+    }
+
+    OfficialWebViewScreen(
+        screenTitle = "Karnataka 2002",
+        fallbackPageTitle = "Karnataka 2002",
+        statusText = "Official electoral roll voter search",
+        startUrl = KarnatakaUrl,
+        onBack = onBack,
+        onDownloadRequested = { url, contentDisposition, mimeType ->
+            viewModel.downloadPdf(
+                url = url,
+                contentDisposition = contentDisposition,
+                mimeType = mimeType,
+                district = "Karnataka",
+                assembly = "Official WebView PDF",
+            )
+        },
+        downloadState = downloadState,
+        modifier = modifier,
+    )
+}
 @Composable
 private fun OfficialWebViewScreen(
     screenTitle: String,
@@ -323,6 +360,8 @@ private fun OfficialWebView(
                     settings.useWideViewPort = true
                     settings.builtInZoomControls = true
                     settings.displayZoomControls = false
+                    isHorizontalScrollBarEnabled = true
+                    isVerticalScrollBarEnabled = true
                     settings.javaScriptCanOpenWindowsAutomatically = true
                     settings.setSupportMultipleWindows(false)
                     settings.cacheMode = WebSettings.LOAD_DEFAULT

@@ -23,6 +23,7 @@ object Routes {
     const val CHANDIGARH_2002 = "chandigarh_2002"
     const val DADRA_NAGAR_HAVELI_WEB = "dadra_nagar_haveli_web"
     const val GUJARAT_WEB = "gujarat_web"
+    const val KARNATAKA_WEB = "karnataka_web"
     const val DOWNLOADS = "downloads"
     const val PDF_VIEWER = "pdf_viewer"
     const val PDF_VIEWER_ROUTE = "$PDF_VIEWER/{uri}/{title}"

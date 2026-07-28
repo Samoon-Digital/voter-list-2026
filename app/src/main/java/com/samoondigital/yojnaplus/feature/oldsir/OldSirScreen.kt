@@ -93,6 +93,7 @@ private const val JammuKashmirStateCd = "U08"
 private const val ChandigarhStateCd = "U02"
 private const val DadraNagarHaveliStateCd = "U03"
 private const val GujaratStateCd = "S06"
+private const val KarnatakaStateCd = "S10"
 private const val JharkhandStateCd = "S27"
 private val ChoiceAccents = listOf(
     Color(0xFF4A2CC3),
@@ -111,6 +112,7 @@ fun OldSirScreen(
     onOpenChandigarh: () -> Unit,
     onOpenDadraNagarHaveli: () -> Unit,
     onOpenGujarat: () -> Unit,
+    onOpenKarnataka: () -> Unit,
     onOpenJharkhand: () -> Unit,
     onOpenDownloads: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
@@ -168,6 +170,7 @@ fun OldSirScreen(
                                 ChandigarhStateCd -> onOpenChandigarh()
                                 DadraNagarHaveliStateCd -> onOpenDadraNagarHaveli()
                                 GujaratStateCd -> onOpenGujarat()
+                                KarnatakaStateCd -> onOpenKarnataka()
                                 JharkhandStateCd -> onOpenJharkhand()
                                 else -> viewModel.selectState(state)
                             }
@@ -178,6 +181,7 @@ fun OldSirScreen(
                                 state.stateCd == ChandigarhStateCd ||
                                 state.stateCd == DadraNagarHaveliStateCd ||
                                 state.stateCd == GujaratStateCd ||
+                                state.stateCd == KarnatakaStateCd ||
                                 state.stateCd == JharkhandStateCd ||
                                 viewModel.isStateSupported(state)
                         },

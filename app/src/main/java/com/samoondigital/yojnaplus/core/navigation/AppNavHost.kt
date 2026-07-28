@@ -35,6 +35,7 @@ import com.samoondigital.yojnaplus.feature.webview.ChandigarhWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.DadraNagarHaveliWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.GujaratWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.JammuKashmirWebViewScreen
+import com.samoondigital.yojnaplus.feature.webview.KarnatakaWebViewScreen
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -86,6 +87,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenChandigarh = { navController.navigate(Routes.CHANDIGARH_2002) },
                         onOpenDadraNagarHaveli = { navController.navigate(Routes.DADRA_NAGAR_HAVELI_WEB) },
                         onOpenGujarat = { navController.navigate(Routes.GUJARAT_WEB) },
+                        onOpenKarnataka = { navController.navigate(Routes.KARNATAKA_WEB) },
                         onOpenJharkhand = { navController.navigate(Routes.JHARKHAND_2003) },
                         onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->
@@ -144,6 +146,14 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.GUJARAT_WEB) {
                     GujaratWebViewScreen(
                         onBack = { navController.popBackStack() },
+                    )
+                }
+                composable(Routes.KARNATAKA_WEB) {
+                    KarnatakaWebViewScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
                     )
                 }
                 composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }
