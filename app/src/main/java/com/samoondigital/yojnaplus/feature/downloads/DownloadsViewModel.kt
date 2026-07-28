@@ -144,7 +144,7 @@ class DownloadsViewModel @Inject constructor(
         val term = searchQuery.trim()
         if (term.isBlank()) return true
         return listOf(fileName, district, assembly, village, status)
-            .any { it.contains(term, ignoreCase = true) }
+            .any { it.matchesSearchQuery(term) }
     }
 
     private fun DownloadRecordEntity.toUi(): DownloadItemUi =
@@ -176,6 +176,19 @@ class DownloadsViewModel @Inject constructor(
 
     private fun String.toStatus(): DownloadStatusEntity =
         runCatching { DownloadStatusEntity.valueOf(this) }.getOrDefault(DownloadStatusEntity.Failed)
+
+    private fun String.matchesSearchQuery(query: String): Boolean {
+        val target = normalizedForSearch()
+        val needle = query.normalizedForSearch()
+        return needle.isBlank() ||
+            target.contains(needle) ||
+            target.replace(" ", "").contains(needle.replace(" ", ""))
+    }
+
+    private fun String.normalizedForSearch(): String = lowercase()
+        .replace(Regex("[^\\p{L}\\p{Nd}]+"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
 
     private fun Throwable.userMessage(fallback: String): String =
         message?.takeIf { it.isNotBlank() } ?: fallback

@@ -7,8 +7,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -32,7 +30,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -74,7 +71,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -138,8 +134,7 @@ fun JharkhandScreen(
                 modifier = Modifier.weight(1f),
                 targetState = uiState.step,
                 transitionSpec = {
-                    (slideInHorizontally { it / 4 } + fadeIn())
-                        .togetherWith(slideOutHorizontally { -it / 4 } + fadeOut())
+                    fadeIn().togetherWith(fadeOut())
                 },
                 label = "jharkhand-step",
             ) { step ->
@@ -432,7 +427,7 @@ private fun CaptchaStep(
                             color = Color(0xFFF4F2FF),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(72.dp),
+                                .height(88.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 CaptchaImage(uiState.captchaImageBase64)
@@ -450,7 +445,6 @@ private fun CaptchaStep(
                         onValueChange = onCaptchaChanged,
                         label = { Text("Captcha") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                         colors = searchFieldColors(),
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -507,7 +501,7 @@ private fun CaptchaImage(base64Captcha: String?) {
         Image(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = "Captcha",
-            modifier = Modifier.height(56.dp),
+            modifier = Modifier.size(width = 190.dp, height = 72.dp),
         )
     }
 }
@@ -530,8 +524,8 @@ private fun <T> ChoiceScreen(
     val filtered = remember(items, query) {
         val term = query.trim()
         if (term.isBlank()) items else items.filter {
-            itemTitle(it).contains(term, ignoreCase = true) ||
-                itemSubtitle(it).orEmpty().contains(term, ignoreCase = true)
+            itemTitle(it).matchesSearchQuery(term) ||
+                itemSubtitle(it).orEmpty().matchesSearchQuery(term)
         }
     }
 
@@ -699,6 +693,19 @@ private fun ChoiceCard(
         }
     }
 }
+
+private fun String.matchesSearchQuery(query: String): Boolean {
+    val target = normalizedForSearch()
+    val needle = query.normalizedForSearch()
+    return needle.isBlank() ||
+        target.contains(needle) ||
+        target.replace(" ", "").contains(needle.replace(" ", ""))
+}
+
+private fun String.normalizedForSearch(): String = lowercase()
+    .replace(Regex("[^\\p{L}\\p{Nd}]+"), " ")
+    .replace(Regex("\\s+"), " ")
+    .trim()
 
 @Composable
 private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(

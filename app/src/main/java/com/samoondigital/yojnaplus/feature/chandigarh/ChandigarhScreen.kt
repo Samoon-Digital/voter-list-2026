@@ -405,8 +405,8 @@ private fun <T> ChoiceScreen(
     val filtered = remember(items, query) {
         val term = query.trim()
         if (term.isBlank()) items else items.filter {
-            itemTitle(it).contains(term, ignoreCase = true) ||
-                itemSubtitle(it).orEmpty().contains(term, ignoreCase = true)
+            itemTitle(it).matchesSearchQuery(term) ||
+                itemSubtitle(it).orEmpty().matchesSearchQuery(term)
         }
     }
 
@@ -573,6 +573,19 @@ private fun ChoiceCard(
         }
     }
 }
+
+private fun String.matchesSearchQuery(query: String): Boolean {
+    val target = normalizedForSearch()
+    val needle = query.normalizedForSearch()
+    return needle.isBlank() ||
+        target.contains(needle) ||
+        target.replace(" ", "").contains(needle.replace(" ", ""))
+}
+
+private fun String.normalizedForSearch(): String = lowercase()
+    .replace(Regex("[^\\p{L}\\p{Nd}]+"), " ")
+    .replace(Regex("\\s+"), " ")
+    .trim()
 
 @Composable
 private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(

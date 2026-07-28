@@ -32,7 +32,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -73,7 +72,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -432,8 +430,8 @@ private fun <T> ChoiceScreen(
     val filtered = remember(items, query) {
         val term = query.trim()
         if (term.isBlank()) items else items.filter {
-            itemTitle(it).contains(term, ignoreCase = true) ||
-                itemSubtitle(it).orEmpty().contains(term, ignoreCase = true)
+            itemTitle(it).matchesSearchQuery(term) ||
+                itemSubtitle(it).orEmpty().matchesSearchQuery(term)
         }
     }
 
@@ -650,7 +648,6 @@ private fun CaptchaDialog(
                     onValueChange = onInputChanged,
                     label = { Text("Captcha") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                     colors = searchFieldColors(),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -668,6 +665,19 @@ private fun CaptchaDialog(
         },
     )
 }
+
+private fun String.matchesSearchQuery(query: String): Boolean {
+    val target = normalizedForSearch()
+    val needle = query.normalizedForSearch()
+    return needle.isBlank() ||
+        target.contains(needle) ||
+        target.replace(" ", "").contains(needle.replace(" ", ""))
+}
+
+private fun String.normalizedForSearch(): String = lowercase()
+    .replace(Regex("[^\\p{L}\\p{Nd}]+"), " ")
+    .replace(Regex("\\s+"), " ")
+    .trim()
 
 @Composable
 private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(

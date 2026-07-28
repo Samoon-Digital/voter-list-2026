@@ -533,8 +533,8 @@ private fun PartsStep(
     val filtered = remember(uiState.parts, query) {
         val term = query.trim()
         if (term.isBlank()) uiState.parts else uiState.parts.filter {
-            it.partName.contains(term, ignoreCase = true) ||
-                it.partNumber.toString().contains(term)
+            it.partName.matchesSearchQuery(term) ||
+                it.partNumber.toString().matchesSearchQuery(term)
         }
     }
 
@@ -826,8 +826,8 @@ private fun <T> SearchableChoiceScreen(
     val filtered = remember(items, query) {
         val term = query.trim()
         if (term.isBlank()) items else items.filter {
-            itemTitle(it).contains(term, ignoreCase = true) ||
-                itemSubtitle(it).orEmpty().contains(term, ignoreCase = true)
+            itemTitle(it).matchesSearchQuery(term) ||
+                itemSubtitle(it).orEmpty().matchesSearchQuery(term)
         }
     }
 
@@ -992,6 +992,18 @@ private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
     }
 }
 
+private fun String.matchesSearchQuery(query: String): Boolean {
+    val target = normalizedForSearch()
+    val needle = query.normalizedForSearch()
+    return needle.isBlank() ||
+        target.contains(needle) ||
+        target.replace(" ", "").contains(needle.replace(" ", ""))
+}
+
+private fun String.normalizedForSearch(): String = lowercase()
+    .replace(Regex("[^\\p{L}\\p{Nd}]+"), " ")
+    .replace(Regex("\\s+"), " ")
+    .trim()
 @Composable
 private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = WizardStroke,
@@ -1377,4 +1389,3 @@ private fun String.hasDevanagari(): Boolean =
     any { it in '\u0900'..'\u097F' }
 
 private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
-

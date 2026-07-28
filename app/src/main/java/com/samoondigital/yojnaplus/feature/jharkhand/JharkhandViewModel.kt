@@ -111,7 +111,7 @@ class JharkhandViewModel @Inject constructor(
                     partNumber = part.partNumber,
                 )
                 downloadRepository.markDownloading(recordId)
-                val downloaded = pdfDownloadManager.savePdfBytes(pdf.bytes, pdf.fileName) { progress ->
+                val downloaded = pdfDownloadManager.savePdfBytes(pdf.bytes, readableFileName(district, assembly, part)) { progress ->
                     updateProgress(recordId, progress)
                 }
                 downloadRepository.markCompleted(recordId, downloaded.fileName, downloaded.uri)
@@ -214,6 +214,11 @@ class JharkhandViewModel @Inject constructor(
             }
     }
 
+    private fun readableFileName(
+        district: JharkhandDistrict,
+        assembly: JharkhandAssembly,
+        part: JharkhandPart,
+    ): String = "Jharkhand 2003 - ${district.name} - ${assembly.displayName} - Part ${part.id}.pdf"
     private fun Throwable.userMessage(fallback: String): String =
         message?.takeIf { it.isNotBlank() } ?: fallback
 }
