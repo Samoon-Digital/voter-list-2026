@@ -215,7 +215,7 @@ private fun OldSirTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp)
+            .height(110.dp)
             .background(
                 Brush.linearGradient(
                     colors = listOf(OldSirPurpleDark, OldSirPurple, Color(0xFF2E1B98)),

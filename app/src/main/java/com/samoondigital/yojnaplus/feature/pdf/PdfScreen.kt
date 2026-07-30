@@ -238,7 +238,7 @@ private fun WizardHeroTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp)
+            .height(110.dp)
             .background(
                 Brush.linearGradient(
                     colors = listOf(WizardPurpleDark, WizardPurple, Color(0xFF2E1B98)),

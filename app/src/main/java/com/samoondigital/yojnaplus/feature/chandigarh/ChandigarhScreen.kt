@@ -153,7 +153,7 @@ private fun ChandigarhTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp)
+            .height(110.dp)
             .background(
                 Brush.linearGradient(
                     colors = listOf(ChandigarhPurpleDark, ChandigarhPurple, Color(0xFF2E1B98)),
