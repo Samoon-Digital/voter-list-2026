@@ -3,6 +3,7 @@ package com.samoondigital.yojnaplus.feature.home
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.app.Activity
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,12 +26,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FormatListBulleted
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -239,26 +247,483 @@ private val HomePurple = Color(0xFF4326B8)
 
 @Composable
 private fun VoterListPdfCard(onClick: () -> Unit) {
-    HomePdfCard(
-        title = stringResource(R.string.voter_list_pdf),
-        description = stringResource(R.string.voter_list_pdf_desc),
-        actionLabel = stringResource(R.string.download_pdf),
-        showTrending = false,
-        onClick = onClick,
-    )
+    VoterListSirCard(onClick = onClick)
 }
 
 @Composable
-private fun OldSirListCard(onClick: () -> Unit) {
-    HomePdfCard(
-        title = stringResource(R.string.old_sir_list),
-        description = stringResource(R.string.old_sir_list_desc),
-        actionLabel = stringResource(R.string.download_pdf),
-        showTrending = true,
+private fun VoterListSirCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
         onClick = onClick,
-    )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(248.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(90.dp)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color(0xFF0B8D45), Color(0xFF087A38)),
+                            ),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    OldSirCardDotPattern(modifier = Modifier.matchParentSize())
+                    Image(
+                        painter = painterResource(R.drawable.voter_list_pdf_clipart),
+                        contentDescription = null,
+                        modifier = Modifier.size(94.dp),
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(Color(0xFFFBFEFC))
+                        .padding(start = 14.dp, top = 12.dp, end = 14.dp, bottom = 10.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFE5F5EA),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = Green,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.voter_list_sir_badge),
+                                    color = Green,
+                                    fontSize = 14.sp,
+                                    lineHeight = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE5F5EA)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Description,
+                                contentDescription = null,
+                                tint = Green,
+                                modifier = Modifier.size(23.dp),
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.voter_list_pdf),
+                        color = Color(0xFF064F36),
+                        fontSize = 30.sp,
+                        lineHeight = 33.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(32.dp)
+                            .height(3.dp)
+                            .background(Green, RoundedCornerShape(2.dp)),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.voter_list_sir_desc),
+                        color = Color(0xFF202634),
+                        fontSize = 13.sp,
+                        lineHeight = 17.sp,
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(1.dp)
+                                .background(Green.copy(alpha = 0.20f)),
+                        )
+                        Text(
+                            text = stringResource(R.string.voter_list_available_lists),
+                            color = Green,
+                            fontSize = 12.sp,
+                            lineHeight = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(1.dp)
+                                .background(Green.copy(alpha = 0.20f)),
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        VoterListTypeChip(
+                            label = stringResource(R.string.voter_list_draft),
+                            icon = Icons.Outlined.Description,
+                            modifier = Modifier.weight(1f),
+                        )
+                        VoterListTypeChip(
+                            label = stringResource(R.string.voter_list_final),
+                            icon = Icons.Outlined.CheckCircle,
+                            modifier = Modifier.weight(1f),
+                        )
+                        VoterListTypeChip(
+                            label = stringResource(R.string.voter_list_supplementary),
+                            icon = Icons.Outlined.FileDownload,
+                            modifier = Modifier.weight(1.35f),
+                        )
+                        VoterListTypeChip(
+                            label = stringResource(R.string.voter_list_all_lists),
+                            icon = Icons.Outlined.FormatListBulleted,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(Green)
+                    .clickable(onClick = onClick)
+                    .padding(start = 104.dp, end = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.download_pdf),
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+        }
+    }
 }
 
+@Composable
+private fun VoterListTypeChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF0F7F1)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Green,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = label,
+            color = Green,
+            fontSize = 11.sp,
+            lineHeight = 12.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+private val OldSirArchiveYears = listOf("2002", "2003", "2004", "2005", "2006")
+
+@Composable
+private fun OldSirListCard(onClick: () -> Unit) {
+    OldSirArchiveCard(onClick = onClick)
+}
+
+@Composable
+private fun OldSirArchiveCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(268.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(96.dp)
+                    .fillMaxHeight()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color(0xFF0B8D45), Color(0xFF087A38)),
+                        ),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                OldSirCardDotPattern(modifier = Modifier.matchParentSize())
+                Image(
+                    painter = painterResource(R.drawable.old_sir_pdf_clipart),
+                    contentDescription = null,
+                    modifier = Modifier.size(102.dp),
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(start = 14.dp, top = 12.dp, end = 14.dp, bottom = 10.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFE5F5EA),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarMonth,
+                                contentDescription = null,
+                                tint = Green,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.old_sir_archive_badge),
+                                color = Green,
+                                fontSize = 12.sp,
+                                lineHeight = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE5F5EA)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.FolderOpen,
+                            contentDescription = null,
+                            tint = Green,
+                            modifier = Modifier.size(23.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    text = stringResource(R.string.old_sir_archive_title),
+                    color = Color(0xFF064F36),
+                    fontSize = 28.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = stringResource(R.string.old_sir_archive_desc),
+                    color = Color(0xFF202634),
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
+                )
+                Spacer(Modifier.height(7.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(Green.copy(alpha = 0.14f)),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    OldSirArchiveYears.forEach { year ->
+                        OldSirYearChip(
+                            year = year,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(9.dp))
+                Surface(
+                    onClick = onClick,
+                    shape = RoundedCornerShape(8.dp),
+                    color = Green,
+                    shadowElevation = 6.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(start = 18.dp, end = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.old_sir_archive_action),
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            lineHeight = 21.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 14.dp),
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(7.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.VerifiedUser,
+                        contentDescription = null,
+                        tint = Green,
+                        modifier = Modifier.size(17.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.old_sir_archive_verified),
+                        color = Color(0xFF6D7179),
+                        fontSize = 12.sp,
+                        lineHeight = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OldSirYearChip(
+    year: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF0F7F1)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.CalendarMonth,
+            contentDescription = null,
+            tint = Green,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = year,
+            color = Color(0xFF064F36),
+            fontSize = 14.sp,
+            lineHeight = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun OldSirCardDotPattern(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val dotColor = Color.White.copy(alpha = 0.18f)
+        val startX = size.width * 0.18f
+        val startY = size.height * 0.68f
+        repeat(7) { row ->
+            repeat(5) { column ->
+                drawCircle(
+                    color = dotColor,
+                    radius = 2.1f,
+                    center = Offset(startX + column * 13f, startY + row * 12f),
+                )
+            }
+        }
+    }
+}
 @Composable
 private fun HomePdfCard(
     title: String,

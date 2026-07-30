@@ -5,8 +5,20 @@
     <!-- Home cards -->
     <string name="voter_list_pdf">Voter List PDF</string>
     <string name="voter_list_pdf_desc">Download latest district / Assembly &amp; part-wise electoral roll PDF</string>
+    <string name="voter_list_sir_badge">SIR 2026</string>
+    <string name="voter_list_sir_desc">Download all new SIR 2026 voter list PDFs - district, assembly &amp; part-wise.</string>
+    <string name="voter_list_available_lists">Available Lists</string>
+    <string name="voter_list_draft">Draft</string>
+    <string name="voter_list_final">Final</string>
+    <string name="voter_list_supplementary">Supplementary</string>
+    <string name="voter_list_all_lists">All Lists</string>
     <string name="old_sir_list">Old SIR List</string>
     <string name="old_sir_list_desc">Recommended for checking old SIR voter list PDFs quickly.</string>
+    <string name="old_sir_archive_badge">2002 - 2006 Archive</string>
+    <string name="old_sir_archive_title">Old SIR PDFs</string>
+    <string name="old_sir_archive_desc">Search old SIR voter list PDF files from 2002 to 2006 by year or file name.</string>
+    <string name="old_sir_archive_action">Search PDFs</string>
+    <string name="old_sir_archive_verified">Verified &amp; Official Electoral Roll Archive</string>
     <string name="download_pdf">Download PDF</string>
 
     <!-- Sections / nav -->
