@@ -1,4 +1,4 @@
-package com.samoondigital.yojnaplus.feature.oldsir
+﻿package com.samoondigital.yojnaplus.feature.oldsir
 
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import androidx.activity.compose.BackHandler
@@ -95,6 +95,7 @@ private const val DadraNagarHaveliStateCd = "U03"
 private const val GujaratStateCd = "S06"
 private const val KarnatakaStateCd = "S10"
 private const val JharkhandStateCd = "S27"
+private const val UttarakhandStateCd = "S28"
 private val ChoiceAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -114,6 +115,7 @@ fun OldSirScreen(
     onOpenGujarat: () -> Unit,
     onOpenKarnataka: () -> Unit,
     onOpenJharkhand: () -> Unit,
+    onOpenUttarakhand: () -> Unit,
     onOpenDownloads: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -172,6 +174,7 @@ fun OldSirScreen(
                                 GujaratStateCd -> onOpenGujarat()
                                 KarnatakaStateCd -> onOpenKarnataka()
                                 JharkhandStateCd -> onOpenJharkhand()
+                                UttarakhandStateCd -> onOpenUttarakhand()
                                 else -> viewModel.selectState(state)
                             }
                         },
@@ -183,6 +186,7 @@ fun OldSirScreen(
                                 state.stateCd == GujaratStateCd ||
                                 state.stateCd == KarnatakaStateCd ||
                                 state.stateCd == JharkhandStateCd ||
+                                state.stateCd == UttarakhandStateCd ||
                                 viewModel.isStateSupported(state)
                         },
                     )
@@ -773,3 +777,4 @@ private fun ChoiceCard(
         }
     }
 }
+

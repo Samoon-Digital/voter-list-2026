@@ -1,4 +1,4 @@
-package com.samoondigital.yojnaplus.core.navigation
+﻿package com.samoondigital.yojnaplus.core.navigation
 
 import android.net.Uri
 import androidx.compose.material.icons.Icons
@@ -24,6 +24,7 @@ object Routes {
     const val DADRA_NAGAR_HAVELI_WEB = "dadra_nagar_haveli_web"
     const val GUJARAT_WEB = "gujarat_web"
     const val KARNATAKA_WEB = "karnataka_web"
+    const val UTTARAKHAND_WEB = "uttarakhand_web"
     const val DOWNLOADS = "downloads"
     const val PDF_VIEWER = "pdf_viewer"
     const val PDF_VIEWER_ROUTE = "$PDF_VIEWER/{uri}/{title}"
@@ -46,3 +47,4 @@ enum class TopLevelDestination(
     NOTIFICATIONS(Routes.NOTIFICATIONS, "Alerts", Icons.Outlined.Notifications),
     SETTINGS(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
 }
+

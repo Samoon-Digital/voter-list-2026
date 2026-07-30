@@ -1,4 +1,4 @@
-package com.samoondigital.yojnaplus.feature.webview
+﻿package com.samoondigital.yojnaplus.feature.webview
 
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.annotation.SuppressLint
@@ -74,6 +74,7 @@ private const val ChandigarhUrl = "https://ceochandigarh.gov.in/pages/intensive"
 private const val DadraNagarHaveliUrl = "https://ceoddd.in/"
 private const val GujaratUrl = "https://chunavsetu-search.gujarat.gov.in/SearchEPIC.aspx"
 private const val KarnatakaUrl = "https://ceo.karnataka.gov.in/voter_list.html"
+private const val UttarakhandUrl = "https://election.uk.gov.in/search2003uk"
 private val WebPurple = Color(0xFF3522A8)
 private val WebPurpleDark = Color(0xFF20106F)
 private val WebSurface = Color(0xFFFCFCFF)
@@ -204,6 +205,42 @@ fun KarnatakaWebViewScreen(
                 contentDisposition = contentDisposition,
                 mimeType = mimeType,
                 district = "Karnataka",
+                assembly = "Official WebView PDF",
+            )
+        },
+        downloadState = downloadState,
+        modifier = modifier,
+    )
+}
+@Composable
+fun UttarakhandWebViewScreen(
+    onBack: () -> Unit,
+    onOpenPdf: (uri: String, title: String) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ChandigarhWebViewViewModel = hiltViewModel(),
+) {
+    val downloadState by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.eventFlow.collect { event ->
+            when (event) {
+                is WebPdfDownloadEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
+            }
+        }
+    }
+
+    OfficialWebViewScreen(
+        screenTitle = "Uttarakhand 2003",
+        fallbackPageTitle = "Uttarakhand 2003",
+        statusText = "Official 2003 voter search",
+        startUrl = UttarakhandUrl,
+        onBack = onBack,
+        onDownloadRequested = { url, contentDisposition, mimeType ->
+            viewModel.downloadPdf(
+                url = url,
+                contentDisposition = contentDisposition,
+                mimeType = mimeType,
+                district = "Uttarakhand",
                 assembly = "Official WebView PDF",
             )
         },
@@ -679,3 +716,4 @@ private fun String.isPdfUrl(mimeType: String?): Boolean =
     mimeType.equals("application/pdf", ignoreCase = true) ||
         URLUtil.guessFileName(this, null, mimeType).endsWith(".pdf", ignoreCase = true) ||
         substringBefore('?').endsWith(".pdf", ignoreCase = true)
+

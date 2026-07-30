@@ -1,4 +1,4 @@
-package com.samoondigital.yojnaplus.core.navigation
+﻿package com.samoondigital.yojnaplus.core.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -36,6 +36,7 @@ import com.samoondigital.yojnaplus.feature.webview.DadraNagarHaveliWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.GujaratWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.JammuKashmirWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.KarnatakaWebViewScreen
+import com.samoondigital.yojnaplus.feature.webview.UttarakhandWebViewScreen
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -88,6 +89,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenDadraNagarHaveli = { navController.navigate(Routes.DADRA_NAGAR_HAVELI_WEB) },
                         onOpenGujarat = { navController.navigate(Routes.GUJARAT_WEB) },
                         onOpenKarnataka = { navController.navigate(Routes.KARNATAKA_WEB) },
+                        onOpenUttarakhand = { navController.navigate(Routes.UTTARAKHAND_WEB) },
                         onOpenJharkhand = { navController.navigate(Routes.JHARKHAND_2003) },
                         onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->
@@ -156,6 +158,14 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         },
                     )
                 }
+                composable(Routes.UTTARAKHAND_WEB) {
+                    UttarakhandWebViewScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
                 composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }
                 composable(Routes.NOTIFICATIONS) { NotificationsScreen(contentPadding = innerPadding) }
                 composable(Routes.SETTINGS) { SettingsScreen(contentPadding = innerPadding) }
@@ -198,3 +208,5 @@ private fun BoxScope.BottomRouteBanner() {
             .fillMaxWidth(),
     )
 }
+
+
