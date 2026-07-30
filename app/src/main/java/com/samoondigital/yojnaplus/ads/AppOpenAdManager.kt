@@ -1,4 +1,4 @@
-package com.samoondigital.yojnaplus.ads
+﻿package com.samoondigital.yojnaplus.ads
 
 import android.app.Activity
 import android.app.Application
@@ -23,6 +23,7 @@ object AppOpenAdManager {
     private const val Format = "app-open"
     private const val MaxAdAgeMs = 4 * 60 * 60_000L
     private const val MaxShowsPerSession = 2
+    private const val ExternalFullScreenAdCooldownMs = 4_000L
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -42,6 +43,8 @@ object AppOpenAdManager {
     private var shownFromHome = false
     private var shownFromForeground = false
     private var suppressNextResumeShow = false
+    private var externalFullScreenAdShowing = false
+    private var externalFullScreenAdSuppressUntilMs = 0L
     private var retryAttempt = 0
     private var retryRunnable: Runnable? = null
 
@@ -57,6 +60,24 @@ object AppOpenAdManager {
         preload(application)
     }
 
+
+    fun onExternalFullScreenAdWillShow() {
+        mainHandler.post {
+            externalFullScreenAdShowing = true
+            suppressNextResumeShow = true
+            externalFullScreenAdSuppressUntilMs = SystemClock.elapsedRealtime() + ExternalFullScreenAdCooldownMs
+            Log.d(Tag, "external-fullscreen-started action=suppress-app-open")
+        }
+    }
+
+    fun onExternalFullScreenAdFinished() {
+        mainHandler.post {
+            externalFullScreenAdShowing = false
+            suppressNextResumeShow = true
+            externalFullScreenAdSuppressUntilMs = SystemClock.elapsedRealtime() + ExternalFullScreenAdCooldownMs
+            Log.d(Tag, "external-fullscreen-finished action=suppress-app-open")
+        }
+    }
     fun preload(application: Application) {
         appContext = application
         mainHandler.post { preloadOnMain() }
@@ -143,6 +164,11 @@ object AppOpenAdManager {
         }
         if (showing) {
             Log.d(Tag, "show-skipped source=${source.logValue} reason=already-showing")
+            return
+        }
+        val nowMs = SystemClock.elapsedRealtime()
+        if (externalFullScreenAdShowing || nowMs < externalFullScreenAdSuppressUntilMs) {
+            Log.d(Tag, "show-skipped source=${source.logValue} reason=external-fullscreen")
             return
         }
         if (shownCount >= MaxShowsPerSession) {
@@ -351,3 +377,4 @@ private fun Activity.restoreDefaultSystemBarLayout() {
     ViewCompat.requestApplyInsets(window.decorView)
     window.decorView.post { ViewCompat.requestApplyInsets(window.decorView) }
 }
+

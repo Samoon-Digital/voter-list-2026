@@ -1,4 +1,4 @@
-package com.samoondigital.yojnaplus.ads
+﻿package com.samoondigital.yojnaplus.ads
 
 import android.app.Activity
 import android.content.Context
@@ -49,6 +49,7 @@ object InterstitialAdManager {
             }
 
             interstitialAd = null
+            AppOpenAdManager.onExternalFullScreenAdWillShow()
             val continued = AtomicBoolean(false)
             fun continueOnce() {
                 if (continued.compareAndSet(false, true)) onContinue()
@@ -65,6 +66,7 @@ object InterstitialAdManager {
                 override fun onAdDismissedFullScreenContent() {
                     Log.d(Tag, "show-dismissed unit=${AdUnitIds.interstitial}")
                     activity.restoreDefaultSystemBarLayout()
+                    AppOpenAdManager.onExternalFullScreenAdFinished()
                     clearAndPreload()
                     continueOnce()
                 }
@@ -75,6 +77,7 @@ object InterstitialAdManager {
                         "show-failed unit=${AdUnitIds.interstitial} code=${error.code} domain=${error.domain} message=${error.message}",
                     )
                     activity.restoreDefaultSystemBarLayout()
+                    AppOpenAdManager.onExternalFullScreenAdFinished()
                     clearAndPreload()
                     continueOnce()
                 }
@@ -92,6 +95,7 @@ object InterstitialAdManager {
                 .onFailure { throwable ->
                     Log.e(Tag, "show-exception unit=${AdUnitIds.interstitial} exception=${throwable.message}", throwable)
                     activity.restoreDefaultSystemBarLayout()
+                    AppOpenAdManager.onExternalFullScreenAdFinished()
                     clearAndPreload()
                     continueOnce()
                 }
@@ -163,3 +167,8 @@ private fun Activity.restoreDefaultSystemBarLayout() {
     ViewCompat.requestApplyInsets(window.decorView)
     window.decorView.post { ViewCompat.requestApplyInsets(window.decorView) }
 }
+
+
+
+
+

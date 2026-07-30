@@ -1,6 +1,7 @@
 ﻿package com.samoondigital.yojnaplus.pdf
 
 import android.app.DownloadManager
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -146,7 +147,8 @@ class PdfDownloadManager @Inject constructor(
                     when (status) {
                         DownloadManager.STATUS_SUCCESSFUL -> {
                             onProgress(100)
-                            val uri = downloadManager.getUriForDownloadedFile(id)
+                            val uri = publicDownloadUri(fileName)
+                                ?: downloadManager.getUriForDownloadedFile(id)
                                 ?: throw IllegalStateException("Downloaded file URI not found")
                             return DownloadedPdf(fileName = fileName, uri = uri.toString())
                         }
@@ -167,6 +169,25 @@ class PdfDownloadManager @Inject constructor(
     private fun android.database.Cursor.longValue(column: String): Long =
         getLong(getColumnIndexOrThrow(column))
 
+    private fun publicDownloadUri(fileName: String): Uri? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val projection = arrayOf(MediaStore.Downloads._ID)
+        val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/VoterList2026/"
+        return runCatching {
+            context.contentResolver.query(
+                collection,
+                projection,
+                "${MediaStore.Downloads.DISPLAY_NAME} = ? AND ${MediaStore.Downloads.RELATIVE_PATH} = ?",
+                arrayOf(fileName, relativePath),
+                "${MediaStore.Downloads.DATE_MODIFIED} DESC",
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                ContentUris.withAppendedId(collection, id)
+            }
+        }.getOrNull()
+    }
     private fun sanitizeFileName(value: String): String =
         value.replace(Regex("[\\\\/:*?\"<>|]"), "_")
 
@@ -190,5 +211,7 @@ data class DownloadedPdf(
     val fileName: String,
     val uri: String,
 )
+
+
 
 

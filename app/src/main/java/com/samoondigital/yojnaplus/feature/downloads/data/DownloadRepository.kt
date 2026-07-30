@@ -1,9 +1,12 @@
-package com.samoondigital.yojnaplus.feature.downloads.data
+﻿package com.samoondigital.yojnaplus.feature.downloads.data
 
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
@@ -62,11 +65,12 @@ class DownloadRepository @Inject constructor(
 
     suspend fun markCompleted(id: String, fileName: String, uri: String) {
         val record = dao.getById(id) ?: return
+        val storedUri = resolveReadableUri(fileName, uri) ?: uri
         dao.update(
             record.copy(
                 fileName = fileName,
-                uri = uri,
-                fileSizeBytes = queryFileSize(uri),
+                uri = storedUri,
+                fileSizeBytes = queryFileSize(storedUri),
                 downloadedAtMillis = Instant.now().toEpochMilli(),
                 status = DownloadStatusEntity.Completed.name,
                 progress = 100,
@@ -129,12 +133,25 @@ class DownloadRepository @Inject constructor(
         records.forEach { record ->
             val status = record.status.toStatus()
             if (status == DownloadStatusEntity.Completed && record.uri != null && !uriExists(record.uri)) {
-                dao.update(
-                    record.copy(
-                        status = DownloadStatusEntity.Missing.name,
-                        errorMessage = "File is missing from local storage",
-                    ),
-                )
+                val repairedUri = findPublicDownloadUri(record.fileName)
+                if (repairedUri != null && uriExists(repairedUri)) {
+                    dao.update(
+                        record.copy(
+                            uri = repairedUri,
+                            fileSizeBytes = queryFileSize(repairedUri),
+                            status = DownloadStatusEntity.Completed.name,
+                            progress = 100,
+                            errorMessage = null,
+                        ),
+                    )
+                } else {
+                    dao.update(
+                        record.copy(
+                            status = DownloadStatusEntity.Missing.name,
+                            errorMessage = "File is missing from local storage",
+                        ),
+                    )
+                }
             }
         }
     }
@@ -164,6 +181,28 @@ class DownloadRepository @Inject constructor(
         )
     }
 
+    private fun resolveReadableUri(fileName: String, uri: String): String? =
+        uri.takeIf(::uriExists) ?: findPublicDownloadUri(fileName)
+
+    private fun findPublicDownloadUri(fileName: String): String? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val projection = arrayOf(MediaStore.Downloads._ID)
+        val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/VoterList2026/"
+        return runCatching {
+            context.contentResolver.query(
+                collection,
+                projection,
+                "${MediaStore.Downloads.DISPLAY_NAME} = ? AND ${MediaStore.Downloads.RELATIVE_PATH} = ?",
+                arrayOf(fileName, relativePath),
+                "${MediaStore.Downloads.DATE_MODIFIED} DESC",
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                ContentUris.withAppendedId(collection, id).toString()
+            }
+        }.getOrNull()
+    }
     private fun queryFileSize(uri: String): Long? =
         runCatching {
             context.contentResolver.query(uri.toUri(), arrayOf(OpenableColumns.SIZE), null, null, null)
@@ -192,3 +231,5 @@ class DownloadRepository @Inject constructor(
     private fun String.toStatus(): DownloadStatusEntity =
         runCatching { DownloadStatusEntity.valueOf(this) }.getOrDefault(DownloadStatusEntity.Failed)
 }
+
+
