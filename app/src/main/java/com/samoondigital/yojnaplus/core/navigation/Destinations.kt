@@ -18,6 +18,7 @@ object Routes {
     const val OLD_SIR = "old_sir"
     const val UP_2003 = "up_2003"
     const val JHARKHAND_2003 = "jharkhand_2003"
+    const val WEST_BENGAL_2002 = "west_bengal_2002"
     const val JAMMU_KASHMIR_WEB = "jammu_kashmir_web"
     const val CHANDIGARH_WEB = "chandigarh_web"
     const val CHANDIGARH_2002 = "chandigarh_2002"
@@ -47,4 +48,5 @@ enum class TopLevelDestination(
     NOTIFICATIONS(Routes.NOTIFICATIONS, "Alerts", Icons.Outlined.Notifications),
     SETTINGS(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
 }
+
 

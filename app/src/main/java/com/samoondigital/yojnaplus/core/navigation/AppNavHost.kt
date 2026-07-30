@@ -37,6 +37,7 @@ import com.samoondigital.yojnaplus.feature.webview.GujaratWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.JammuKashmirWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.KarnatakaWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.UttarakhandWebViewScreen
+import com.samoondigital.yojnaplus.feature.westbengal.WestBengalScreen
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -91,6 +92,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenKarnataka = { navController.navigate(Routes.KARNATAKA_WEB) },
                         onOpenUttarakhand = { navController.navigate(Routes.UTTARAKHAND_WEB) },
                         onOpenJharkhand = { navController.navigate(Routes.JHARKHAND_2003) },
+                        onOpenWestBengal = { navController.navigate(Routes.WEST_BENGAL_2002) },
                         onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
@@ -108,6 +110,15 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
                 composable(Routes.JHARKHAND_2003) {
                     JharkhandScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenDownloads = { navigateToDownloads() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
+                composable(Routes.WEST_BENGAL_2002) {
+                    WestBengalScreen(
                         onBack = { navController.popBackStack() },
                         onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->
@@ -208,5 +219,7 @@ private fun BoxScope.BottomRouteBanner() {
             .fillMaxWidth(),
     )
 }
+
+
 
 
