@@ -45,7 +45,7 @@ private object ProductionAdMobConfig {
 object AdManager {
     private const val Tag = "AdMob"
     private const val ManifestAppIdKey = "com.google.android.gms.ads.APPLICATION_ID"
-
+    private const val AdsTemporarilyDisabled = true
     private enum class InitializationState { NotStarted, Initializing, Initialized }
 
     private class PendingLoad(val execute: () -> Unit)
@@ -63,7 +63,14 @@ object AdManager {
     private var adRequestsAllowed = false
     private var application: Application? = null
 
+    fun areAdsTemporarilyDisabled(): Boolean = AdsTemporarilyDisabled
+
     fun initialize(application: Application) {
+        if (AdsTemporarilyDisabled) {
+            this.application = application
+            Log.d(Tag, "ads-temporarily-disabled initialize-skipped")
+            return
+        }
         val shouldInitialize = synchronized(lock) {
             if (state != InitializationState.NotStarted) {
                 false
@@ -92,6 +99,10 @@ object AdManager {
     }
 
     fun allowAdRequests() {
+        if (AdsTemporarilyDisabled) {
+            Log.d(Tag, "ads-temporarily-disabled consent-gate-ignored")
+            return
+        }
         synchronized(lock) { adRequestsAllowed = true }
         Log.d(Tag, "consent-gate-open canRequestAds=true")
         drainPendingLoadsIfReady()
@@ -103,6 +114,10 @@ object AdManager {
         isActive: () -> Boolean,
         load: (AdRequest) -> Unit,
     ): () -> Unit {
+        if (AdsTemporarilyDisabled) {
+            Log.d(Tag, "ads-temporarily-disabled request-skipped format=$format unit=$adUnitId")
+            return {}
+        }
         val pending = PendingLoad {
             val app = application
             if (!isActive()) {
@@ -167,6 +182,10 @@ object AdManager {
     }
 
     fun openAdInspector(activity: Activity) {
+        if (AdsTemporarilyDisabled) {
+            Log.d(Tag, "ads-temporarily-disabled inspector-skipped")
+            return
+        }
         if (!BuildConfig.DEBUG) {
             Log.d(Tag, "ad-inspector-skipped reason=debug-only buildType=${BuildConfig.BUILD_TYPE}")
             return

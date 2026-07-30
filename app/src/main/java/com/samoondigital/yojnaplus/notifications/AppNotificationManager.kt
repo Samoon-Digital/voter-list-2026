@@ -1,4 +1,4 @@
-﻿package com.samoondigital.yojnaplus.notifications
+package com.samoondigital.yojnaplus.notifications
 
 import android.Manifest
 import android.app.NotificationChannel
@@ -29,7 +29,12 @@ object AppNotificationManager {
         ).apply {
             description = "New voter lists, election updates, and important announcements."
         }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        if (notificationManager == null) {
+            Log.w(Tag, "notification-channel-skipped reason=service-unavailable")
+            return
+        }
+        notificationManager.createNotificationChannel(channel)
         Log.d(Tag, "notification-channel-ready id=$ChannelId")
     }
 
