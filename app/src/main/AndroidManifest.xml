@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <uses-sdk tools:overrideLibrary="androidx.pdf, androidx.pdf.core, androidx.pdf.viewer, androidx.pdf.document.service, androidx.pdf.viewer.fragment" />
+
     <application
         android:name=".YojnaPlusApp"
         android:allowBackup="true"

@@ -28,7 +28,6 @@ class PdfViewerViewModel @Inject constructor(
             uri = uri,
             title = Uri.decode(savedStateHandle.get<String>("title").orEmpty()),
             currentPage = prefs.getInt("${key}_page", 0),
-            zoom = prefs.getFloat("${key}_zoom", 1f).coerceIn(MinZoom, MaxZoom),
         ),
     )
     val state: StateFlow<PdfViewerUiState> = _state.asStateFlow()
@@ -42,7 +41,11 @@ class PdfViewerViewModel @Inject constructor(
             it.copy(
                 isLoading = false,
                 pageCount = pageCount,
-                currentPage = it.currentPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0)),
+                currentPage = if (pageCount > 0) {
+                    it.currentPage.coerceIn(0, pageCount - 1)
+                } else {
+                    it.currentPage.coerceAtLeast(0)
+                },
                 error = null,
             )
         }
@@ -57,45 +60,6 @@ class PdfViewerViewModel @Inject constructor(
         persist()
     }
 
-    fun onZoomChanged(zoom: Float) {
-        _state.update { it.copy(zoom = zoom.coerceIn(MinZoom, MaxZoom)) }
-        persist()
-    }
-
-    fun toggleSearch() {
-        _state.update { it.copy(isSearchVisible = !it.isSearchVisible, searchQuery = "") }
-    }
-
-    fun updateSearch(value: String) {
-        _state.update { it.copy(searchQuery = value.take(80)) }
-    }
-
-    fun clearSearch() {
-        _state.update { it.copy(searchQuery = "") }
-    }
-
-    fun requestPage(page: Int) {
-        val current = _state.value
-        if (current.pageCount <= 0) return
-        _state.update { it.copy(requestedPage = page.coerceIn(0, current.pageCount - 1)) }
-    }
-
-    fun consumeRequestedPage() {
-        _state.update { it.copy(requestedPage = null) }
-    }
-
-    fun zoomIn() {
-        _state.update { it.copy(requestedZoom = (it.zoom + 0.35f).coerceAtMost(MaxZoom)) }
-    }
-
-    fun zoomOut() {
-        _state.update { it.copy(requestedZoom = (it.zoom - 0.35f).coerceAtLeast(MinZoom)) }
-    }
-
-    fun consumeRequestedZoom() {
-        _state.update { it.copy(requestedZoom = null) }
-    }
-
     fun toggleDarkMode() {
         _state.update { it.copy(isDarkMode = !it.isDarkMode) }
     }
@@ -104,13 +68,7 @@ class PdfViewerViewModel @Inject constructor(
         val current = _state.value
         prefs.edit()
             .putInt("${key}_page", current.currentPage)
-            .putFloat("${key}_zoom", current.zoom)
             .apply()
-    }
-
-    companion object {
-        const val MinZoom = 1f
-        const val MaxZoom = 5f
     }
 }
 
@@ -121,11 +79,6 @@ data class PdfViewerUiState(
     val error: String? = null,
     val pageCount: Int = 0,
     val currentPage: Int = 0,
-    val zoom: Float = 1f,
-    val requestedPage: Int? = null,
-    val requestedZoom: Float? = null,
-    val isSearchVisible: Boolean = false,
-    val searchQuery: String = "",
     val isDarkMode: Boolean = false,
 ) {
     val pageLabel: String

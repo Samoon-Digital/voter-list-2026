@@ -31,6 +31,7 @@ val keystoreProperties = Properties().apply {
 android {
     namespace = ProductionPackageName
     compileSdk = 36
+    compileSdkExtension = 19
 
     defaultConfig {
         applicationId = ProductionPackageName
@@ -112,6 +113,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.splashscreen)
+    implementation(libs.androidx.appcompat)
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -148,9 +150,8 @@ dependencies {
 
     // Image loading
     implementation(libs.coil.compose)
-    implementation(libs.pdfium.android)
     implementation(libs.afreaky.pdf.viewer)
-    implementation(libs.mlkit.text.recognition.devanagari)
+    implementation(libs.androidx.pdf.viewer.fragment)
     implementation(libs.play.services.ads)
     implementation(libs.play.app.update)
     implementation(libs.play.app.update.ktx)
