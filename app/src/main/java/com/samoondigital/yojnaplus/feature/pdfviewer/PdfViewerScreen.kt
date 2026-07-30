@@ -13,11 +13,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,9 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -50,39 +44,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
+import com.rajat.pdfviewer.PdfRendererView
+import com.rajat.pdfviewer.util.CacheStrategy
 import io.legere.pdfiumandroid.PdfDocument as PdfiumDocument
 import io.legere.pdfiumandroid.PdfiumCore
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -125,48 +115,27 @@ fun PdfViewerScreen(
             PdfDocumentState.Loading -> viewModel.setLoading()
         }
     }
-
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = state.currentPage)
-    LaunchedEffect(state.requestedPage) {
+    var pdfRendererView by remember(state.uri) { mutableStateOf<PdfRendererView?>(null) }
+    LaunchedEffect(state.requestedPage, pdfRendererView) {
         val page = state.requestedPage ?: return@LaunchedEffect
-        listState.animateScrollToItem(page)
+        pdfRendererView?.jumpToPage(page, smoothScroll = false)
         viewModel.consumeRequestedPage()
     }
-
-    LaunchedEffect(listState, state.pageCount) {
-        snapshotFlow { listState.firstVisibleItemIndex }
-            .distinctUntilChanged()
-            .collect { page ->
-                if (state.pageCount > 0) {
-                    viewModel.onPageChanged(page.coerceIn(0, state.pageCount - 1), state.pageCount)
-                }
-            }
-    }
-
-    var zoom by remember(state.uri) { mutableFloatStateOf(state.zoom) }
-    LaunchedEffect(state.zoom) { zoom = state.zoom }
-    val transformState = rememberTransformableState { zoomChange, _, _ ->
-        zoom = (zoom * zoomChange).coerceIn(PdfViewerViewModel.MinZoom, PdfViewerViewModel.MaxZoom)
-        viewModel.onZoomChanged(zoom)
-    }
-
-    Box(
+Box(
         modifier = modifier
             .fillMaxSize()
             .background(if (state.isDarkMode) Color(0xFF090B12) else MaterialTheme.colorScheme.background),
     ) {
         when (val document = documentState) {
             is PdfDocumentState.Ready -> PdfPages(
-                document = document.document,
-                zoom = zoom,
-                listState = listState,
-                onDoubleTap = {
-                    zoom = if (zoom > 1.25f) 1f else 2f
-                    viewModel.onZoomChanged(zoom)
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .transformable(transformState),
+                uri = state.uri,
+                currentPage = state.currentPage,
+                onReady = { pdfRendererView = it },
+                onLoading = viewModel::setLoading,
+                onLoaded = viewModel::onLoaded,
+                onPageChanged = viewModel::onPageChanged,
+                onError = viewModel::onError,
+                modifier = Modifier.fillMaxSize(),
             )
             is PdfDocumentState.Error -> ErrorPanel(
                 message = document.message,
@@ -227,83 +196,72 @@ fun PdfViewerScreen(
 
 @Composable
 private fun PdfPages(
-    document: PdfDocument,
-    zoom: Float,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    onDoubleTap: () -> Unit,
+    uri: String,
+    currentPage: Int,
+    onReady: (PdfRendererView) -> Unit,
+    onLoading: () -> Unit,
+    onLoaded: (Int) -> Unit,
+    onPageChanged: (Int, Int) -> Unit,
+    onError: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val density = LocalDensity.current
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val targetWidth = with(density) { (screenWidth - 20.dp).roundToPx().coerceAtLeast(320) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    AndroidView(
+        modifier = modifier.padding(top = 78.dp),
+        factory = { context ->
+            PdfRendererView(context).apply {
+                setBackgroundColor(AndroidColor.TRANSPARENT)
+            }
+        },
+        update = { view ->
+            if (view.tag == uri) return@AndroidView
+            view.tag = uri
+            view.statusListener = object : PdfRendererView.StatusCallBack {
+                override fun onPdfLoadStart() {
+                    onLoading()
+                }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier
-            .padding(top = 78.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(onDoubleTap = { onDoubleTap() })
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        items((0 until document.pageCount).toList(), key = { it }) { page ->
-            val pageState by produceState<PageRenderState>(PageRenderState.Loading, document, page, targetWidth) {
-                value = document.renderPage(page, targetWidth)
-                    ?.let(PageRenderState::Ready)
-                    ?: PageRenderState.Error("Unable to render page ${page + 1}")
-            }
-            val bitmap = (pageState as? PageRenderState.Ready)?.bitmap
-            DisposableEffect(bitmap) {
-                onDispose { bitmap?.recycle() }
-            }
-            Surface(
-                color = Color.White,
-                tonalElevation = 1.dp,
-                shadowElevation = 1.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp)
-                    .graphicsLayer {
-                        scaleX = zoom
-                        scaleY = zoom
-                    },
-            ) {
-                when (val renderedPage = pageState) {
-                    PageRenderState.Loading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .size(180.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                override fun onError(error: Throwable) {
+                    onError(error.message ?: "Unable to open PDF")
+                }
+
+                override fun onPageChanged(currentPage: Int, totalPage: Int) {
+                    onPageChanged((currentPage - 1).coerceAtLeast(0), totalPage)
+                }
+
+                override fun onPdfRenderSuccess() {
+                    onReady(view)
+                    val pageCount = runCatching { view.totalPageCount }.getOrDefault(0)
+                    if (pageCount > 0) {
+                        onLoaded(pageCount)
+                        if (currentPage > 0) {
+                            view.jumpToPage(currentPage, smoothScroll = false)
                         }
-                    }
-                    is PageRenderState.Error -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .size(180.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = renderedPage.message,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-                    is PageRenderState.Ready -> {
-                        Image(
-                            bitmap = renderedPage.bitmap.asImageBitmap(),
-                            contentDescription = "Page ${page + 1}",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
                     }
                 }
             }
-        }
+            view.zoomListener = object : PdfRendererView.ZoomListener {
+                override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) = Unit
+            }
+            view.loadPdf(uri, lifecycleOwner)
+        },
+    )
+}
+
+private fun PdfRendererView.loadPdf(uriString: String, lifecycleOwner: androidx.lifecycle.LifecycleOwner) {
+    val uri = uriString.toUri()
+    when (uri.scheme?.lowercase()) {
+        "http", "https" -> initWithUrl(
+            url = uriString,
+            lifecycleCoroutineScope = lifecycleOwner.lifecycleScope,
+            lifecycle = lifecycleOwner.lifecycle,
+            cacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
+        )
+        "file" -> initWithFile(
+            file = File(uri.path.orEmpty()),
+            cacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
+        )
+        else -> initWithUri(uri)
     }
 }
 
@@ -502,12 +460,6 @@ private sealed interface PdfDocumentState {
     data object Loading : PdfDocumentState
     data class Ready(val document: PdfDocument) : PdfDocumentState
     data class Error(val message: String) : PdfDocumentState
-}
-
-private sealed interface PageRenderState {
-    data object Loading : PageRenderState
-    data class Ready(val bitmap: Bitmap) : PageRenderState
-    data class Error(val message: String) : PageRenderState
 }
 
 private class PdfDocument private constructor(

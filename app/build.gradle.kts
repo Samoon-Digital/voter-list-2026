@@ -149,6 +149,7 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
     implementation(libs.pdfium.android)
+    implementation(libs.afreaky.pdf.viewer)
     implementation(libs.mlkit.text.recognition.devanagari)
     implementation(libs.play.services.ads)
     implementation(libs.play.app.update)
