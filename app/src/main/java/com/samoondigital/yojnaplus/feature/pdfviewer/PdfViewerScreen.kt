@@ -6,7 +6,9 @@ import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.os.Build
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -64,6 +67,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.pdf.view.search.PdfSearchView
 import androidx.pdf.viewer.fragment.PdfViewerFragment
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
@@ -84,6 +88,7 @@ fun PdfViewerScreen(
     val context = LocalContext.current
     val useAndroidXPdfViewer = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
     var androidXPdfFragment by remember(state.uri) { mutableStateOf<PdfViewerFragment?>(null) }
+    var isAndroidXPdfSearchActive by remember(state.uri) { mutableStateOf(false) }
     val sourceState by produceState<PdfSourceState>(PdfSourceState.Loading, state.uri) {
         value = PdfSourceState.Loading
         value = runCatching { PdfSourceState.Ready(preparePdfViewerUri(context, state.uri.toUri())) }
@@ -136,7 +141,10 @@ fun PdfViewerScreen(
             pageLabel = state.pageLabel,
             onBack = onBack,
             onSearch = if (useAndroidXPdfViewer) {
-                { runCatching { androidXPdfFragment?.isTextSearchActive = true } }
+                {
+                    isAndroidXPdfSearchActive = true
+                    runCatching { androidXPdfFragment?.isTextSearchActive = true }
+                }
             } else {
                 null
             },
@@ -155,7 +163,64 @@ fun PdfViewerScreen(
         }
 
         PdfViewerBottomBanner()
+
+        if (useAndroidXPdfViewer) {
+            AndroidXPdfSearchBarHost(
+                fragment = androidXPdfFragment,
+                isActive = isAndroidXPdfSearchActive,
+                onClosed = { isAndroidXPdfSearchActive = false },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .stableStatusBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+            )
+        }
     }
+}
+
+@Composable
+private fun AndroidXPdfSearchBarHost(
+    fragment: PdfViewerFragment?,
+    isActive: Boolean,
+    onClosed: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AndroidView(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(if (isActive) 52.dp else 0.dp),
+        factory = { context -> FrameLayout(context) },
+        update = { host ->
+            if (!isActive) {
+                host.visibility = View.GONE
+                host.getChildAt(0)?.visibility = View.GONE
+                return@AndroidView
+            }
+            val searchView = fragment?.searchViewOrNull()
+            host.visibility = if (searchView != null) View.VISIBLE else View.GONE
+            if (searchView == null) {
+                host.removeAllViews()
+                return@AndroidView
+            }
+            if (searchView.parent !== host) {
+                (searchView.parent as? ViewGroup)?.removeView(searchView)
+                host.removeAllViews()
+                host.addView(
+                    searchView,
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.CENTER,
+                    ),
+                )
+            }
+            searchView.visibility = View.VISIBLE
+            searchView.closeButton.setOnClickListener {
+                fragment.isTextSearchActive = false
+                onClosed()
+            }
+        },
+    )
 }
 
 @Composable
@@ -436,7 +501,15 @@ private fun ErrorPanel(message: String, onBack: () -> Unit, modifier: Modifier =
     }
 }
 
-private sealed interface PdfSourceState {
+private fun PdfViewerFragment.searchViewOrNull(): PdfSearchView? =
+    runCatching {
+        PdfViewerFragment::class.java
+            .getDeclaredMethod("getPdfSearchView")
+            .apply { isAccessible = true }
+            .invoke(this) as? PdfSearchView
+    }.getOrNull()
+
+sealed interface PdfSourceState {
     data object Loading : PdfSourceState
     data class Ready(val uri: Uri) : PdfSourceState
     data class Error(val message: String) : PdfSourceState
