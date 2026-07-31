@@ -291,89 +291,90 @@ private fun OfficialWebViewScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            WebTopBar(
-                screenTitle = screenTitle,
-                title = pageTitle.ifBlank { fallbackPageTitle },
-                progress = progress,
-                isLoading = isLoading,
-                canGoBack = canGoBack,
-                statusText = statusText,
-                onBack = ::handleBack,
-                onRefresh = {
-                    errorMessage = null
-                    webView?.reload()
-                },
-            )
-        },
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(WebSurface),
-        ) {
-            OfficialWebView(
-                startUrl = startUrl,
-                onWebViewReady = { webView = it },
-                onPageStarted = {
-                    isLoading = true
-                    errorMessage = null
-                    canGoBack = webView?.canGoBack() == true
-                },
-                onPageFinished = { view, title ->
-                    isLoading = false
-                    canGoBack = view.canGoBack()
-                    pageTitle = title?.takeIf { it.isNotBlank() } ?: fallbackPageTitle
-                },
-                onProgressChanged = {
-                    progress = it
-                    isLoading = it in 1..99
-                },
-                onOpenExternal = { url ->
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    }
-                },
-                onDownloadRequested = onDownloadRequested,
-                onError = {
-                    isLoading = false
-                    errorMessage = it
-                },
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                WebTopBar(
+                    screenTitle = screenTitle,
+                    title = pageTitle.ifBlank { fallbackPageTitle },
+                    progress = progress,
+                    isLoading = isLoading,
+                    canGoBack = canGoBack,
+                    statusText = statusText,
+                    onBack = ::handleBack,
+                    onRefresh = {
+                        errorMessage = null
+                        webView?.reload()
+                    },
+                )
+            },
+        ) { padding ->
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 72.dp),
-            )
-
-            errorMessage?.let { message ->
-                WebErrorState(
-                    message = message,
-                    onRetry = {
+                    .padding(padding)
+                    .background(WebSurface),
+            ) {
+                OfficialWebView(
+                    startUrl = startUrl,
+                    onWebViewReady = { webView = it },
+                    onPageStarted = {
+                        isLoading = true
                         errorMessage = null
-                        webView?.loadUrl(startUrl)
+                        canGoBack = webView?.canGoBack() == true
+                    },
+                    onPageFinished = { view, title ->
+                        isLoading = false
+                        canGoBack = view.canGoBack()
+                        pageTitle = title?.takeIf { it.isNotBlank() } ?: fallbackPageTitle
+                    },
+                    onProgressChanged = {
+                        progress = it
+                        isLoading = it in 1..99
+                    },
+                    onOpenExternal = { url ->
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }
+                    },
+                    onDownloadRequested = onDownloadRequested,
+                    onError = {
+                        isLoading = false
+                        errorMessage = it
                     },
                     modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(24.dp),
+                        .fillMaxSize()
+                        .padding(bottom = 72.dp),
                 )
-            }
 
-            downloadState?.takeIf { it.isDownloading || !it.message.isNullOrBlank() }?.let { state ->
-                DownloadOverlay(
-                    state = state,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(start = 16.dp, end = 16.dp, bottom = 88.dp),
-                )
-            }
+                errorMessage?.let { message ->
+                    WebErrorState(
+                        message = message,
+                        onRetry = {
+                            errorMessage = null
+                            webView?.loadUrl(startUrl)
+                        },
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(24.dp),
+                    )
+                }
 
-            WebViewBottomBanner()
+                downloadState?.takeIf { it.isDownloading || !it.message.isNullOrBlank() }?.let { state ->
+                    DownloadOverlay(
+                        state = state,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(start = 16.dp, end = 16.dp, bottom = 88.dp),
+                    )
+                }
+            }
         }
+
+        WebViewBottomBanner()
     }
 }
-
 @Composable
 private fun BoxScope.WebViewBottomBanner() {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
