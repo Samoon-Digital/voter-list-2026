@@ -13,11 +13,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -62,6 +67,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.pdf.viewer.fragment.PdfViewerFragment
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
+import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -147,7 +153,22 @@ fun PdfViewerScreen(
         if (state.isLoading) {
             LoadingOverlay()
         }
+
+        PdfViewerBottomBanner()
     }
+}
+
+@Composable
+private fun BoxScope.PdfViewerBottomBanner() {
+    val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    AdMobBannerAd(
+        placementKey = "pdf-viewer-bottom-banner",
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .offset(y = -navigationBarHeight)
+            .fillMaxWidth(),
+    )
 }
 
 @Composable

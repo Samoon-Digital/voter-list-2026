@@ -1,4 +1,4 @@
-﻿package com.samoondigital.yojnaplus.feature.webview
+package com.samoondigital.yojnaplus.feature.webview
 
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.annotation.SuppressLint
@@ -23,11 +23,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -68,6 +73,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 
 private const val JammuKashmirUrl = "https://ceo.jk.gov.in/namesearch/"
 private const val ChandigarhUrl = "https://ceochandigarh.gov.in/pages/intensive"
@@ -362,8 +368,23 @@ private fun OfficialWebViewScreen(
                         .padding(start = 16.dp, end = 16.dp, bottom = 88.dp),
                 )
             }
+
+            WebViewBottomBanner()
         }
     }
+}
+
+@Composable
+private fun BoxScope.WebViewBottomBanner() {
+    val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    AdMobBannerAd(
+        placementKey = "official-webview-bottom-banner",
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .offset(y = -navigationBarHeight)
+            .fillMaxWidth(),
+    )
 }
 
 @SuppressLint("SetJavaScriptEnabled")

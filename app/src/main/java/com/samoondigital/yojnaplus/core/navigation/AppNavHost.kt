@@ -1,4 +1,4 @@
-﻿package com.samoondigital.yojnaplus.core.navigation
+package com.samoondigital.yojnaplus.core.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -200,12 +200,23 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                     )
                 }
             }
-            if (currentRoute != null && currentRoute != Routes.HOME) {
+            if (currentRoute != null && shouldShowRouteBottomBanner(currentRoute)) {
                 BottomRouteBanner()
             }
         }
     }
 }
+
+private fun shouldShowRouteBottomBanner(route: String): Boolean =
+    route != Routes.HOME && route !in setOf(
+        Routes.JAMMU_KASHMIR_WEB,
+        Routes.CHANDIGARH_WEB,
+        Routes.DADRA_NAGAR_HAVELI_WEB,
+        Routes.GUJARAT_WEB,
+        Routes.KARNATAKA_WEB,
+        Routes.UTTARAKHAND_WEB,
+        Routes.PDF_VIEWER_ROUTE,
+    )
 
 @Composable
 private fun BoxScope.BottomRouteBanner() {
