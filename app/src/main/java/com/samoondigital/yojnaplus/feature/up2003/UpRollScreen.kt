@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.up2003
 
+import android.app.Activity
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -72,11 +73,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 
 private val UpPurple = Color(0xFF3522A8)
 private val UpPurpleDark = Color(0xFF20106F)
@@ -103,6 +106,7 @@ fun UpRollScreen(
     viewModel: UpRollViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -145,7 +149,11 @@ fun UpRollScreen(
             ) { step ->
                 when (step) {
                     UpRollStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
-                    UpRollStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
+                    UpRollStep.Assembly -> AssemblyStep(uiState) { assembly ->
+                        InterstitialAdManager.showIfAvailable(activity) {
+                            viewModel.selectAssembly(assembly)
+                        }
+                    }
                     UpRollStep.PollingStation -> PollingStationStep(uiState, viewModel::requestDownload)
                 }
             }

@@ -37,15 +37,22 @@ private object ProductionAdMobConfig {
     const val AppId = "ca-app-pub-1638673809508848~3940017763"
     const val AppOpen = "ca-app-pub-1638673809508848/5780292909"
     const val Banner = "ca-app-pub-1638673809508848/5540207067"
-    const val DebugBanner = "ca-app-pub-3940256099942544/9214589741"
     const val Interstitial = "ca-app-pub-1638673809508848/8518136887"
     const val Native = "ca-app-pub-1638673809508848/3565193102"
+}
+
+private object DebugAdMobConfig {
+    const val AppId = "ca-app-pub-3940256099942544~3347511713"
+    const val AppOpen = "ca-app-pub-3940256099942544/9257395921"
+    const val Banner = "ca-app-pub-3940256099942544/6300978111"
+    const val Interstitial = "ca-app-pub-3940256099942544/1033173712"
+    const val Native = "ca-app-pub-3940256099942544/2247696110"
 }
 
 object AdManager {
     private const val Tag = "AdMob"
     private const val ManifestAppIdKey = "com.google.android.gms.ads.APPLICATION_ID"
-    private const val AdsTemporarilyDisabled = true
+    private const val AdsTemporarilyDisabled = false
     private enum class InitializationState { NotStarted, Initializing, Initialized }
 
     private class PendingLoad(val execute: () -> Unit)
@@ -217,6 +224,11 @@ object AdManager {
         requireInitialized: Boolean,
     ): ValidationResult {
         val manifestAppId = manifestAppId(context)
+        val expectedAppId = if (BuildConfig.DEBUG) DebugAdMobConfig.AppId else ProductionAdMobConfig.AppId
+        val expectedAppOpen = if (BuildConfig.DEBUG) DebugAdMobConfig.AppOpen else ProductionAdMobConfig.AppOpen
+        val expectedBanner = if (BuildConfig.DEBUG) DebugAdMobConfig.Banner else ProductionAdMobConfig.Banner
+        val expectedInterstitial = if (BuildConfig.DEBUG) DebugAdMobConfig.Interstitial else ProductionAdMobConfig.Interstitial
+        val expectedNative = if (BuildConfig.DEBUG) DebugAdMobConfig.Native else ProductionAdMobConfig.Native
         val configuredIds = linkedMapOf(
             "appId" to BuildConfig.ADMOB_APP_ID,
             "appOpen" to AdUnitIds.appOpen,
@@ -232,24 +244,23 @@ object AdManager {
         if (BuildConfig.APPLICATION_ID != ProductionAdMobConfig.PackageName) {
             reasons += "BuildConfig.APPLICATION_ID ${BuildConfig.APPLICATION_ID} != ${ProductionAdMobConfig.PackageName}"
         }
-        if (manifestAppId != ProductionAdMobConfig.AppId) {
-            reasons += "manifest App ID $manifestAppId != ${ProductionAdMobConfig.AppId}"
+        if (manifestAppId != expectedAppId) {
+            reasons += "manifest App ID $manifestAppId != $expectedAppId"
         }
-        if (BuildConfig.ADMOB_APP_ID != ProductionAdMobConfig.AppId) {
-            reasons += "BuildConfig ADMOB_APP_ID ${BuildConfig.ADMOB_APP_ID} != ${ProductionAdMobConfig.AppId}"
+        if (BuildConfig.ADMOB_APP_ID != expectedAppId) {
+            reasons += "BuildConfig ADMOB_APP_ID ${BuildConfig.ADMOB_APP_ID} != $expectedAppId"
         }
-        if (AdUnitIds.appOpen != ProductionAdMobConfig.AppOpen) {
-            reasons += "App Open ID ${AdUnitIds.appOpen} != ${ProductionAdMobConfig.AppOpen}"
+        if (AdUnitIds.appOpen != expectedAppOpen) {
+            reasons += "App Open ID ${AdUnitIds.appOpen} != $expectedAppOpen"
         }
-        val expectedBanner = if (BuildConfig.DEBUG) ProductionAdMobConfig.DebugBanner else ProductionAdMobConfig.Banner
         if (AdUnitIds.banner != expectedBanner) {
             reasons += "Banner ID ${AdUnitIds.banner} != $expectedBanner"
         }
-        if (AdUnitIds.interstitial != ProductionAdMobConfig.Interstitial) {
-            reasons += "Interstitial ID ${AdUnitIds.interstitial} != ${ProductionAdMobConfig.Interstitial}"
+        if (AdUnitIds.interstitial != expectedInterstitial) {
+            reasons += "Interstitial ID ${AdUnitIds.interstitial} != $expectedInterstitial"
         }
-        if (AdUnitIds.native != ProductionAdMobConfig.Native) {
-            reasons += "Native ID ${AdUnitIds.native} != ${ProductionAdMobConfig.Native}"
+        if (AdUnitIds.native != expectedNative) {
+            reasons += "Native ID ${AdUnitIds.native} != $expectedNative"
         }
         configuredIds.forEach { (name, value) ->
             if (value.isBlank()) reasons += "$name is blank"

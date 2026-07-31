@@ -1,5 +1,6 @@
-﻿package com.samoondigital.yojnaplus.feature.oldsir
+package com.samoondigital.yojnaplus.feature.oldsir
 
+import android.app.Activity
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -69,11 +70,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
 import com.samoondigital.yojnaplus.model.OldSirAssemblyDto
 import com.samoondigital.yojnaplus.model.OldSirDistrictDto
@@ -124,6 +127,7 @@ fun OldSirScreen(
     viewModel: OldSirViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -170,13 +174,13 @@ fun OldSirScreen(
                         onSelected = { state ->
                             when (state.stateCd) {
                                 UttarPradeshStateCd -> onOpenUttarPradesh()
-                                JammuKashmirStateCd -> onOpenJammuKashmir()
+                                JammuKashmirStateCd -> InterstitialAdManager.showIfAvailable(activity) { onOpenJammuKashmir() }
                                 ChandigarhStateCd -> onOpenChandigarh()
-                                DadraNagarHaveliStateCd -> onOpenDadraNagarHaveli()
-                                GujaratStateCd -> onOpenGujarat()
-                                KarnatakaStateCd -> onOpenKarnataka()
+                                DadraNagarHaveliStateCd -> InterstitialAdManager.showIfAvailable(activity) { onOpenDadraNagarHaveli() }
+                                GujaratStateCd -> InterstitialAdManager.showIfAvailable(activity) { onOpenGujarat() }
+                                KarnatakaStateCd -> InterstitialAdManager.showIfAvailable(activity) { onOpenKarnataka() }
                                 JharkhandStateCd -> onOpenJharkhand()
-                                UttarakhandStateCd -> onOpenUttarakhand()
+                                UttarakhandStateCd -> InterstitialAdManager.showIfAvailable(activity) { onOpenUttarakhand() }
                                 WestBengalStateCd -> onOpenWestBengal()
                                 else -> viewModel.selectState(state)
                             }
@@ -195,7 +199,11 @@ fun OldSirScreen(
                         },
                     )
                     OldSirStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
-                    OldSirStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
+                    OldSirStep.Assembly -> AssemblyStep(uiState) { assembly ->
+                        InterstitialAdManager.showIfAvailable(activity) {
+                            viewModel.selectAssembly(assembly)
+                        }
+                    }
                     OldSirStep.PollingStation -> PollingStationStep(
                         uiState = uiState,
                         onSelected = viewModel::openPartPdf,

@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.westbengal
 
+import android.app.Activity
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -67,11 +68,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 
 private val WbPurple = Color(0xFF3522A8)
 private val WbPurpleDark = Color(0xFF20106F)
@@ -98,6 +101,7 @@ fun WestBengalScreen(
     viewModel: WestBengalViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -138,7 +142,11 @@ fun WestBengalScreen(
                 when (step) {
                     WestBengalStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
                     WestBengalStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
-                    WestBengalStep.PollingStation -> PollingStationStep(uiState, viewModel::selectPart)
+                    WestBengalStep.PollingStation -> PollingStationStep(uiState) { part ->
+                        InterstitialAdManager.showIfAvailable(activity) {
+                            viewModel.selectPart(part)
+                        }
+                    }
                     WestBengalStep.Captcha -> CaptchaStep(
                         uiState = uiState,
                         onCaptchaChanged = viewModel::updateCaptchaInput,

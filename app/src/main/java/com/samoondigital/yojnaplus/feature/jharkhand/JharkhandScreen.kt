@@ -1,5 +1,6 @@
 package com.samoondigital.yojnaplus.feature.jharkhand
 
+import android.app.Activity
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -71,11 +72,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 
 private val JhPurple = Color(0xFF3522A8)
 private val JhPurpleDark = Color(0xFF20106F)
@@ -102,6 +105,7 @@ fun JharkhandScreen(
     viewModel: JharkhandViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -144,7 +148,11 @@ fun JharkhandScreen(
                 when (step) {
                     JharkhandStep.District -> DistrictStep(uiState, viewModel::selectDistrict)
                     JharkhandStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
-                    JharkhandStep.Part -> PartStep(uiState, viewModel::selectPart)
+                    JharkhandStep.Part -> PartStep(uiState) { part ->
+                        InterstitialAdManager.showIfAvailable(activity) {
+                            viewModel.selectPart(part)
+                        }
+                    }
                     JharkhandStep.Captcha -> CaptchaStep(
                         uiState = uiState,
                         onCaptchaChanged = viewModel::updateCaptchaInput,
