@@ -366,38 +366,38 @@ private class NativeAdLoader(
     private val onLoaded: (NativeAd) -> Unit,
     private val onFailed: () -> Unit,
 ) {
-    fun load(): () -> Unit {
-        val adLoader = AdLoader.Builder(context, adUnitId)
-            .forNativeAd { loadedAd ->
-                if (isActive()) {
-                    onLoaded(loadedAd)
-                    AdManager.onAdLoaded("native", adUnitId, loadedAd.responseInfo)
-                } else {
-                    loadedAd.destroy()
+    fun load(): () -> Unit = AdManager.loadWhenReady(
+        format = "native",
+        adUnitId = adUnitId,
+        isActive = isActive,
+        load = { request: AdRequest ->
+            val adLoader = AdLoader.Builder(context, adUnitId)
+                .forNativeAd { loadedAd ->
+                    if (isActive()) {
+                        onLoaded(loadedAd)
+                        AdManager.onAdLoaded("native", adUnitId, loadedAd.responseInfo)
+                    } else {
+                        loadedAd.destroy()
+                    }
                 }
-            }
-            .withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    AdManager.onAdFailed("native", adUnitId, error)
-                    if (isActive()) onFailed()
-                }
+                .withAdListener(object : AdListener() {
+                    override fun onAdFailedToLoad(error: LoadAdError) {
+                        AdManager.onAdFailed("native", adUnitId, error)
+                        if (isActive()) onFailed()
+                    }
 
-                override fun onAdImpression() {
-                    android.util.Log.d("AdMob", "impression format=native placement=$placementKey unit=$adUnitId")
-                }
+                    override fun onAdImpression() {
+                        android.util.Log.d("AdMob", "impression format=native placement=$placementKey unit=$adUnitId")
+                    }
 
-                override fun onAdClicked() {
-                    android.util.Log.d("AdMob", "clicked format=native placement=$placementKey unit=$adUnitId")
-                }
-            })
-            .build()
-        return AdManager.loadWhenReady(
-            format = "native",
-            adUnitId = adUnitId,
-            isActive = isActive,
-            load = { request: AdRequest -> adLoader.loadAd(request) },
-        )
-    }
+                    override fun onAdClicked() {
+                        android.util.Log.d("AdMob", "clicked format=native placement=$placementKey unit=$adUnitId")
+                    }
+                })
+                .build()
+            adLoader.loadAd(request)
+        },
+    )
 }
 
 private fun createNativeAdView(context: android.content.Context): NativeAdView {
