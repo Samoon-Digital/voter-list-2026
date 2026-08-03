@@ -27,7 +27,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -72,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
+import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
 
 private val ChandigarhPurple = Color(0xFF3522A8)
 private val ChandigarhPurpleDark = Color(0xFF20106F)
@@ -80,6 +82,7 @@ private val ChandigarhInk = Color(0xFF090B1F)
 private val ChandigarhMuted = Color(0xFF686A8D)
 private val ChandigarhSurface = Color(0xFFFCFCFF)
 private val ChandigarhStroke = Color(0xFFE3E2F5)
+private const val NativeAdInterval = 7
 private val Accents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -350,6 +353,7 @@ private fun AreaStep(uiState: ChandigarhUiState, onSelected: (ChandigarhArea) ->
         loading = uiState.isLoading && uiState.areas.isEmpty(),
         message = uiState.message,
         itemTitleMaxLines = Int.MAX_VALUE,
+        nativePlacement = NativePlacement.EverySeventh,
         onSelected = onSelected,
     )
 }
@@ -371,6 +375,7 @@ private fun PollingStationStep(
         loading = uiState.isLoading && uiState.pollingStations.isEmpty(),
         message = uiState.message,
         itemTitleMaxLines = Int.MAX_VALUE,
+        nativePlacement = NativePlacement.AfterFirst,
         onSelected = onSelected,
         itemTrailing = { station ->
             if (uiState.downloadingPsNumber == station.psNumber) {
@@ -412,6 +417,7 @@ private fun <T> ChoiceScreen(
     itemIcon: ImageVector,
     itemTitleMaxLines: Int = 1,
     itemTrailing: (@Composable (T) -> Unit)? = null,
+    nativePlacement: NativePlacement = NativePlacement.None,
     onSelected: (T) -> Unit,
 ) {
     var query by remember(title) { mutableStateOf("") }
@@ -422,8 +428,10 @@ private fun <T> ChoiceScreen(
                 itemSubtitle(it).orEmpty().matchesSearchQuery(term)
         }
     }
+    val listState = rememberLazyListState()
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -455,21 +463,53 @@ private fun <T> ChoiceScreen(
                 HorizontalDivider(color = ChandigarhStroke)
             }
         }
-        itemsIndexed(
-            items = filtered,
-            key = { index, item -> "chandigarh-$title-$index-${itemTitle(item)}" },
-        ) { index, item ->
-            ChoiceCard(
-                title = itemTitle(item),
-                subtitle = itemSubtitle(item),
-                icon = itemIcon,
-                accentIndex = index,
-                titleMaxLines = itemTitleMaxLines,
-                trailing = itemTrailing?.let { trailing -> { trailing(item) } },
-                onClick = { onSelected(item) },
+        filtered.forEachIndexed { index, item ->
+            val titleKey = itemTitle(item)
+            item(key = "chandigarh-$title-$index-$titleKey") {
+                ChoiceCard(
+                    title = titleKey,
+                    subtitle = itemSubtitle(item),
+                    icon = itemIcon,
+                    accentIndex = index,
+                    titleMaxLines = itemTitleMaxLines,
+                    trailing = itemTrailing?.let { trailing -> { trailing(item) } },
+                    onClick = { onSelected(item) },
+                )
+            }
+            NativeAdInsertion(
+                listState = listState,
+                prefix = "chandigarh-$title",
+                index = index,
+                suffix = titleKey,
+                placement = nativePlacement,
             )
         }
         item(key = "chandigarh-bottom-space-$title") { Spacer(Modifier.height(88.dp)) }
+    }
+}
+
+private enum class NativePlacement { None, EverySeventh, AfterFirst }
+
+private fun androidx.compose.foundation.lazy.LazyListScope.NativeAdInsertion(
+    listState: LazyListState,
+    prefix: String,
+    index: Int,
+    suffix: Any,
+    placement: NativePlacement,
+) {
+    val shouldShow = when (placement) {
+        NativePlacement.None -> false
+        NativePlacement.EverySeventh -> (index + 1) % NativeAdInterval == 0
+        NativePlacement.AfterFirst -> index == 0
+    }
+    if (!shouldShow) return
+    val adItemKey = "$prefix-native-${index + 1}-$suffix"
+    item(key = adItemKey) {
+        LazyNativeAdItem(
+            listState = listState,
+            itemKey = adItemKey,
+            placementKey = adItemKey,
+        )
     }
 }
 

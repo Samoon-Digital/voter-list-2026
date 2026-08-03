@@ -91,6 +91,8 @@ private val OldSirMuted = Color(0xFF686A8D)
 private val OldSirSurface = Color(0xFFFCFCFF)
 private val OldSirStroke = Color(0xFFE3E2F5)
 private const val NativeAdInterval = 7
+private const val AndamanNicobarStateCd = "U01"
+private const val GoaStateCd = "S05"
 private const val UttarPradeshStateCd = "S24"
 private const val JammuKashmirStateCd = "U08"
 private const val ChandigarhStateCd = "U02"
@@ -434,6 +436,9 @@ private fun DistrictStep(uiState: OldSirUiState, onSelected: (OldSirDistrictDto)
         itemIcon = Icons.Outlined.LocationOn,
         loading = uiState.isLoading && uiState.districts.isEmpty(),
         message = uiState.message,
+        tailNativeAdKey = if (uiState.selectedState?.stateCd == GoaStateCd) {
+            "old-sir-goa-district-tail-${uiState.districts.size}"
+        } else null,
         onSelected = onSelected,
     )
 }
@@ -451,6 +456,9 @@ private fun AssemblyStep(uiState: OldSirUiState, onSelected: (OldSirAssemblyDto)
         itemIcon = Icons.Outlined.AccountBalance,
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
         message = uiState.message,
+        tailNativeAdKey = if (uiState.selectedState?.stateCd == AndamanNicobarStateCd) {
+            "old-sir-andaman-assembly-tail-${uiState.selectedDistrict?.districtNo}-${uiState.assemblies.size}"
+        } else null,
         onSelected = onSelected,
     )
 }
@@ -472,6 +480,9 @@ private fun PollingStationStep(
         loading = uiState.isLoading && uiState.parts.isEmpty(),
         message = uiState.message,
         itemTitleMaxLines = Int.MAX_VALUE,
+        tailNativeAdKey = if (uiState.selectedState?.stateCd == AndamanNicobarStateCd) {
+            "old-sir-andaman-polling-tail-${uiState.selectedAssembly?.acNo}-${uiState.parts.size}"
+        } else null,
         onSelected = onSelected,
         itemTrailing = { part ->
             if (uiState.downloadingPartNumber == part.partNumber) {
@@ -515,6 +526,7 @@ private fun <T> SearchableChoiceScreen(
     message: String?,
     itemTitleMaxLines: Int = 1,
     itemEnabled: (T) -> Boolean = { true },
+    tailNativeAdKey: String? = null,
     headerIcon: ImageVector,
     itemIcon: ImageVector,
     itemTrailing: (@Composable (T) -> Unit)? = null,
@@ -574,6 +586,15 @@ private fun <T> SearchableChoiceScreen(
                 index = index,
                 suffix = titleKey,
             )
+        }
+        if (tailNativeAdKey != null && filtered.isNotEmpty() && filtered.size % NativeAdInterval != 0) {
+            item(key = tailNativeAdKey) {
+                LazyNativeAdItem(
+                    listState = listState,
+                    itemKey = tailNativeAdKey,
+                    placementKey = tailNativeAdKey,
+                )
+            }
         }
     }
 }
