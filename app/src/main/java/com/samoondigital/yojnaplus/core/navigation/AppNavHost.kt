@@ -27,7 +27,6 @@ import com.samoondigital.yojnaplus.feature.downloads.DownloadsScreen
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.jharkhand.JharkhandScreen
 import com.samoondigital.yojnaplus.feature.news.NewsScreen
-import com.samoondigital.yojnaplus.feature.notifications.NotificationsScreen
 import com.samoondigital.yojnaplus.feature.oldsir.OldSirScreen
 import com.samoondigital.yojnaplus.feature.pdf.PdfScreen
 import com.samoondigital.yojnaplus.feature.pdfviewer.PdfViewerScreen
@@ -208,7 +207,6 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                     )
                 }
                 composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }
-                composable(Routes.NOTIFICATIONS) { NotificationsScreen(contentPadding = innerPadding) }
                 composable(Routes.SETTINGS) { SettingsScreen(contentPadding = innerPadding) }
                 composable(Routes.PDF) {
                     PdfScreen(

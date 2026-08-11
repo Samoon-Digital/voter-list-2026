@@ -21,18 +21,11 @@ class SettingsDataStore @Inject constructor(
 ) {
     private object Keys {
         val DARK_MODE = booleanPreferencesKey("dark_mode")
-        val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
     }
 
     val darkMode: Flow<Boolean> = context.dataStore.data.map { it[Keys.DARK_MODE] ?: false }
-    val notificationsEnabled: Flow<Boolean> =
-        context.dataStore.data.map { it[Keys.NOTIFICATIONS] ?: true }
 
     suspend fun setDarkMode(enabled: Boolean) {
         context.dataStore.edit { it[Keys.DARK_MODE] = enabled }
-    }
-
-    suspend fun setNotificationsEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.NOTIFICATIONS] = enabled }
     }
 }

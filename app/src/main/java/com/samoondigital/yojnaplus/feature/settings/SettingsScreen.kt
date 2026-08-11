@@ -58,13 +58,6 @@ fun SettingsScreen(
             onCheckedChange = viewModel::setDarkMode,
         )
         HorizontalDivider()
-        SettingToggle(
-            title = "Notifications",
-            subtitle = "Receive voter list update alerts",
-            checked = state.notificationsEnabled,
-            onCheckedChange = viewModel::setNotifications,
-        )
-        HorizontalDivider()
 
         if (ConsentManager.isPrivacyOptionsRequired()) {
             SettingAction(

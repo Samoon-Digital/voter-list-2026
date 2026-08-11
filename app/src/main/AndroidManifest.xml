@@ -4,7 +4,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <uses-sdk tools:overrideLibrary="androidx.pdf, androidx.pdf.core, androidx.pdf.viewer, androidx.pdf.document.service, androidx.pdf.viewer.fragment" />
 
@@ -21,9 +20,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VoterList2026"
         tools:targetApi="31">
-        <meta-data
-            android:name="firebase_messaging_installation_id_enabled"
-            android:value="true" />
 
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
@@ -38,14 +34,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <service
-            android:name=".notifications.YojnaFirebaseMessagingService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
         <activity
             android:name=".MainActivity"
             android:exported="true"

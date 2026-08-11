@@ -1,7 +1,6 @@
 package com.samoondigital.yojnaplus
 
 import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
@@ -27,7 +26,6 @@ import com.samoondigital.yojnaplus.ads.AdManager
 import com.samoondigital.yojnaplus.ads.ConsentManager
 import com.samoondigital.yojnaplus.core.navigation.AppNavHost
 import com.samoondigital.yojnaplus.core.ui.theme.VoterList2026Theme
-import com.samoondigital.yojnaplus.notifications.AppNotificationManager
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -63,7 +61,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        handleNotificationIntent(intent)
         ConsentManager.gatherConsent(this) {
             AdManager.allowAdRequests()
         }
@@ -73,12 +70,6 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         restoreDefaultSystemBarLayout()
         resumeImmediateUpdateIfNeeded()
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleNotificationIntent(intent)
     }
 
     private fun restoreDefaultSystemBarLayout() {
@@ -135,15 +126,6 @@ class MainActivity : AppCompatActivity() {
         }.onFailure { error ->
             immediateUpdateFlowStarted = false
             Log.w(Tag, "immediate-update-start-failed source=$source", error)
-        }
-    }
-
-    private fun handleNotificationIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra(AppNotificationManager.ExtraFromNotification, false) == true) {
-            Log.d(
-                "FirebaseMessaging",
-                "notification-click-opened extras=${intent.extras?.keySet().orEmpty()}",
-            )
         }
     }
 

@@ -9,7 +9,6 @@ import android.util.Log
 import com.samoondigital.yojnaplus.ads.AdManager
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
-import com.samoondigital.yojnaplus.notifications.FirebaseIntegrationManager
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -23,7 +22,6 @@ class YojnaPlusApp : Application() {
         AdManager.initialize(this)
         AppOpenAdManager.register(this)
         InterstitialAdManager.preload(this)
-        FirebaseIntegrationManager.initialize(this)
     }
 
     private fun isMainProcess(): Boolean {
