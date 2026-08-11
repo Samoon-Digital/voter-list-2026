@@ -21,6 +21,8 @@ import androidx.navigation.compose.rememberNavController
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import com.samoondigital.yojnaplus.feature.chandigarh.ChandigarhScreen
+import com.samoondigital.yojnaplus.feature.deleted.DeletedListLinks
+import com.samoondigital.yojnaplus.feature.deleted.DeletedListScreen
 import com.samoondigital.yojnaplus.feature.downloads.DownloadsScreen
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.jharkhand.JharkhandScreen
@@ -36,6 +38,7 @@ import com.samoondigital.yojnaplus.feature.webview.DadraNagarHaveliWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.GujaratWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.JammuKashmirWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.KarnatakaWebViewScreen
+import com.samoondigital.yojnaplus.feature.webview.OfficialPdfWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.UttarakhandWebViewScreen
 import com.samoondigital.yojnaplus.feature.westbengal.WestBengalScreen
 
@@ -76,10 +79,37 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.HOME) {
                     HomeScreen(
                         onDownloadPdf = { navController.navigate(Routes.PDF) },
+                        onOpenDeletedList = { navController.navigate(Routes.DELETED_LIST) },
                         onOpenOldSir = { navController.navigate(Routes.OLD_SIR) },
                         onOpenDownloads = { navigateToDownloads() },
                         contentPadding = innerPadding,
                     )
+                }
+                composable(Routes.DELETED_LIST) {
+                    DeletedListScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenState = { link -> navController.navigate(Routes.deletedWebRoute(link.id)) },
+                    )
+                }
+                composable(Routes.DELETED_WEB_ROUTE) { entry ->
+                    val link = DeletedListLinks.find(entry.arguments?.getString("stateId"))
+                    if (link?.url != null) {
+                        OfficialPdfWebViewScreen(
+                            screenTitle = link.stateName,
+                            startUrl = link.url,
+                            statusText = "Official deleted-list website",
+                            downloadDistrict = link.stateName,
+                            onBack = { navController.popBackStack() },
+                            onOpenPdf = { uri, title ->
+                                navController.navigate(Routes.pdfViewerRoute(uri, title))
+                            },
+                        )
+                    } else {
+                        DeletedListScreen(
+                            onBack = { navController.popBackStack() },
+                            onOpenState = { state -> navController.navigate(Routes.deletedWebRoute(state.id)) },
+                        )
+                    }
                 }
                 composable(Routes.OLD_SIR) {
                     OldSirScreen(
@@ -230,7 +260,3 @@ private fun BoxScope.BottomRouteBanner() {
             .fillMaxWidth(),
     )
 }
-
-
-
-

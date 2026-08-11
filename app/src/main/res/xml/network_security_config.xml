@@ -9,4 +9,7 @@
             <certificates src="@raw/em_dv_tls_ca_g2a1" />
         </trust-anchors>
     </domain-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">webapp.ceo.kerala.gov.in</domain>
+    </domain-config>
 </network-security-config>

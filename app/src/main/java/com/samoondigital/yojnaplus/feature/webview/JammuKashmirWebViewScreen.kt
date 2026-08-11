@@ -255,6 +255,46 @@ fun UttarakhandWebViewScreen(
     )
 }
 @Composable
+fun OfficialPdfWebViewScreen(
+    screenTitle: String,
+    startUrl: String,
+    onBack: () -> Unit,
+    onOpenPdf: (uri: String, title: String) -> Unit,
+    modifier: Modifier = Modifier,
+    statusText: String = "Official deleted-list website",
+    downloadDistrict: String = screenTitle,
+    viewModel: ChandigarhWebViewViewModel = hiltViewModel(),
+) {
+    val downloadState by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.eventFlow.collect { event ->
+            when (event) {
+                is WebPdfDownloadEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
+            }
+        }
+    }
+
+    OfficialWebViewScreen(
+        screenTitle = screenTitle,
+        fallbackPageTitle = screenTitle,
+        statusText = statusText,
+        startUrl = startUrl,
+        onBack = onBack,
+        onDownloadRequested = { url, contentDisposition, mimeType ->
+            viewModel.downloadPdf(
+                url = url,
+                contentDisposition = contentDisposition,
+                mimeType = mimeType,
+                district = downloadDistrict,
+                assembly = "Deleted List WebView PDF",
+            )
+        },
+        downloadState = downloadState,
+        modifier = modifier,
+    )
+}
+@Composable
 private fun OfficialWebViewScreen(
     screenTitle: String,
     fallbackPageTitle: String,
@@ -738,4 +778,3 @@ private fun String.isPdfUrl(mimeType: String?): Boolean =
     mimeType.equals("application/pdf", ignoreCase = true) ||
         URLUtil.guessFileName(this, null, mimeType).endsWith(".pdf", ignoreCase = true) ||
         substringBefore('?').endsWith(".pdf", ignoreCase = true)
-

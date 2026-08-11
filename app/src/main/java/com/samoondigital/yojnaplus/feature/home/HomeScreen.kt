@@ -78,6 +78,7 @@ import com.samoondigital.yojnaplus.notifications.NotificationPermissionPrompt
 @Composable
 fun HomeScreen(
     onDownloadPdf: () -> Unit,
+    onOpenDeletedList: () -> Unit,
     onOpenOldSir: () -> Unit,
     onOpenDownloads: () -> Unit,
     contentPadding: PaddingValues,
@@ -106,7 +107,7 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                 )
                 DeletedList2026Card(
-                    onClick = onDownloadPdf,
+                    onClick = onOpenDeletedList,
                     modifier = Modifier.weight(1f),
                 )
             }

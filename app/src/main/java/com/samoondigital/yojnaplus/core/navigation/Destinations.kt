@@ -1,4 +1,4 @@
-﻿package com.samoondigital.yojnaplus.core.navigation
+package com.samoondigital.yojnaplus.core.navigation
 
 import android.net.Uri
 import androidx.compose.material.icons.Icons
@@ -16,6 +16,9 @@ object Routes {
     const val HOME = "home"
     const val PDF = "pdf"
     const val OLD_SIR = "old_sir"
+    const val DELETED_LIST = "deleted_list"
+    const val DELETED_WEB = "deleted_web"
+    const val DELETED_WEB_ROUTE = "$DELETED_WEB/{stateId}"
     const val UP_2003 = "up_2003"
     const val JHARKHAND_2003 = "jharkhand_2003"
     const val WEST_BENGAL_2002 = "west_bengal_2002"
@@ -35,6 +38,9 @@ object Routes {
 
     fun pdfViewerRoute(uri: String, title: String): String =
         "$PDF_VIEWER/${Uri.encode(uri)}/${Uri.encode(title)}"
+
+    fun deletedWebRoute(stateId: String): String =
+        "$DELETED_WEB/${Uri.encode(stateId)}"
 }
 
 /** Items shown in the bottom navigation bar. */
@@ -48,5 +54,3 @@ enum class TopLevelDestination(
     NOTIFICATIONS(Routes.NOTIFICATIONS, "Alerts", Icons.Outlined.Notifications),
     SETTINGS(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
 }
-
-
