@@ -322,11 +322,6 @@ private fun TopListActionCard(
                             .align(Alignment.CenterStart)
                             .size(78.dp),
                     )
-                    YearPill(
-                        year = year,
-                        accent = accent,
-                        modifier = Modifier.align(Alignment.TopEnd),
-                    )
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -398,13 +393,6 @@ private fun WideListActionCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             ActionCardBackdrop(accent = accent, modifier = Modifier.matchParentSize())
-            YearPill(
-                year = year,
-                accent = accent,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 10.dp, end = 12.dp),
-            )
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -542,7 +530,15 @@ private fun CompactListActionCard(
                         YearPill(year = year, accent = accent)
                     }
                     Spacer(Modifier.height(4.dp))
-                    TitleWithYear(title = title, year = year, accent = accent, accentDark = accentDark)
+                    Text(
+                        text = title,
+                        color = HomePurpleDark,
+                        fontSize = 22.sp,
+                        lineHeight = 25.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Spacer(Modifier.height(5.dp))
                     Box(
                         modifier = Modifier
