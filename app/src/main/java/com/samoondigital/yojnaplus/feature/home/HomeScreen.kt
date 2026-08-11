@@ -2,6 +2,7 @@ package com.samoondigital.yojnaplus.feature.home
 
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.app.Activity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,6 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FileDownload
@@ -50,10 +53,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -91,12 +96,24 @@ fun HomeScreen(
         )
 
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Spacer(Modifier.height(24.dp))
-            VoterListPdfCard(onClick = onDownloadPdf)
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                VoterListPdfCard(
+                    onClick = onDownloadPdf,
+                    modifier = Modifier.weight(1f),
+                )
+                DeletedList2026Card(
+                    onClick = onDownloadPdf,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            OldSirListCard(onClick = onOpenOldSir)
             Spacer(Modifier.height(16.dp))
             AdMobNativeAd(placementKey = "home-native-between-cards")
-            Spacer(Modifier.height(16.dp))
-            OldSirListCard(onClick = onOpenOldSir)
             Spacer(Modifier.height(18.dp))
             SecureReliableCard()
             Spacer(Modifier.height(14.dp))
@@ -242,14 +259,726 @@ private fun HomeStatusBarEffect() {
     }
 }
 
+private val DeletedRed = Color(0xFFD92525)
+private val DeletedRedDark = Color(0xFF7B0505)
+private val VoterBlue = Color(0xFF2466E8)
+
+@Composable
+private fun DeletedList2026Card(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TopListActionCard(
+        title = "Deleted List",
+        year = "2026",
+        description = "Check removed names quickly.",
+        actionLabel = "Check Deleted List",
+        accent = DeletedRed,
+        accentDark = DeletedRedDark,
+        icon = Icons.Outlined.Search,
+        statusIcon = Icons.Outlined.Close,
+        onClick = onClick,
+        modifier = modifier,
+    )
+}
+@Composable
+private fun TopListActionCard(
+    title: String,
+    year: String,
+    description: String,
+    actionLabel: String,
+    accent: Color,
+    accentDark: Color,
+    icon: ImageVector,
+    statusIcon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.height(232.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.26f)),
+        onClick = onClick,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ActionCardBackdrop(accent = accent, modifier = Modifier.matchParentSize())
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(82.dp),
+                ) {
+                    ClipboardCardClipart(
+                        accent = accent,
+                        statusIcon = statusIcon,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .size(78.dp),
+                    )
+                    YearPill(
+                        year = year,
+                        accent = accent,
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = title,
+                    color = HomePurpleDark,
+                    fontSize = 18.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = year,
+                    color = accentDark,
+                    fontSize = 20.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(34.dp)
+                        .height(3.dp)
+                        .background(accent.copy(alpha = 0.75f), RoundedCornerShape(2.dp)),
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = description,
+                    color = Color(0xFF343B4D),
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.weight(1f))
+                SmallCardActionBar(
+                    label = actionLabel,
+                    icon = icon,
+                    accent = accent,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WideListActionCard(
+    title: String,
+    year: String,
+    description: String,
+    actionLabel: String,
+    accent: Color,
+    accentDark: Color,
+    icon: ImageVector,
+    statusIcon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(152.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.26f)),
+        onClick = onClick,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ActionCardBackdrop(accent = accent, modifier = Modifier.matchParentSize())
+            YearPill(
+                year = year,
+                accent = accent,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 10.dp, end = 12.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 14.dp, top = 18.dp, end = 14.dp, bottom = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ClipboardCardClipart(
+                    accent = accent,
+                    statusIcon = statusIcon,
+                    modifier = Modifier.size(92.dp),
+                )
+                Spacer(Modifier.width(14.dp))
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                ) {
+                    Spacer(Modifier.height(4.dp))
+                    TitleWithYear(title = title, year = year, accent = accent, accentDark = accentDark)
+                    Spacer(Modifier.height(5.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(42.dp)
+                            .height(3.dp)
+                            .background(accent.copy(alpha = 0.75f), RoundedCornerShape(2.dp)),
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    Text(
+                        text = description,
+                        color = Color(0xFF343B4D),
+                        fontSize = 13.sp,
+                        lineHeight = 17.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    CardActionBar(
+                        label = actionLabel,
+                        icon = icon,
+                        accent = accent,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmallCardActionBar(
+    label: String,
+    icon: ImageVector,
+    accent: Color,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(accent.copy(alpha = 0.10f))
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            text = label,
+            color = accent,
+            fontSize = 11.sp,
+            lineHeight = 13.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 7.dp, end = 5.dp),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(19.dp),
+        )
+    }
+}
+@Composable
+private fun CompactListActionCard(
+    title: String,
+    year: String,
+    description: String,
+    actionLabel: String,
+    accent: Color,
+    accentDark: Color,
+    icon: ImageVector,
+    statusIcon: ImageVector,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(190.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.24f)),
+        onClick = onClick,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ActionCardBackdrop(accent = accent, modifier = Modifier.matchParentSize())
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 16.dp, top = 20.dp, end = 14.dp, bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ClipboardCardClipart(
+                    accent = accent,
+                    statusIcon = statusIcon,
+                    modifier = Modifier.size(104.dp),
+                )
+                Spacer(Modifier.width(14.dp))
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        YearPill(year = year, accent = accent)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    TitleWithYear(title = title, year = year, accent = accent, accentDark = accentDark)
+                    Spacer(Modifier.height(5.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(42.dp)
+                            .height(3.dp)
+                            .background(accent.copy(alpha = 0.75f), RoundedCornerShape(2.dp)),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = description,
+                        color = Color(0xFF343B4D),
+                        fontSize = 14.sp,
+                        lineHeight = 18.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    CardActionBar(
+                        label = actionLabel,
+                        icon = icon,
+                        accent = accent,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YearPill(
+    year: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = accent,
+        shadowElevation = 4.dp,
+    ) {
+        Text(
+            text = year,
+            color = Color.White,
+            fontSize = 14.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+        )
+    }
+}
+
+@Composable
+private fun TitleWithYear(
+    title: String,
+    year: String,
+    accent: Color,
+    accentDark: Color,
+) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(
+            text = title,
+            color = HomePurpleDark,
+            fontSize = 24.sp,
+            lineHeight = 27.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = year,
+            color = accentDark,
+            fontSize = 22.sp,
+            lineHeight = 25.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun CardActionBar(
+    label: String,
+    icon: ImageVector,
+    accent: Color,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(accent.copy(alpha = 0.10f))
+            .padding(start = 13.dp, end = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(23.dp),
+        )
+        Text(
+            text = label,
+            color = accent,
+            fontSize = 14.sp,
+            lineHeight = 17.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp, end = 10.dp),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+@Composable
+private fun ClipboardCardClipart(
+    accent: Color,
+    statusIcon: ImageVector,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            drawCircle(
+                color = accent.copy(alpha = 0.10f),
+                radius = size.minDimension * 0.47f,
+                center = Offset(size.width * 0.48f, size.height * 0.50f),
+            )
+            drawCircle(
+                color = accent.copy(alpha = 0.12f),
+                radius = 6f,
+                center = Offset(size.width * 0.12f, size.height * 0.80f),
+            )
+            drawCircle(
+                color = accent.copy(alpha = 0.10f),
+                radius = 5f,
+                center = Offset(size.width * 0.88f, size.height * 0.18f),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(70.dp, 88.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White),
+        ) {
+            Canvas(modifier = Modifier.matchParentSize()) {
+                drawRoundRect(
+                    color = accent,
+                    topLeft = Offset(7f, 18f),
+                    size = androidx.compose.ui.geometry.Size(size.width - 14f, size.height - 22f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .size(40.dp, 22.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.80f), accent))),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 6.dp)
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 17.dp, top = 37.dp)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.92f)),
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 14.dp, top = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                repeat(2) {
+                    Box(
+                        modifier = Modifier
+                            .width(18.dp)
+                            .height(5.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(accent.copy(alpha = 0.18f)),
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                repeat(3) { index ->
+                    Box(
+                        modifier = Modifier
+                            .width((42 - index * 7).dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(accent.copy(alpha = 0.13f)),
+                    )
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 7.dp, bottom = 10.dp)
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.78f), accent))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = statusIcon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(26.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActionCardBackdrop(accent: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        drawCircle(
+            color = accent.copy(alpha = 0.045f),
+            radius = size.minDimension * 0.58f,
+            center = Offset(size.width * 0.20f, size.height * 0.45f),
+        )
+        val dotColor = accent.copy(alpha = 0.13f)
+        drawCircle(color = dotColor, radius = 4.5f, center = Offset(size.width * 0.07f, size.height * 0.76f))
+        drawCircle(color = dotColor, radius = 3.2f, center = Offset(size.width * 0.40f, size.height * 0.17f))
+        drawCircle(color = dotColor, radius = 2.5f, center = Offset(size.width * 0.42f, size.height * 0.25f))
+    }
+}
+@Composable
+private fun DeletedRibbon(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.size(58.dp)) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val ribbon = Path().apply {
+                moveTo(0f, 0f)
+                lineTo(size.width, 0f)
+                cubicTo(size.width * 0.92f, size.height * 0.20f, size.width * 0.72f, size.height * 0.48f, 0f, size.height)
+                close()
+            }
+            drawPath(ribbon, Brush.linearGradient(listOf(Color(0xFFFF5B4F), Color(0xFFD41515))))
+        }
+        Text(
+            text = "NEW",
+            color = Color.White,
+            fontSize = 11.sp,
+            lineHeight = 12.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 7.dp, top = 17.dp)
+                .rotate(-42f),
+        )
+    }
+}
+
+@Composable
+private fun DeletedClipart(modifier: Modifier = Modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(92.dp, 112.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White),
+        ) {
+            Canvas(modifier = Modifier.matchParentSize()) {
+                drawRoundRect(
+                    color = DeletedRed,
+                    topLeft = Offset(5f, 20f),
+                    size = androidx.compose.ui.geometry.Size(size.width - 10f, size.height - 25f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(12f, 12f),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .size(54.dp, 24.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Brush.verticalGradient(listOf(Color(0xFFFF7373), DeletedRed))),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 5.dp)
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 18.dp, top = 43.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(25.dp)
+                        .clip(CircleShape)
+                        .background(DeletedRed),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("DELETED", color = DeletedRedDark, fontSize = 11.sp, lineHeight = 11.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("LIST 2026", color = DeletedRedDark, fontSize = 10.sp, lineHeight = 10.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 18.dp, bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                repeat(4) { index ->
+                    Box(
+                        modifier = Modifier
+                            .width((68 - index * 10).dp)
+                            .height(5.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFEDE8E8)),
+                    )
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Brush.verticalGradient(listOf(Color(0xFFFF4D4D), DeletedRed))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.Delete, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+        }
+    }
+}
+
+@Composable
+private fun DeletedFeatureItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        Box(
+            modifier = Modifier
+                .size(31.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFFFFE7E7)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = DeletedRed, modifier = Modifier.size(19.dp))
+        }
+        Column {
+            Text(title, color = Color(0xFF242832), fontSize = 12.sp, lineHeight = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Text(subtitle, color = Color(0xFF5F6672), fontSize = 10.sp, lineHeight = 11.sp, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun DeletedFeatureDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(28.dp)
+            .background(Color(0xFFEFE1E1)),
+    )
+}
+
+@Composable
+private fun DeletedCardArtwork(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        drawCircle(
+            color = DeletedRed.copy(alpha = 0.10f),
+            radius = size.minDimension * 0.46f,
+            center = Offset(size.width * 0.52f, size.height * 0.47f),
+        )
+        val dotColor = DeletedRed.copy(alpha = 0.16f)
+        repeat(4) { row ->
+            repeat(3) { column ->
+                drawCircle(
+                    color = dotColor,
+                    radius = 2.4f,
+                    center = Offset(size.width * 0.18f + column * 17f, size.height * 0.62f + row * 17f),
+                )
+            }
+        }
+        drawCircle(color = DeletedRed.copy(alpha = 0.12f), radius = 5f, center = Offset(size.width * 0.76f, size.height * 0.42f))
+    }
+}
 private val HomePurpleDark = Color(0xFF24106D)
 private val HomePurple = Color(0xFF4326B8)
 
 @Composable
-private fun VoterListPdfCard(onClick: () -> Unit) {
-    VoterListSirCard(onClick = onClick)
+private fun VoterListPdfCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TopListActionCard(
+        title = "Voter List",
+        year = "2026",
+        description = "Search name and download PDF.",
+        actionLabel = "Search & Download",
+        accent = VoterBlue,
+        accentDark = VoterBlue,
+        icon = Icons.Outlined.Download,
+        statusIcon = Icons.Outlined.CheckCircle,
+        onClick = onClick,
+        modifier = modifier,
+    )
 }
-
 @Composable
 private fun VoterListSirCard(onClick: () -> Unit) {
     Card(
@@ -486,10 +1215,23 @@ private fun VoterListTypeChip(
 private val OldSirArchiveYears = listOf("2002", "2003", "2004", "2005", "2006")
 
 @Composable
-private fun OldSirListCard(onClick: () -> Unit) {
-    OldSirArchiveCard(onClick = onClick)
+private fun OldSirListCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    WideListActionCard(
+        title = "Old SIR List",
+        year = "2026",
+        description = "View and download the Old SIR voter list used in previous enumeration.",
+        actionLabel = "View & Download Old SIR List",
+        accent = Green,
+        accentDark = Color(0xFF168548),
+        icon = Icons.Outlined.Download,
+        statusIcon = Icons.Outlined.Search,
+        onClick = onClick,
+        modifier = modifier,
+    )
 }
-
 @Composable
 private fun OldSirArchiveCard(onClick: () -> Unit) {
     Card(

@@ -40,8 +40,8 @@ android {
         applicationId = ProductionPackageName
         minSdk = 26
         targetSdk = 36
-        versionCode = 22
-        versionName = "3.3.5"
+        versionCode = 23
+        versionName = "3.3.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -71,6 +71,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
             buildConfigField("String", "ADMOB_APP_ID", "\"$ProductionAdMobAppId\"")
             buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$ProductionAppOpenAdUnitId\"")
             buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$ProductionBannerAdUnitId\"")
