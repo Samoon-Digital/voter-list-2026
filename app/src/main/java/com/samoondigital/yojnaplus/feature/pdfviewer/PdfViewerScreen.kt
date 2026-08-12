@@ -13,18 +13,19 @@ import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -46,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -57,8 +59,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
@@ -71,10 +75,10 @@ import androidx.pdf.view.search.PdfSearchView
 import androidx.pdf.viewer.fragment.PdfViewerFragment
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
-import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.math.roundToInt
 
 @Composable
 fun PdfViewerScreen(
@@ -89,6 +93,12 @@ fun PdfViewerScreen(
     val useAndroidXPdfViewer = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
     var androidXPdfFragment by remember(state.uri) { mutableStateOf<PdfViewerFragment?>(null) }
     var isAndroidXPdfSearchActive by remember(state.uri) { mutableStateOf(false) }
+    var searchBarOffsetPx by remember(state.uri) { mutableFloatStateOf(0f) }
+    val density = LocalDensity.current
+    val maxSearchBarLiftPx = with(density) { 220.dp.toPx() }
+    val searchBarDragState = rememberDraggableState { delta ->
+        searchBarOffsetPx = (searchBarOffsetPx + delta).coerceIn(-maxSearchBarLiftPx, 0f)
+    }
     val sourceState by produceState<PdfSourceState>(PdfSourceState.Loading, state.uri) {
         value = PdfSourceState.Loading
         value = runCatching { PdfSourceState.Ready(preparePdfViewerUri(context, state.uri.toUri())) }
@@ -100,6 +110,12 @@ fun PdfViewerScreen(
             PdfSourceState.Loading -> viewModel.setLoading()
             is PdfSourceState.Ready -> viewModel.onLoaded(pageCount = 0)
             is PdfSourceState.Error -> viewModel.onError(source.message)
+        }
+    }
+
+    LaunchedEffect(isAndroidXPdfSearchActive) {
+        if (!isAndroidXPdfSearchActive) {
+            searchBarOffsetPx = 0f
         }
     }
 
@@ -162,17 +178,22 @@ fun PdfViewerScreen(
             LoadingOverlay()
         }
 
-        PdfViewerBottomBanner()
-
         if (useAndroidXPdfViewer) {
             AndroidXPdfSearchBarHost(
                 fragment = androidXPdfFragment,
                 isActive = isAndroidXPdfSearchActive,
                 onClosed = { isAndroidXPdfSearchActive = false },
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .stableStatusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                    .align(Alignment.BottomCenter)
+                    .imePadding()
+                    .navigationBarsPadding()
+                    .offset { IntOffset(x = 0, y = searchBarOffsetPx.roundToInt()) }
+                    .draggable(
+                        state = searchBarDragState,
+                        orientation = Orientation.Vertical,
+                        enabled = isAndroidXPdfSearchActive,
+                    )
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
             )
         }
     }
@@ -223,18 +244,6 @@ private fun AndroidXPdfSearchBarHost(
     )
 }
 
-@Composable
-private fun BoxScope.PdfViewerBottomBanner() {
-    val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
-    AdMobBannerAd(
-        placementKey = "pdf-viewer-bottom-banner",
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .offset(y = -navigationBarHeight)
-            .fillMaxWidth(),
-    )
-}
 
 @Composable
 private fun AndroidXPdfPages(
