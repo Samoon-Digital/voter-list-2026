@@ -286,9 +286,21 @@ private fun AndroidXPdfPages(
             if (fragment.documentUri != uri) {
                 fragment.documentUri = uri
             }
+            fragment.view?.hideAndroidXPdfToolBox()
+            container.post { fragment.view?.hideAndroidXPdfToolBox() }
             onReady(fragment)
         },
     )
+}
+
+private fun View.hideAndroidXPdfToolBox() {
+    val toolBoxId = resources.getIdentifier("toolBoxView", "id", context.packageName)
+    val toolBoxView = if (toolBoxId != 0) findViewById<View>(toolBoxId) else null
+    toolBoxView?.apply {
+        visibility = View.GONE
+        isEnabled = false
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+    }
 }
 
 @Composable

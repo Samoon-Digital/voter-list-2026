@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
@@ -38,9 +39,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,6 +66,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -657,43 +661,96 @@ private fun DownloadOverlay(
     state: WebPdfDownloadUiState,
     modifier: Modifier = Modifier,
 ) {
+    val progress = state.progress.coerceIn(0, 100)
+    val title = if (state.isDownloading) "Downloading PDF" else "PDF download"
+    val message = state.message?.takeIf { it.isNotBlank() }
+        ?: if (state.isDownloading) "Please wait while the file is saved" else "Download status updated"
+
     Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFE3E2F5)),
-        shadowElevation = 8.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 86.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFFFCFCFF),
+        border = BorderStroke(1.dp, Color(0xFFD8D5F5)),
+        shadowElevation = 14.dp,
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (state.isDownloading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
-                        color = WebPurple,
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Brush.linearGradient(listOf(WebPurple, WebPurpleDark))),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (state.isDownloading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(26.dp),
+                            strokeWidth = 3.dp,
+                            color = Color.White,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Outlined.PictureAsPdf,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(25.dp),
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = WebPurpleDark,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                    Text(
+                        text = message,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WebMuted,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
-                Text(
-                    text = state.message.orEmpty(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WebPurpleDark,
-                    fontWeight = FontWeight.SemiBold,
-                )
+
+                if (state.isDownloading) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color(0xFFECEAFF),
+                    ) {
+                        Text(
+                            text = "$progress%",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = WebPurpleDark,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
             }
+
             if (state.isDownloading) {
                 LinearProgressIndicator(
-                    progress = { state.progress / 100f },
+                    progress = { progress / 100f },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(4.dp),
+                        .height(7.dp)
+                        .clip(RoundedCornerShape(999.dp)),
                     color = WebPurple,
                     trackColor = Color(0xFFE3E2F5),
                 )
