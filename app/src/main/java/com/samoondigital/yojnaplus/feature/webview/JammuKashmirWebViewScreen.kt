@@ -85,6 +85,14 @@ private const val DadraNagarHaveliUrl = "https://ceoddd.in/"
 private const val GujaratUrl = "https://chunavsetu-search.gujarat.gov.in/SearchEPIC.aspx"
 private const val KarnatakaUrl = "https://ceo.karnataka.gov.in/voter_list.html"
 private const val UttarakhandUrl = "https://election.uk.gov.in/search2003uk"
+private const val BiharDeletedTargetSelfScript = """
+    (function() {
+      if (!location.hostname.includes('ceoelection.bihar.gov.in')) return;
+      document.querySelectorAll('a[target="_blank"]').forEach(function(anchor) {
+        anchor.setAttribute('target', '_self');
+      });
+    })();
+"""
 private val WebPurple = Color(0xFF3522A8)
 private val WebPurpleDark = Color(0xFF20106F)
 private val WebSurface = Color(0xFFFCFCFF)
@@ -491,6 +499,7 @@ private fun OfficialWebView(
                         }
 
                         override fun onPageFinished(view: WebView, url: String?) {
+                            view.rewriteBiharDeletedLinks()
                             onPageFinished(view, view.title)
                         }
 
@@ -829,6 +838,10 @@ private fun WebErrorState(
             }
         }
     }
+}
+
+private fun WebView.rewriteBiharDeletedLinks() {
+    evaluateJavascript(BiharDeletedTargetSelfScript, null)
 }
 
 private fun String.isPdfUrl(mimeType: String?): Boolean =

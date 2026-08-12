@@ -1,4 +1,4 @@
-﻿package com.samoondigital.yojnaplus.feature.deleted
+package com.samoondigital.yojnaplus.feature.deleted
 
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import androidx.activity.compose.BackHandler
@@ -83,7 +83,7 @@ data class DeletedListLink(
 
 object DeletedListLinks {
     val all: List<DeletedListLink> = listOf(
-        DeletedListLink("andhra-pradesh", "Andhra Pradesh", "https://ceoaperolls.ap.gov.in/TestASD/"),
+        DeletedListLink("andhra-pradesh", "Andhra Pradesh", "https://ceoaperolls.ap.gov.in/PublishASDD/"),
         DeletedListLink("arunachal-pradesh", "Arunachal Pradesh", null, "Not available"),
         DeletedListLink("assam", "Assam", null, "Not available"),
         DeletedListLink("bihar", "Bihar", "https://ceoelection.bihar.gov.in/electors_included_till_24_06_2025_not_in_draft_01_08_2025.html"),
