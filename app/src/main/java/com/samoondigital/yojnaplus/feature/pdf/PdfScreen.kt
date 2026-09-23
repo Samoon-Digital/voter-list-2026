@@ -63,7 +63,6 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,7 +89,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -566,13 +564,11 @@ private fun PartsStep(
         ) { listState ->
             filtered.forEachIndexed { index, part ->
                 item(key = "part-${part.partNumber}") {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PartChoiceCard(
-                            part = part,
-                            selected = part.partNumber in uiState.selectedPartNumbers,
-                            onClick = { onPartToggled(part.partNumber) },
-                        )
-                    }
+                    PartChoiceCard(
+                        part = part,
+                        selected = part.partNumber in uiState.selectedPartNumbers,
+                        onClick = { onPartToggled(part.partNumber) },
+                    )
                 }
             }
         }
@@ -736,20 +732,29 @@ private fun SuccessStep(uiState: ElectoralRollUiState, onOpenDownloads: () -> Un
             }
         }
         items(uiState.downloadedPdfs, key = { it.uri }) { pdf ->
-            ElevatedCard(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp)
+                        .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)
+                    Icon(
+                        Icons.Outlined.PictureAsPdf,
+                        contentDescription = null,
+                        tint = WizardPurple,
+                        modifier = Modifier.size(22.dp),
+                    )
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = pdf.fileName,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                HorizontalDivider(color = WizardStroke)
             }
         }
     }
@@ -846,15 +851,13 @@ private fun <T> SearchableChoiceScreen(
         filtered.forEachIndexed { index, item ->
             val titleKey = itemTitle(item)
             item(key = "choice-$title-$index-$titleKey") {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ChoiceCard(
-                        title = titleKey,
-                        subtitle = itemSubtitle(item),
-                        icon = itemIcon,
-                        accentIndex = index,
-                        onClick = { onSelected(item) },
-                    )
-                }
+                ChoiceCard(
+                    title = titleKey,
+                    subtitle = itemSubtitle(item),
+                    icon = itemIcon,
+                    accentIndex = index,
+                    onClick = { onSelected(item) },
+                )
             }
         }
     }
@@ -876,7 +879,7 @@ private fun ChoiceListScaffold(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.Top,
     ) {
         item(key = "choice-header-$title") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -979,64 +982,44 @@ private fun ChoiceCard(
     accentIndex: Int = 0,
 ) {
     val accent = ChoiceAccents[accentIndex % ChoiceAccents.size]
-    ElevatedCard(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = Color.White,
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(8.dp),
-                ambientColor = Color(0xFFE9E8F8),
-                spotColor = Color(0xFFE9E8F8),
-            ),
+            .clickable(onClick = onClick),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 68.dp)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .heightIn(min = 54.dp)
+                .padding(horizontal = 2.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (leading != null) {
                 leading()
             } else {
-                Surface(
-                    shape = CircleShape,
-                    color = accent.copy(alpha = 0.12f),
-                    modifier = Modifier.size(50.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = accent,
-                            modifier = Modifier.size(28.dp),
-                        )
-                    }
-                }
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(22.dp),
+                )
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = WizardInk,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 subtitle?.takeIf { it.isNotBlank() }?.let {
-                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = WizardInk,
-                        maxLines = 2,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WizardMuted,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
@@ -1045,87 +1028,63 @@ private fun ChoiceCard(
                 Icons.AutoMirrored.Outlined.ArrowForward,
                 contentDescription = null,
                 tint = WizardPurple,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
+        HorizontalDivider(color = WizardStroke)
     }
 }
 
 @Composable
 private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit) {
     val accent = ChoiceAccents[(part.partNumber - 1).floorMod(ChoiceAccents.size)]
-    ElevatedCard(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (selected) Color(0xFFF2EFFF) else Color.White,
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(8.dp),
-                ambientColor = Color(0xFFE9E8F8),
-                spotColor = Color(0xFFE9E8F8),
-            )
+            .background(if (selected) Color(0xFFF7F4FF) else Color.Transparent)
             .clickable(onClick = onClick),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 72.dp)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .heightIn(min = 58.dp)
+                .padding(horizontal = 2.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(
-                shape = CircleShape,
-                color = accent.copy(alpha = 0.12f),
-                modifier = Modifier.size(50.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.AccountBalance,
-                        contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(28.dp),
-                    )
-                }
-            }
+            Icon(
+                Icons.Outlined.AccountBalance,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(22.dp),
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Part ${part.partNumber}",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = WizardInk,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(2.dp))
                 Text(
                     text = part.partName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WizardInk,
-                    maxLines = 3,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = WizardMuted,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Surface(
-                shape = CircleShape,
-                color = if (selected) WizardPurple else Color(0xFFE9E8F8),
-                modifier = Modifier.size(30.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (selected) {
-                        Icon(
-                            Icons.Outlined.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    }
-                }
+            if (selected) {
+                Icon(
+                    Icons.Outlined.Check,
+                    contentDescription = null,
+                    tint = WizardPurple,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
+        HorizontalDivider(color = WizardStroke)
     }
 }
 

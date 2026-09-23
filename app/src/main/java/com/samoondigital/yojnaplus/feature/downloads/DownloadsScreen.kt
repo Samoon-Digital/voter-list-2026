@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -36,11 +36,10 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -49,7 +48,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -184,7 +182,7 @@ private fun DownloadsContent(
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.Top,
                 ) {
                     item {
                         Text(
@@ -194,19 +192,17 @@ private fun DownloadsContent(
                         )
                     }
                     itemsIndexed(state.downloads, key = { _, it -> it.id }) { _, download ->
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            DownloadCard(
-                                download = download,
-                                onOpen = { onOpen(download.id) },
-                                onShare = { onShare(download.id) },
-                                onRename = { onRename(download) },
-                                onDelete = { onDelete(download.id) },
-                                onRetry = { onRetry(download.id) },
-                                onCancel = { onCancel(download.id) },
-                                onPause = { onPause(download.id) },
-                                onResume = { onResume(download.id) },
-                            )
-                        }
+                        DownloadCard(
+                            download = download,
+                            onOpen = { onOpen(download.id) },
+                            onShare = { onShare(download.id) },
+                            onRename = { onRename(download) },
+                            onDelete = { onDelete(download.id) },
+                            onRetry = { onRetry(download.id) },
+                            onCancel = { onCancel(download.id) },
+                            onPause = { onPause(download.id) },
+                            onResume = { onResume(download.id) },
+                        )
                     }
                 }
             }
@@ -258,45 +254,37 @@ private fun DownloadCard(
     onPause: () -> Unit,
     onResume: () -> Unit,
 ) {
-    ElevatedCard(
-        onClick = onOpen,
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val sourceDescription = download.sourceDescription
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Outlined.PictureAsPdf,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp),
-                        )
-                    }
-                }
+                Icon(
+                    Icons.Outlined.PictureAsPdf,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .size(22.dp),
+                )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = download.fileName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (sourceDescription.isNotBlank()) {
                         Text(
                             text = sourceDescription,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -334,6 +322,7 @@ private fun DownloadCard(
                 )
             }
         }
+        HorizontalDivider()
     }
 }
 

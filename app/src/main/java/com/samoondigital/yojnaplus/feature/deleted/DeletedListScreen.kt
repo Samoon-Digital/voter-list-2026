@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,8 +30,6 @@ import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,7 +47,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -148,7 +146,7 @@ fun DeletedListScreen(
                 .padding(padding)
                 .background(DeletedSurface),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.Top,
         ) {
             item(key = "deleted-list-header") {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -318,54 +316,35 @@ private fun DeletedStateCard(
     onClick: () -> Unit,
 ) {
     val accent = if (link.isAvailable) ChoiceAccents[accentIndex % ChoiceAccents.size] else DeletedMuted
-    ElevatedCard(
-        onClick = onClick,
-        enabled = link.isAvailable,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (link.isAvailable) 1f else 0.55f)
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(8.dp),
-                ambientColor = Color(0xFFE9E8F8),
-                spotColor = Color(0xFFE9E8F8),
-            ),
+            .clickable(enabled = link.isAvailable, onClick = onClick),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 70.dp)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .heightIn(min = 54.dp)
+                .padding(horizontal = 2.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(
-                shape = CircleShape,
-                color = accent.copy(alpha = 0.12f),
-                modifier = Modifier.size(50.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        if (link.isAvailable) Icons.Outlined.Language else Icons.Outlined.Block,
-                        contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(27.dp),
-                    )
-                }
-            }
+            Icon(
+                if (link.isAvailable) Icons.Outlined.Language else Icons.Outlined.Block,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(22.dp),
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = link.stateName,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = DeletedInk,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 2,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(2.dp))
                 Text(
                     text = link.url ?: link.unavailableReason.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
@@ -379,10 +358,11 @@ private fun DeletedStateCard(
                     Icons.AutoMirrored.Outlined.ArrowForward,
                     contentDescription = null,
                     tint = DeletedPurple,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
+        HorizontalDivider(color = DeletedStroke)
     }
 }
 
