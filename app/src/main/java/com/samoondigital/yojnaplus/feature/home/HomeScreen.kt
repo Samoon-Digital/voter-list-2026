@@ -70,7 +70,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowInsetsControllerCompat
 import com.samoondigital.yojnaplus.R
-import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
 import com.samoondigital.yojnaplus.core.ui.theme.Green
 import com.samoondigital.yojnaplus.core.ui.theme.GreenContainer
 
@@ -112,8 +111,6 @@ fun HomeScreen(
             Spacer(Modifier.height(14.dp))
             OldSirListCard(onClick = onOpenOldSir)
             Spacer(Modifier.height(16.dp))
-            AdMobNativeAd(placementKey = "home-native-between-cards")
-            Spacer(Modifier.height(18.dp))
             SecureReliableCard()
             Spacer(Modifier.height(14.dp))
             LegalContactCard()

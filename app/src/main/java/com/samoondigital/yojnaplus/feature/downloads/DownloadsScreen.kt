@@ -68,7 +68,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
-import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
 import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
 import com.samoondigital.yojnaplus.feature.downloads.data.DownloadStatusEntity
 import kotlinx.coroutines.flow.collectLatest
@@ -179,14 +178,8 @@ private fun DownloadsContent(
         ) { target ->
             when (target) {
                 "loading" -> LoadingState()
-                "empty" -> Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        EmptyState(hasQuery = state.query.isNotBlank())
-                    }
-                    AdMobNativeAd(
-                        placementKey = "downloads-empty-${state.query.isNotBlank()}",
-                        modifier = Modifier.padding(bottom = 18.dp),
-                    )
+                "empty" -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    EmptyState(hasQuery = state.query.isNotBlank())
                 }
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -200,7 +193,7 @@ private fun DownloadsContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    itemsIndexed(state.downloads, key = { _, it -> it.id }) { index, download ->
+                    itemsIndexed(state.downloads, key = { _, it -> it.id }) { _, download ->
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             DownloadCard(
                                 download = download,
@@ -213,9 +206,6 @@ private fun DownloadsContent(
                                 onPause = { onPause(download.id) },
                                 onResume = { onResume(download.id) },
                             )
-                            if (index == 0) {
-                                AdMobNativeAd(placementKey = "downloads-after-first-${download.id}")
-                            }
                         }
                     }
                 }

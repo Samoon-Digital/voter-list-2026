@@ -21,13 +21,11 @@ object AdUnitIds {
     val appOpen: String = BuildConfig.ADMOB_APP_OPEN_AD_UNIT_ID
     val banner: String = BuildConfig.ADMOB_BANNER_AD_UNIT_ID
     val interstitial: String = BuildConfig.ADMOB_INTERSTITIAL_AD_UNIT_ID
-    val native: String = BuildConfig.ADMOB_NATIVE_AD_UNIT_ID
 
     fun expectedFor(format: String): String? = when (format) {
         "app-open" -> appOpen
         "banner" -> banner
         "interstitial" -> interstitial
-        "native" -> native
         else -> null
     }
 }
@@ -38,7 +36,6 @@ private object ProductionAdMobConfig {
     const val AppOpen = "ca-app-pub-1638673809508848/5780292909"
     const val Banner = "ca-app-pub-1638673809508848/5540207067"
     const val Interstitial = "ca-app-pub-1638673809508848/8518136887"
-    const val Native = "ca-app-pub-1638673809508848/3565193102"
 }
 
 private object DebugAdMobConfig {
@@ -46,7 +43,6 @@ private object DebugAdMobConfig {
     const val AppOpen = "ca-app-pub-3940256099942544/9257395921"
     const val Banner = "ca-app-pub-3940256099942544/6300978111"
     const val Interstitial = "ca-app-pub-3940256099942544/1033173712"
-    const val Native = "ca-app-pub-3940256099942544/2247696110"
 }
 
 object AdManager {
@@ -228,13 +224,11 @@ object AdManager {
         val expectedAppOpen = if (BuildConfig.DEBUG) DebugAdMobConfig.AppOpen else ProductionAdMobConfig.AppOpen
         val expectedBanner = if (BuildConfig.DEBUG) DebugAdMobConfig.Banner else ProductionAdMobConfig.Banner
         val expectedInterstitial = if (BuildConfig.DEBUG) DebugAdMobConfig.Interstitial else ProductionAdMobConfig.Interstitial
-        val expectedNative = if (BuildConfig.DEBUG) DebugAdMobConfig.Native else ProductionAdMobConfig.Native
         val configuredIds = linkedMapOf(
             "appId" to BuildConfig.ADMOB_APP_ID,
             "appOpen" to AdUnitIds.appOpen,
             "banner" to AdUnitIds.banner,
             "interstitial" to AdUnitIds.interstitial,
-            "native" to AdUnitIds.native,
         )
         val reasons = mutableListOf<String>()
 
@@ -258,9 +252,6 @@ object AdManager {
         }
         if (AdUnitIds.interstitial != expectedInterstitial) {
             reasons += "Interstitial ID ${AdUnitIds.interstitial} != $expectedInterstitial"
-        }
-        if (AdUnitIds.native != expectedNative) {
-            reasons += "Native ID ${AdUnitIds.native} != $expectedNative"
         }
         configuredIds.forEach { (name, value) ->
             if (value.isBlank()) reasons += "$name is blank"
@@ -301,7 +292,6 @@ object AdManager {
             append(" appOpen=${AdUnitIds.appOpen}")
             append(" banner=${AdUnitIds.banner}")
             append(" interstitial=${AdUnitIds.interstitial}")
-            append(" native=${AdUnitIds.native}")
             if (!validation.valid) append(" reasons=${validation.reasons.joinToString("; ")}")
         }
         if (validation.valid) Log.d(Tag, details) else Log.e(Tag, details)

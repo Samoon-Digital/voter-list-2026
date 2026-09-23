@@ -104,8 +104,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
-import com.samoondigital.yojnaplus.core.ui.components.AdMobNativeAd
-import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
 import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.PartDto
@@ -124,7 +122,6 @@ private val WizardInk = Color(0xFF090B1F)
 private val WizardMuted = Color(0xFF686A8D)
 private val WizardSurface = Color(0xFFFCFCFF)
 private val WizardStroke = Color(0xFFE3E2F5)
-private const val NativeAdInterval = 7
 private val ChoiceAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -449,7 +446,6 @@ private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
         headerIcon = Icons.Outlined.CalendarMonth,
         loading = uiState.isLoading,
         message = uiState.message,
-        headerNativeAdKey = "year-${uiState.selectedState?.stateName}-${uiState.years.size}",
     ) { _ ->
         itemsIndexed(uiState.years, key = { _, year -> year }) { index, year ->
             ChoiceCard(
@@ -472,7 +468,6 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
         headerIcon = Icons.AutoMirrored.Outlined.FactCheck,
         loading = uiState.isLoading,
         message = uiState.message,
-        headerNativeAdKey = "roll-type-${uiState.selectedYear}-${uiState.rollTypes.size}",
     ) { _ ->
         itemsIndexed(uiState.rollTypes, key = { _, rollType -> rollType.id }) { index, rollType ->
             ChoiceCard(
@@ -579,12 +574,6 @@ private fun PartsStep(
                         )
                     }
                 }
-                NativeAdInsertion(
-                    listState = listState,
-                    prefix = "part",
-                    index = index,
-                    suffix = part.partNumber,
-                )
             }
         }
 
@@ -684,9 +673,6 @@ private fun CaptchaStep(
                     }
                 }
             }
-        }
-        item(key = "captcha-native-ad") {
-            AdMobNativeAd(placementKey = "captcha-${uiState.selectedSummary().orEmpty()}")
         }
         item {
             AnimatedVisibility(visible = uiState.downloadItems.isNotEmpty() || uiState.isDownloading) {
@@ -870,12 +856,6 @@ private fun <T> SearchableChoiceScreen(
                     )
                 }
             }
-            NativeAdInsertion(
-                listState = listState,
-                prefix = title,
-                index = index,
-                suffix = titleKey,
-            )
         }
     }
 }
@@ -889,7 +869,6 @@ private fun ChoiceListScaffold(
     message: String?,
     selectedSummary: String? = null,
     trailingHeader: (@Composable ColumnScope.() -> Unit)? = null,
-    headerNativeAdKey: String? = null,
     content: androidx.compose.foundation.lazy.LazyListScope.(LazyListState) -> Unit,
 ) {
     val listState = rememberLazyListState()
@@ -919,35 +898,8 @@ private fun ChoiceListScaffold(
                 trailingHeader?.invoke(this)
             }
         }
-        headerNativeAdKey?.let { placementKey ->
-            val adItemKey = "$placementKey-native-ad"
-            item(key = adItemKey) {
-                LazyNativeAdItem(
-                    listState = listState,
-                    itemKey = adItemKey,
-                    placementKey = placementKey,
-                )
-            }
-        }
         content(listState)
         item(key = "choice-bottom-space-$title") { Spacer(Modifier.height(88.dp)) }
-    }
-}
-
-private fun androidx.compose.foundation.lazy.LazyListScope.NativeAdInsertion(
-    listState: LazyListState,
-    prefix: String,
-    index: Int,
-    suffix: Any,
-) {
-    if ((index + 1) % NativeAdInterval != 0) return
-    val adItemKey = "native-$prefix-${index + 1}-$suffix"
-    item(key = adItemKey) {
-        LazyNativeAdItem(
-            listState = listState,
-            itemKey = adItemKey,
-            placementKey = adItemKey,
-        )
     }
 }
 @Composable

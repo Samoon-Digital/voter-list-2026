@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,7 +56,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
 
 private val DeletedPurple = Color(0xFF3522A8)
 private val DeletedPurpleDark = Color(0xFF20106F)
@@ -66,7 +64,6 @@ private val DeletedMuted = Color(0xFF686A8D)
 private val DeletedSurface = Color(0xFFFCFCFF)
 private val DeletedStroke = Color(0xFFE3E2F5)
 private val DeletedRed = Color(0xFFD92525)
-private const val NativeAdInterval = 7
 private val ChoiceAccents = listOf(
     Color(0xFFD92525),
     Color(0xFF2466E8),
@@ -183,30 +180,9 @@ fun DeletedListScreen(
                         onClick = { if (item.isAvailable) onOpenState(item) },
                     )
                 }
-                NativeAdInsertion(
-                    listState = listState,
-                    index = index,
-                    suffix = "${query.ifBlank { "all" }}-${filtered.size}",
-                )
             }
             item(key = "deleted-list-bottom-space") { Spacer(Modifier.height(88.dp)) }
         }
-    }
-}
-
-private fun androidx.compose.foundation.lazy.LazyListScope.NativeAdInsertion(
-    listState: LazyListState,
-    index: Int,
-    suffix: Any,
-) {
-    if ((index + 1) % NativeAdInterval != 0) return
-    val adItemKey = "deleted-list-native-${index + 1}-$suffix"
-    item(key = adItemKey) {
-        LazyNativeAdItem(
-            listState = listState,
-            itemKey = adItemKey,
-            placementKey = adItemKey,
-        )
     }
 }
 

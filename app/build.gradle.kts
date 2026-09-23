@@ -7,12 +7,10 @@ val ProductionAdMobAppId = "ca-app-pub-1638673809508848~3940017763"
 val ProductionAppOpenAdUnitId = "ca-app-pub-1638673809508848/5780292909"
 val ProductionBannerAdUnitId = "ca-app-pub-1638673809508848/5540207067"
 val ProductionInterstitialAdUnitId = "ca-app-pub-1638673809508848/8518136887"
-val ProductionNativeAdUnitId = "ca-app-pub-1638673809508848/3565193102"
 val DebugAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
 val DebugAppOpenAdUnitId = "ca-app-pub-3940256099942544/9257395921"
 val DebugBannerAdUnitId = "ca-app-pub-3940256099942544/6300978111"
 val DebugInterstitialAdUnitId = "ca-app-pub-3940256099942544/1033173712"
-val DebugNativeAdUnitId = "ca-app-pub-3940256099942544/2247696110"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -65,7 +63,6 @@ android {
             buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$DebugAppOpenAdUnitId\"")
             buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$DebugBannerAdUnitId\"")
             buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$DebugInterstitialAdUnitId\"")
-            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$DebugNativeAdUnitId\"")
             manifestPlaceholders["admobAppId"] = DebugAdMobAppId
         }
         release {
@@ -78,7 +75,6 @@ android {
             buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$ProductionAppOpenAdUnitId\"")
             buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$ProductionBannerAdUnitId\"")
             buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$ProductionInterstitialAdUnitId\"")
-            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$ProductionNativeAdUnitId\"")
             manifestPlaceholders["admobAppId"] = ProductionAdMobAppId
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

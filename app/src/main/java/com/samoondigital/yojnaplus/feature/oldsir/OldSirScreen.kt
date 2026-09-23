@@ -77,7 +77,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
-import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
 import com.samoondigital.yojnaplus.model.OldSirAssemblyDto
 import com.samoondigital.yojnaplus.model.OldSirDistrictDto
 import com.samoondigital.yojnaplus.model.OldSirPartDto
@@ -90,7 +89,6 @@ private val OldSirInk = Color(0xFF090B1F)
 private val OldSirMuted = Color(0xFF686A8D)
 private val OldSirSurface = Color(0xFFFCFCFF)
 private val OldSirStroke = Color(0xFFE3E2F5)
-private const val NativeAdInterval = 7
 private const val AndamanNicobarStateCd = "U01"
 private const val GoaStateCd = "S05"
 private const val UttarPradeshStateCd = "S24"
@@ -436,9 +434,6 @@ private fun DistrictStep(uiState: OldSirUiState, onSelected: (OldSirDistrictDto)
         itemIcon = Icons.Outlined.LocationOn,
         loading = uiState.isLoading && uiState.districts.isEmpty(),
         message = uiState.message,
-        tailNativeAdKey = if (uiState.selectedState?.stateCd == GoaStateCd) {
-            "old-sir-goa-district-tail-${uiState.districts.size}"
-        } else null,
         onSelected = onSelected,
     )
 }
@@ -456,9 +451,6 @@ private fun AssemblyStep(uiState: OldSirUiState, onSelected: (OldSirAssemblyDto)
         itemIcon = Icons.Outlined.AccountBalance,
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
         message = uiState.message,
-        tailNativeAdKey = if (uiState.selectedState?.stateCd == AndamanNicobarStateCd) {
-            "old-sir-andaman-assembly-tail-${uiState.selectedDistrict?.districtNo}-${uiState.assemblies.size}"
-        } else null,
         onSelected = onSelected,
     )
 }
@@ -480,9 +472,6 @@ private fun PollingStationStep(
         loading = uiState.isLoading && uiState.parts.isEmpty(),
         message = uiState.message,
         itemTitleMaxLines = Int.MAX_VALUE,
-        tailNativeAdKey = if (uiState.selectedState?.stateCd == AndamanNicobarStateCd) {
-            "old-sir-andaman-polling-tail-${uiState.selectedAssembly?.acNo}-${uiState.parts.size}"
-        } else null,
         onSelected = onSelected,
         itemTrailing = { part ->
             if (uiState.downloadingPartNumber == part.partNumber) {
@@ -526,7 +515,6 @@ private fun <T> SearchableChoiceScreen(
     message: String?,
     itemTitleMaxLines: Int = 1,
     itemEnabled: (T) -> Boolean = { true },
-    tailNativeAdKey: String? = null,
     headerIcon: ImageVector,
     itemIcon: ImageVector,
     itemTrailing: (@Composable (T) -> Unit)? = null,
@@ -580,21 +568,6 @@ private fun <T> SearchableChoiceScreen(
                     onClick = { onSelected(item) },
                 )
             }
-            NativeAdInsertion(
-                listState = listState,
-                prefix = title,
-                index = index,
-                suffix = titleKey,
-            )
-        }
-        if (tailNativeAdKey != null && filtered.isNotEmpty() && filtered.size % NativeAdInterval != 0) {
-            item(key = tailNativeAdKey) {
-                LazyNativeAdItem(
-                    listState = listState,
-                    itemKey = tailNativeAdKey,
-                    placementKey = tailNativeAdKey,
-                )
-            }
         }
     }
 }
@@ -640,23 +613,6 @@ private fun ChoiceListScaffold(
         }
         content(listState)
         item(key = "old-sir-bottom-space-$title") { Spacer(Modifier.height(88.dp)) }
-    }
-}
-
-private fun androidx.compose.foundation.lazy.LazyListScope.NativeAdInsertion(
-    listState: LazyListState,
-    prefix: String,
-    index: Int,
-    suffix: Any,
-) {
-    if ((index + 1) % NativeAdInterval != 0) return
-    val adItemKey = "old-sir-native-$prefix-${index + 1}-$suffix"
-    item(key = adItemKey) {
-        LazyNativeAdItem(
-            listState = listState,
-            itemKey = adItemKey,
-            placementKey = adItemKey,
-        )
     }
 }
 
@@ -810,5 +766,3 @@ private fun ChoiceCard(
         }
     }
 }
-
-

@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,7 +75,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
-import com.samoondigital.yojnaplus.core.ui.components.LazyNativeAdItem
 
 private val WbPurple = Color(0xFF3522A8)
 private val WbPurpleDark = Color(0xFF20106F)
@@ -85,7 +83,6 @@ private val WbInk = Color(0xFF090B1F)
 private val WbMuted = Color(0xFF686A8D)
 private val WbSurface = Color(0xFFFCFCFF)
 private val WbStroke = Color(0xFFE3E2F5)
-private const val NativeAdInterval = 7
 private val WbAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -494,14 +491,6 @@ private fun CaptchaStep(
                 }
             }
         }
-        val captchaNativeKey = "wb-captcha-native-${uiState.selectedPart?.psNumber ?: uiState.selectedPart?.displayName.orEmpty()}"
-        item(key = captchaNativeKey) {
-            LazyNativeAdItem(
-                listState = listState,
-                itemKey = captchaNativeKey,
-                placementKey = captchaNativeKey,
-            )
-        }
         item(key = "wb-captcha-space") { Spacer(Modifier.height(88.dp)) }
     }
 }
@@ -576,31 +565,8 @@ private fun <T> ChoiceScreen(
                     onClick = { onSelected(item) },
                 )
             }
-            NativeAdInsertion(
-                listState = listState,
-                prefix = "wb-$title",
-                index = index,
-                suffix = titleKey,
-            )
         }
         item(key = "wb-bottom-space-$title") { Spacer(Modifier.height(88.dp)) }
-    }
-}
-
-private fun androidx.compose.foundation.lazy.LazyListScope.NativeAdInsertion(
-    listState: LazyListState,
-    prefix: String,
-    index: Int,
-    suffix: Any,
-) {
-    if ((index + 1) % NativeAdInterval != 0) return
-    val adItemKey = "$prefix-native-${index + 1}-$suffix"
-    item(key = adItemKey) {
-        LazyNativeAdItem(
-            listState = listState,
-            itemKey = adItemKey,
-            placementKey = adItemKey,
-        )
     }
 }
 
