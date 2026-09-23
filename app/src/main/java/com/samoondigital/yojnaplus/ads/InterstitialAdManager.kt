@@ -7,11 +7,12 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.interstitial.InterstitialAd
+import com.google.android.libraries.ads.mobile.sdk.interstitial.InterstitialAdEventCallback
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 
@@ -58,7 +59,7 @@ object InterstitialAdManager {
                 preload(activity.applicationContext)
             }
 
-            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+            ad.adEventCallback = object : InterstitialAdEventCallback {
                 override fun onAdShowedFullScreenContent() {
                     Log.d(Tag, "show-started unit=${AdUnitIds.interstitial}")
                 }
@@ -71,10 +72,10 @@ object InterstitialAdManager {
                     continueOnce()
                 }
 
-                override fun onAdFailedToShowFullScreenContent(error: AdError) {
+                override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
                     Log.w(
                         Tag,
-                        "show-failed unit=${AdUnitIds.interstitial} code=${error.code} domain=${error.domain} message=${error.message}",
+                        "show-failed unit=${AdUnitIds.interstitial} code=${fullScreenContentError.code} message=${fullScreenContentError.message}",
                     )
                     activity.restoreDefaultSystemBarLayout()
                     AppOpenAdManager.onExternalFullScreenAdFinished()
@@ -124,25 +125,23 @@ object InterstitialAdManager {
             format = Format,
             adUnitId = AdUnitIds.interstitial,
             isActive = { loading && interstitialAd == null },
-        ) { request ->
+        ) {
             InterstitialAd.load(
-                context,
-                AdUnitIds.interstitial,
-                request,
-                object : InterstitialAdLoadCallback() {
+                AdRequest.Builder(AdUnitIds.interstitial).build(),
+                object : AdLoadCallback<InterstitialAd> {
                     override fun onAdLoaded(ad: InterstitialAd) {
                         loading = false
                         retryAttempt = 0
                         interstitialAd = ad
-                        AdManager.onAdLoaded(Format, AdUnitIds.interstitial, ad.responseInfo)
+                        AdManager.onAdLoaded(Format, AdUnitIds.interstitial, ad.getResponseInfo())
                         Log.d(Tag, "preload-finished status=success")
                     }
 
-                    override fun onAdFailedToLoad(error: LoadAdError) {
+                    override fun onAdFailedToLoad(adError: LoadAdError) {
                         loading = false
                         interstitialAd = null
                         retryAttempt += 1
-                        AdManager.onAdFailed(Format, AdUnitIds.interstitial, error)
+                        AdManager.onAdFailed(Format, AdUnitIds.interstitial, adError)
                         scheduleRetry()
                     }
                 },

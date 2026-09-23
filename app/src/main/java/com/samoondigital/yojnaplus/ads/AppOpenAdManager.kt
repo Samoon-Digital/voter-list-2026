@@ -9,11 +9,12 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.appopen.AppOpenAd
-import com.google.android.gms.ads.appopen.AppOpenAd.AppOpenAdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.appopen.AppOpenAd
+import com.google.android.libraries.ads.mobile.sdk.appopen.AppOpenAdEventCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 import java.lang.ref.WeakReference
 import kotlin.math.max
 import kotlin.math.min
@@ -213,7 +214,7 @@ object AppOpenAdManager {
             homeOpportunityActive = false
         }
 
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+        ad.adEventCallback = object : AppOpenAdEventCallback {
             override fun onAdShowedFullScreenContent() {
                 suppressNextResumeShow = true
                 if (source == ShowSource.Home) {
@@ -235,11 +236,11 @@ object AppOpenAdManager {
                 maybePreloadAfterShow(source, activity.application)
             }
 
-            override fun onAdFailedToShowFullScreenContent(error: AdError) {
+            override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
                 showing = false
                 Log.w(
                     Tag,
-                    "show-failed source=${source.logValue} unit=${AdUnitIds.appOpen} code=${error.code} domain=${error.domain} message=${error.message}",
+                    "show-failed source=${source.logValue} unit=${AdUnitIds.appOpen} code=${fullScreenContentError.code} message=${fullScreenContentError.message}",
                 )
                 activity.restoreDefaultSystemBarLayout()
                 maybePreloadAfterShow(source, activity.application)
@@ -300,18 +301,16 @@ object AppOpenAdManager {
             format = Format,
             adUnitId = AdUnitIds.appOpen,
             isActive = { loading && appOpenAd == null && canLoadMore() },
-        ) { request ->
+        ) {
             AppOpenAd.load(
-                context,
-                AdUnitIds.appOpen,
-                request,
-                object : AppOpenAdLoadCallback() {
+                AdRequest.Builder(AdUnitIds.appOpen).build(),
+                object : AdLoadCallback<AppOpenAd> {
                     override fun onAdLoaded(ad: AppOpenAd) {
                         loading = false
                         retryAttempt = 0
                         appOpenAd = ad
                         loadTimeMs = SystemClock.elapsedRealtime()
-                        AdManager.onAdLoaded(Format, AdUnitIds.appOpen, ad.responseInfo)
+                        AdManager.onAdLoaded(Format, AdUnitIds.appOpen, ad.getResponseInfo())
                         Log.d(
                             Tag,
                             "preload-finished status=success homeVisible=$isHomeVisible homeOpportunityActive=$homeOpportunityActive shownCount=$shownCount",
@@ -319,11 +318,11 @@ object AppOpenAdManager {
                         if (isHomeVisible) showIfAvailable(ShowSource.Home)
                     }
 
-                    override fun onAdFailedToLoad(error: LoadAdError) {
+                    override fun onAdFailedToLoad(adError: LoadAdError) {
                         loading = false
                         appOpenAd = null
                         retryAttempt += 1
-                        AdManager.onAdFailed(Format, AdUnitIds.appOpen, error)
+                        AdManager.onAdFailed(Format, AdUnitIds.appOpen, adError)
                         scheduleRetry()
                     }
                 },

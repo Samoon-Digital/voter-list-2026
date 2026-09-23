@@ -9,10 +9,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
+import com.google.android.libraries.ads.mobile.sdk.banner.AdView
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAd
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdEventCallback
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdRefreshCallback
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 import com.samoondigital.yojnaplus.ads.AdManager
 import com.samoondigital.yojnaplus.ads.AdUnitIds
 import java.util.concurrent.atomic.AtomicBoolean
@@ -29,25 +33,6 @@ fun AdMobBannerAd(
         val adUnitId = AdUnitIds.banner
         val adView = remember(placementKey, adWidth, adUnitId) {
             AdView(context).apply {
-                setAdUnitId(adUnitId)
-                setAdSize(anchoredAdaptiveBannerSize(context, adWidth))
-                adListener = object : AdListener() {
-                    override fun onAdLoaded() {
-                        AdManager.onAdLoaded("banner", adUnitId, responseInfo)
-                    }
-
-                    override fun onAdFailedToLoad(error: LoadAdError) {
-                        AdManager.onAdFailed("banner", adUnitId, error)
-                    }
-
-                    override fun onAdImpression() {
-                        Log.d("AdMob", "impression format=banner placement=$placementKey unit=$adUnitId")
-                    }
-
-                    override fun onAdClicked() {
-                        Log.d("AdMob", "clicked format=banner placement=$placementKey unit=$adUnitId")
-                    }
-                }
             }
         }
 
@@ -57,8 +42,35 @@ fun AdMobBannerAd(
                 format = "banner",
                 adUnitId = adUnitId,
                 isActive = { active.get() },
-            ) { request ->
-                if (active.get()) adView.loadAd(request)
+            ) {
+                if (active.get()) {
+                    adView.loadAd(
+                        BannerAdRequest.Builder(adUnitId, anchoredAdaptiveBannerSize(context, adWidth)).build(),
+                        object : AdLoadCallback<BannerAd> {
+                            override fun onAdLoaded(ad: BannerAd) {
+                                AdManager.onAdLoaded("banner", adUnitId, ad.getResponseInfo())
+                                ad.adEventCallback = object : BannerAdEventCallback {
+                                    override fun onAdImpression() {
+                                        Log.d("AdMob", "impression format=banner placement=$placementKey unit=$adUnitId")
+                                    }
+
+                                    override fun onAdClicked() {
+                                        Log.d("AdMob", "clicked format=banner placement=$placementKey unit=$adUnitId")
+                                    }
+                                }
+                                ad.bannerAdRefreshCallback = object : BannerAdRefreshCallback {
+                                    override fun onAdFailedToRefresh(adError: LoadAdError) {
+                                        AdManager.onAdFailed("banner-refresh", adUnitId, adError)
+                                    }
+                                }
+                            }
+
+                            override fun onAdFailedToLoad(adError: LoadAdError) {
+                                AdManager.onAdFailed("banner", adUnitId, adError)
+                            }
+                        },
+                    )
+                }
             }
 
             onDispose {
@@ -75,11 +87,9 @@ fun AdMobBannerAd(
     }
 }
 
-@Suppress("DEPRECATION")
 private fun anchoredAdaptiveBannerSize(
     context: android.content.Context,
     adWidth: Int,
 ): AdSize {
-    // Keep the production-tested banner height behavior; the non-deprecated large banner API changes sizing.
-    return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, adWidth)
+    return AdSize.getLargeAnchoredAdaptiveBannerAdSize(context, adWidth)
 }

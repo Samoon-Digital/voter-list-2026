@@ -154,7 +154,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.afreaky.pdf.viewer)
     implementation(libs.androidx.pdf.viewer.fragment)
-    implementation(libs.play.services.ads)
+    implementation(libs.ads.mobile.sdk)
     implementation(libs.play.app.update)
     implementation(libs.play.app.update.ktx)
     implementation(libs.ump)

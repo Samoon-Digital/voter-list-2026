@@ -10,11 +10,11 @@ import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.ResponseInfo
-import com.google.android.gms.ads.initialization.InitializationStatus
+import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.common.ResponseInfo
+import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationConfig
+import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationStatus
 import com.samoondigital.yojnaplus.BuildConfig
 
 object AdUnitIds {
@@ -93,12 +93,17 @@ object AdManager {
             Tag,
             "initialize-start sdk=${MobileAds.getVersion()} package=${application.packageName} applicationId=${BuildConfig.APPLICATION_ID} buildType=${BuildConfig.BUILD_TYPE} debug=${BuildConfig.DEBUG}",
         )
-        MobileAds.initialize(application) { initializationStatus ->
-            synchronized(lock) { state = InitializationState.Initialized }
-            Log.d(Tag, "initialize-finished sdk=${MobileAds.getVersion()} state=initialized")
-            logInitialization(initializationStatus)
-            drainPendingLoadsIfReady()
-        }
+        Thread {
+            MobileAds.initialize(
+                application,
+                InitializationConfig.Builder(BuildConfig.ADMOB_APP_ID).build(),
+            ) { initializationStatus ->
+                synchronized(lock) { state = InitializationState.Initialized }
+                Log.d(Tag, "initialize-finished sdk=${MobileAds.getVersion()} state=initialized")
+                logInitialization(initializationStatus)
+                drainPendingLoadsIfReady()
+            }
+        }.start()
     }
 
     fun allowAdRequests() {
@@ -115,7 +120,7 @@ object AdManager {
         format: String,
         adUnitId: String,
         isActive: () -> Boolean,
-        load: (AdRequest) -> Unit,
+        load: () -> Unit,
     ): () -> Unit {
         if (AdsTemporarilyDisabled) {
             Log.d(Tag, "ads-temporarily-disabled request-skipped format=$format unit=$adUnitId")
@@ -138,7 +143,7 @@ object AdManager {
             }
             logValidation("request", format, validation)
             logRequestStarted(format, adUnitId, app)
-            runCatching { load(AdRequest.Builder().build()) }
+            runCatching { load() }
                 .onFailure { throwable ->
                     Log.e(
                         Tag,
@@ -172,13 +177,15 @@ object AdManager {
         val diagnosis = when {
             error.message.contains("Publisher data not found", ignoreCase = true) ->
                 "publisher-data-missing: verify the unit, AdMob app/package pairing, account setup, and Policy Center"
-            error.code == 3 -> "no-fill: inspect ResponseInfo, Ad Inspector, serving limits, and policy/account state"
-            error.code == 2 -> "network-error: verify device connectivity, DNS/VPN/firewall, and Google Play services"
+            error.code.name.equals("NO_FILL", ignoreCase = true) ->
+                "no-fill: inspect ResponseInfo, Ad Inspector, serving limits, and policy/account state"
+            error.code.name.equals("NETWORK_ERROR", ignoreCase = true) ->
+                "network-error: verify device connectivity, DNS/VPN/firewall, and Google Play services"
             else -> "load-failed"
         }
         Log.w(
             Tag,
-            "request-finished status=failure diagnosis=$diagnosis format=$format unit=$adUnitId code=${error.code} domain=${error.domain} message=${error.message} cause=${error.cause} error=$error",
+            "request-finished status=failure diagnosis=$diagnosis format=$format unit=$adUnitId code=${error.code} message=${error.message} error=$error",
             RuntimeException("Ad load failure stack trace"),
         )
         logResponse(format, adUnitId, error.responseInfo)
@@ -193,11 +200,11 @@ object AdManager {
             Log.d(Tag, "ad-inspector-skipped reason=debug-only buildType=${BuildConfig.BUILD_TYPE}")
             return
         }
-        MobileAds.openAdInspector(activity) { error ->
+        MobileAds.openAdInspector { error ->
             if (error == null) {
                 Log.d(Tag, "ad-inspector-closed")
             } else {
-                Log.w(Tag, "ad-inspector-error code=${error.code} domain=${error.domain} message=${error.message}")
+                Log.w(Tag, "ad-inspector-error code=${error.code} message=${error.message}")
             }
         }
     }
@@ -314,10 +321,9 @@ object AdManager {
     }
 
     private fun logResponse(format: String, adUnitId: String, responseInfo: ResponseInfo?) {
-        val loadedAdapter = responseInfo?.loadedAdapterResponseInfo
         Log.d(
             Tag,
-            "response format=$format unit=$adUnitId responseId=${responseInfo?.responseId} mediationAdapter=${responseInfo?.mediationAdapterClassName} loadedAdapter=${loadedAdapter?.adapterClassName} loadedSource=${loadedAdapter?.adSourceName} latencyMs=${loadedAdapter?.latencyMillis} adapters=${responseInfo?.adapterResponses}",
+            "response format=$format unit=$adUnitId responseId=${responseInfo?.responseId} responseInfo=$responseInfo",
         )
     }
 
