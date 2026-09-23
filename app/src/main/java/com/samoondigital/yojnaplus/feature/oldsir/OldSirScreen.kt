@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,7 +36,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.FileDownload
@@ -82,7 +80,6 @@ import com.samoondigital.yojnaplus.model.StateDto
 
 private val OldSirPurple = Color(0xFF3522A8)
 private val OldSirPurpleDark = Color(0xFF20106F)
-private val OldSirPurpleBright = Color(0xFF7C5CFF)
 private val OldSirInk = Color(0xFF090B1F)
 private val OldSirMuted = Color(0xFF686A8D)
 private val OldSirSurface = Color(0xFFFCFCFF)
@@ -278,13 +275,6 @@ private fun OldSirTopBar(
                     color = Color.White.copy(alpha = 0.76f),
                     modifier = Modifier.padding(top = 1.dp),
                 )
-                StepProgress(
-                    currentStep = uiState.stepNumber,
-                    totalSteps = 4,
-                    modifier = Modifier
-                        .padding(top = 7.dp)
-                        .fillMaxWidth(0.86f),
-                )
             }
 
             Surface(
@@ -334,65 +324,6 @@ private fun HeaderArtwork(modifier: Modifier = Modifier) {
             close()
         }
         drawPath(map, Color.White.copy(alpha = 0.13f))
-    }
-}
-
-@Composable
-private fun StepProgress(
-    currentStep: Int,
-    totalSteps: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.height(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(totalSteps) { index ->
-            val step = index + 1
-            val completed = step <= currentStep
-            Surface(
-                shape = CircleShape,
-                color = if (completed) Color.White else Color.Transparent,
-                border = if (completed) null else BorderStroke(2.dp, Color.White),
-                modifier = Modifier.size(if (step == currentStep) 13.dp else 11.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (completed) {
-                        if (step == currentStep) {
-                            Surface(
-                                shape = CircleShape,
-                                color = OldSirPurpleBright,
-                                modifier = Modifier.size(10.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Outlined.Check,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(7.dp),
-                                    )
-                                }
-                            }
-                        } else {
-                            Icon(
-                                Icons.Outlined.Check,
-                                contentDescription = null,
-                                tint = OldSirPurpleDark,
-                                modifier = Modifier.size(7.dp),
-                            )
-                        }
-                    }
-                }
-            }
-            if (index != totalSteps - 1) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(1.dp)
-                        .background(if (step < currentStep) Color.White else Color.White.copy(alpha = 0.55f)),
-                )
-            }
-        }
     }
 }
 

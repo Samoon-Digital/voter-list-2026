@@ -11,11 +11,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.Path
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -225,13 +223,6 @@ private fun UpTopBar(
                     color = Color.White.copy(alpha = 0.76f),
                     modifier = Modifier.padding(top = 1.dp),
                 )
-                StepProgress(
-                    currentStep = uiState.stepNumber,
-                    totalSteps = 3,
-                    modifier = Modifier
-                        .padding(top = 7.dp)
-                        .fillMaxWidth(0.86f),
-                )
             }
 
             Surface(
@@ -281,65 +272,6 @@ private fun HeaderArtwork(modifier: Modifier = Modifier) {
             close()
         }
         drawPath(map, Color.White.copy(alpha = 0.13f))
-    }
-}
-
-@Composable
-private fun StepProgress(
-    currentStep: Int,
-    totalSteps: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.height(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(totalSteps) { index ->
-            val step = index + 1
-            val completed = step <= currentStep
-            Surface(
-                shape = CircleShape,
-                color = if (completed) Color.White else Color.Transparent,
-                border = if (completed) null else BorderStroke(2.dp, Color.White),
-                modifier = Modifier.size(if (step == currentStep) 13.dp else 11.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (completed) {
-                        if (step == currentStep) {
-                            Surface(
-                                shape = CircleShape,
-                                color = UpPurpleBright,
-                                modifier = Modifier.size(10.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Outlined.Check,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(7.dp),
-                                    )
-                                }
-                            }
-                        } else {
-                            Icon(
-                                Icons.Outlined.Check,
-                                contentDescription = null,
-                                tint = UpPurpleDark,
-                                modifier = Modifier.size(7.dp),
-                            )
-                        }
-                    }
-                }
-            }
-            if (index != totalSteps - 1) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(1.dp)
-                        .background(if (step < currentStep) Color.White else Color.White.copy(alpha = 0.55f)),
-                )
-            }
-        }
     }
 }
 
