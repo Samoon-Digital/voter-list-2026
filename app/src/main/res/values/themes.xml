@@ -33,7 +33,7 @@
 
     <!-- Splash screen using AndroidX core-splashscreen -->
     <style name="Theme.VoterList2026.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/indigo_primary</item>
+        <item name="windowSplashScreenBackground">@color/white</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_round</item>
         <item name="postSplashScreenTheme">@style/Theme.VoterList2026</item>
     </style>

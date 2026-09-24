@@ -2,8 +2,6 @@ package com.samoondigital.yojnaplus
 
 import android.app.Activity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import androidx.activity.compose.setContent
@@ -11,9 +9,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
@@ -30,7 +35,9 @@ import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.ads.ConsentManager
 import com.samoondigital.yojnaplus.core.navigation.AppNavHost
 import com.samoondigital.yojnaplus.core.ui.theme.VoterList2026Theme
+import com.samoondigital.yojnaplus.feature.splash.StartupSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -38,7 +45,6 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
     private lateinit var appUpdateManager: AppUpdateManager
     private var immediateUpdateFlowStarted = false
-    private val mainHandler = Handler(Looper.getMainLooper())
 
     private val immediateUpdateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
@@ -52,25 +58,50 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splashScreen = installSplashScreen()
-        val splashEndTimeMs = SystemClock.elapsedRealtime() + SplashHoldMs
-        splashScreen.setKeepOnScreenCondition {
-            SystemClock.elapsedRealtime() < splashEndTimeMs
-        }
-        mainHandler.postDelayed(
-            { AppOpenAdManager.onColdStartSplashFinished() },
-            SplashHoldMs,
-        )
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         restoreDefaultSystemBarLayout()
         appUpdateManager = AppUpdateManagerFactory.create(this)
         checkForImmediateUpdate()
         setContent {
+            val showColdStartSplash = remember { savedInstanceState == null }
+            val splashStartedAtMs = rememberSaveable { SystemClock.elapsedRealtime() }
+            var showStartupSplash by rememberSaveable {
+                mutableStateOf(showColdStartSplash)
+            }
+            var renderAppContent by rememberSaveable {
+                mutableStateOf(!showColdStartSplash)
+            }
+            LaunchedEffect(showColdStartSplash) {
+                if (showColdStartSplash) {
+                    withFrameNanos { }
+                    renderAppContent = true
+                }
+            }
+            LaunchedEffect(showColdStartSplash) {
+                if (showColdStartSplash) {
+                    delay(SplashHoldMs)
+                }
+                showStartupSplash = false
+                AppOpenAdManager.onColdStartSplashFinished()
+            }
             val systemDark = isSystemInDarkTheme()
             val darkMode by viewModel.darkMode.collectAsStateWithLifecycle()
             VoterList2026Theme(darkTheme = darkMode ?: systemDark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavHost()
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (renderAppContent) {
+                            AppNavHost()
+                        }
+                        if (showStartupSplash) {
+                            StartupSplashScreen(
+                                versionName = BuildConfig.VERSION_NAME,
+                                startedAtMs = splashStartedAtMs,
+                                durationMs = SplashHoldMs,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
                 }
             }
         }
