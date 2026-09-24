@@ -260,6 +260,7 @@ private fun shouldShowRouteBottomBanner(route: String): Boolean =
         Routes.GUJARAT_WEB,
         Routes.KARNATAKA_WEB,
         Routes.UTTARAKHAND_WEB,
+        Routes.DELETED_WEB_ROUTE,
         Routes.PDF_VIEWER_ROUTE,
     )
 

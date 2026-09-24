@@ -17,6 +17,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -73,6 +74,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -88,6 +90,7 @@ private const val DadraNagarHaveliUrl = "https://ceoddd.in/"
 private const val GujaratUrl = "https://chunavsetu-search.gujarat.gov.in/SearchEPIC.aspx"
 private const val KarnatakaUrl = "https://ceo.karnataka.gov.in/voter_list.html"
 private const val UttarakhandUrl = "https://election.uk.gov.in/search2003uk"
+private const val WebViewExtraEndSpacePx = 100
 private const val BiharDeletedTargetSelfScript = """
     (function() {
       if (!location.hostname.includes('ceoelection.bihar.gov.in')) return;
@@ -321,6 +324,7 @@ private fun OfficialWebViewScreen(
     downloadState: WebPdfDownloadUiState? = null,
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     var webView by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
     var progress by remember { mutableIntStateOf(0) }
@@ -353,6 +357,9 @@ private fun OfficialWebViewScreen(
             mutableStateOf(adaptiveBannerHeight)
         }
         val bottomOverlayPadding = bottomBannerHeight + navigationBarHeight
+        val webViewBottomEndSpacePx = with(density) {
+            bottomOverlayPadding.roundToPx()
+        } + WebViewExtraEndSpacePx
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
@@ -404,6 +411,7 @@ private fun OfficialWebViewScreen(
                         isLoading = false
                         errorMessage = it
                     },
+                    bottomEndSpacePx = webViewBottomEndSpacePx,
                     modifier = Modifier.fillMaxSize(),
                 )
 
@@ -466,6 +474,7 @@ private fun OfficialWebView(
     onOpenExternal: (String) -> Unit,
     onError: (String) -> Unit,
     onDownloadRequested: ((url: String, contentDisposition: String?, mimeType: String?) -> Unit)?,
+    bottomEndSpacePx: Int,
     modifier: Modifier = Modifier,
 ) {
     val currentOnDownloadRequested by rememberUpdatedState(onDownloadRequested)
@@ -491,6 +500,7 @@ private fun OfficialWebView(
                     settings.javaScriptCanOpenWindowsAutomatically = true
                     settings.setSupportMultipleWindows(false)
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
+                    applyBottomEndSpace(bottomEndSpacePx)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         settings.safeBrowsingEnabled = true
                     }
@@ -563,6 +573,9 @@ private fun OfficialWebView(
                     post { onError(error.message ?: "Android System WebView is not available") }
                 }
             }
+        },
+        update = { view ->
+            view.applyBottomEndSpace(bottomEndSpacePx)
         },
     )
 }
@@ -857,6 +870,18 @@ private fun WebErrorState(
 
 private fun WebView.rewriteBiharDeletedLinks() {
     evaluateJavascript(BiharDeletedTargetSelfScript, null)
+}
+
+private fun View.applyBottomEndSpace(bottomEndSpacePx: Int) {
+    if (this is ViewGroup) {
+        clipToPadding = false
+    }
+    setPadding(
+        paddingLeft,
+        paddingTop,
+        paddingRight,
+        bottomEndSpacePx.coerceAtLeast(0),
+    )
 }
 
 private fun String.isPdfUrl(mimeType: String?): Boolean =
