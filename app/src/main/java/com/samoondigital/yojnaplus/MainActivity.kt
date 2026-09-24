@@ -2,6 +2,9 @@ package com.samoondigital.yojnaplus
 
 import android.app.Activity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +26,7 @@ import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.samoondigital.yojnaplus.ads.AdManager
+import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.ads.ConsentManager
 import com.samoondigital.yojnaplus.core.navigation.AppNavHost
 import com.samoondigital.yojnaplus.core.ui.theme.VoterList2026Theme
@@ -34,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
     private lateinit var appUpdateManager: AppUpdateManager
     private var immediateUpdateFlowStarted = false
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private val immediateUpdateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
@@ -47,7 +52,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
+        val splashEndTimeMs = SystemClock.elapsedRealtime() + SplashHoldMs
+        splashScreen.setKeepOnScreenCondition {
+            SystemClock.elapsedRealtime() < splashEndTimeMs
+        }
+        mainHandler.postDelayed(
+            { AppOpenAdManager.onColdStartSplashFinished() },
+            SplashHoldMs,
+        )
         super.onCreate(savedInstanceState)
         restoreDefaultSystemBarLayout()
         appUpdateManager = AppUpdateManagerFactory.create(this)
@@ -131,5 +144,6 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val Tag = "InAppUpdate"
+        const val SplashHoldMs = 4_000L
     }
 }

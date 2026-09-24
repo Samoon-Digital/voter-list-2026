@@ -38,6 +38,7 @@ object AppOpenAdManager {
     private var foregroundCount = 0
     private var sawFirstForeground = false
     private var sawFirstResume = false
+    private var coldStartSplashFinished = false
     private var isHomeVisible = false
     private var homeOpportunityActive = true
     private var shownCount = 0
@@ -82,6 +83,17 @@ object AppOpenAdManager {
     fun preload(application: Application) {
         appContext = application
         mainHandler.post { preloadOnMain() }
+    }
+
+    fun onColdStartSplashFinished() {
+        mainHandler.post {
+            if (coldStartSplashFinished) return@post
+            coldStartSplashFinished = true
+            Log.d(Tag, "cold-start-splash-finished loaded=${appOpenAd != null} homeVisible=$isHomeVisible")
+            if (isHomeVisible) {
+                showIfAvailable(ShowSource.Home)
+            }
+        }
     }
 
     fun setHomeScreenVisible(visible: Boolean) {
@@ -178,6 +190,10 @@ object AppOpenAdManager {
         }
         if (shownFromForeground) {
             Log.d(Tag, "show-skipped source=${source.logValue} reason=foreground-already-shown")
+            return
+        }
+        if (source == ShowSource.Home && !coldStartSplashFinished) {
+            Log.d(Tag, "show-skipped source=home reason=cold-start-splash")
             return
         }
         if (source == ShowSource.Home && (!isHomeVisible || !homeOpportunityActive || shownFromHome)) {
