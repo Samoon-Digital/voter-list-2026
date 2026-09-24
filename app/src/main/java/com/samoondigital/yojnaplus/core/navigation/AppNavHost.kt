@@ -2,14 +2,9 @@ package com.samoondigital.yojnaplus.core.navigation
 
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -272,6 +267,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         onOpenPdf = { uri, title ->
                             navController.navigate(Routes.pdfViewerRoute(uri, title))
                         },
+                        bottomBannerHeight = bottomBannerHeight,
                     )
                 }
                 composable(Routes.PDF_VIEWER_ROUTE) {
@@ -307,14 +303,11 @@ private fun BoxScope.BottomRouteBanner(
     bannerHeight: Dp,
     onHeightChanged: (Dp) -> Unit,
 ) {
-    val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
     AdMobBannerAd(
         placementKey = "route-bottom-banner",
         onHeightChanged = onHeightChanged,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .offset(y = -navigationBarHeight)
             .height(bannerHeight)
             .fillMaxWidth(),
     )

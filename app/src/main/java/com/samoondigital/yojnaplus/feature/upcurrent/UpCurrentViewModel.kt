@@ -255,13 +255,6 @@ open class UpCurrentViewModel(
         val ulb = current.selectedUrbanUlb ?: return
         val ward = current.selectedUrbanWard ?: return
         viewModelScope.launch {
-            val recordId = downloadRepository.createPendingRecord(
-                district = "Uttar Pradesh - ${district.label}",
-                assembly = ulb.label,
-                village = "${ward.label} - ${option.label}",
-                partNumber = 1,
-            )
-            downloadRepository.markDownloading(recordId)
             _state.update {
                 it.copy(
                     selectedUrbanDownloadOption = option,
@@ -272,21 +265,23 @@ open class UpCurrentViewModel(
             }
             runCatching {
                 repository.downloadUrbanPdf(option) { downloadedBytes, totalBytes ->
-                    updateProgress(recordId, downloadedBytes.progressPercent(totalBytes))
+                    updateProgress(downloadedBytes.progressPercent(totalBytes))
                 }
             }.onSuccess { result ->
                 when (result) {
-                    is UpSubmitResult.Pdf -> saveDownloadedPdf(
-                        recordId = recordId,
+                    is UpSubmitResult.Pdf -> createRecordAndSavePdf(
+                        district = "Uttar Pradesh - ${district.label}",
+                        assembly = ulb.label,
+                        village = "${ward.label} - ${option.label}",
                         payload = result.pdf,
                         title = result.pdf.fileName,
                     )
                     is UpSubmitResult.ServerMessage -> {
-                        downloadRepository.markFailed(recordId, result.message)
                         _state.update {
                             it.copy(
                                 isDownloading = false,
                                 selectedUrbanDownloadOption = null,
+                                downloadProgress = 0,
                                 message = result.message,
                             )
                         }
@@ -296,7 +291,6 @@ open class UpCurrentViewModel(
             }.onFailure { error ->
                 if (!isActive) return@launch
                 val message = error.userMessage("Download failed")
-                downloadRepository.markFailed(recordId, message)
                 _state.update {
                     it.copy(
                         isDownloading = false,
@@ -392,14 +386,13 @@ open class UpCurrentViewModel(
             }.onSuccess { result ->
                 when (result) {
                     is UpSubmitResult.Pdf -> {
-                        val recordId = downloadRepository.createPendingRecord(
+                        createRecordAndSavePdf(
                             district = "Uttar Pradesh - ${district.label}",
                             assembly = block.label,
                             village = gramPanchayat.label,
-                            partNumber = 1,
+                            payload = result.pdf,
+                            title = result.pdf.fileName,
                         )
-                        downloadRepository.markDownloading(recordId)
-                        saveDownloadedPdf(recordId, result.pdf, result.pdf.fileName)
                     }
                     is UpSubmitResult.ServerMessage -> {
                         _state.update {
@@ -456,14 +449,13 @@ open class UpCurrentViewModel(
             }.onSuccess { result ->
                 when (result) {
                     is UpSubmitResult.Pdf -> {
-                        val recordId = downloadRepository.createPendingRecord(
+                        createRecordAndSavePdf(
                             district = "Uttar Pradesh - ${district.label}",
                             assembly = ulb.label,
                             village = ward.label,
-                            partNumber = 1,
+                            payload = result.pdf,
+                            title = result.pdf.fileName,
                         )
-                        downloadRepository.markDownloading(recordId)
-                        saveDownloadedPdf(recordId, result.pdf, result.pdf.fileName)
                     }
                     is UpSubmitResult.UrbanDownloadOptions -> {
                         _state.update {
@@ -503,6 +495,23 @@ open class UpCurrentViewModel(
         }
     }
 
+    private suspend fun createRecordAndSavePdf(
+        district: String,
+        assembly: String,
+        village: String,
+        payload: UpPdfPayload,
+        title: String,
+    ) {
+        val recordId = downloadRepository.createPendingRecord(
+            district = district,
+            assembly = assembly,
+            village = village,
+            partNumber = 1,
+        )
+        downloadRepository.markDownloading(recordId)
+        saveDownloadedPdf(recordId, payload, title)
+    }
+
     private suspend fun saveDownloadedPdf(
         recordId: String,
         payload: UpPdfPayload,
@@ -517,7 +526,7 @@ open class UpCurrentViewModel(
             it.copy(
                 isLoading = false,
                 isDownloading = false,
-                downloadProgress = 100,
+                downloadProgress = 0,
                 captchaInput = "",
                 message = "PDF downloaded successfully",
             )

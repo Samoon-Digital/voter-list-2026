@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -75,6 +76,7 @@ fun DownloadsScreen(
     onBack: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
+    bottomBannerHeight: Dp = 0.dp,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -102,7 +104,12 @@ fun DownloadsScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = { AppToolbar(title = "Downloads", onBack = onBack) },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomBannerHeight + 12.dp),
+            )
+        },
     ) { padding ->
         DownloadsContent(
             state = state,
@@ -116,6 +123,7 @@ fun DownloadsScreen(
             onCancel = viewModel::cancel,
             onPause = viewModel::pause,
             onResume = viewModel::resume,
+            bottomContentPadding = bottomBannerHeight,
             modifier = Modifier.padding(padding),
         )
     }
@@ -142,6 +150,7 @@ private fun DownloadsContent(
     onCancel: (String) -> Unit,
     onPause: (String) -> Unit,
     onResume: (String) -> Unit,
+    bottomContentPadding: Dp,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -181,7 +190,7 @@ private fun DownloadsContent(
                 }
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 18.dp),
+                    contentPadding = PaddingValues(bottom = bottomContentPadding + 18.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     item {
