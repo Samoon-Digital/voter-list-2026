@@ -50,7 +50,6 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -279,7 +278,6 @@ fun OfficialPdfWebViewScreen(
     onBack: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
-    statusText: String = "Official deleted-list website",
     downloadDistrict: String = screenTitle,
     viewModel: ChandigarhWebViewViewModel = hiltViewModel(),
 ) {
@@ -296,7 +294,7 @@ fun OfficialPdfWebViewScreen(
     OfficialWebViewScreen(
         screenTitle = screenTitle,
         fallbackPageTitle = screenTitle,
-        statusText = statusText,
+        showHeaderDetails = false,
         startUrl = startUrl,
         onBack = onBack,
         onDownloadRequested = { url, contentDisposition, mimeType ->
@@ -316,7 +314,8 @@ fun OfficialPdfWebViewScreen(
 private fun OfficialWebViewScreen(
     screenTitle: String,
     fallbackPageTitle: String,
-    statusText: String,
+    statusText: String = fallbackPageTitle,
+    showHeaderDetails: Boolean = true,
     startUrl: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -370,6 +369,7 @@ private fun OfficialWebViewScreen(
                     isLoading = isLoading,
                     canGoBack = canGoBack,
                     statusText = statusText,
+                    showDetails = showHeaderDetails,
                     onBack = ::handleBack,
                     onRefresh = {
                         errorMessage = null
@@ -588,6 +588,7 @@ private fun WebTopBar(
     isLoading: Boolean,
     canGoBack: Boolean,
     statusText: String,
+    showDetails: Boolean,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
 ) {
@@ -617,14 +618,14 @@ private fun WebTopBar(
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = WebPurpleDark,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
@@ -644,48 +645,51 @@ private fun WebTopBar(
                     color = Color.White,
                     fontWeight = FontWeight.ExtraBold,
                 )
-                Text(
-                    text = title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.76f),
-                    modifier = Modifier.padding(top = 1.dp),
-                )
-                if (isLoading) {
-                    LinearProgressIndicator(
-                        progress = { progress / 100f },
-                        modifier = Modifier
-                            .padding(top = 9.dp)
-                            .fillMaxWidth(0.86f)
-                            .height(3.dp),
-                        color = Color.White,
-                        trackColor = Color.White.copy(alpha = 0.28f),
-                    )
-                } else {
+                if (showDetails) {
                     Text(
-                        text = if (canGoBack) "Previous page available" else statusText,
+                        text = title,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.70f),
-                        modifier = Modifier.padding(top = 5.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.76f),
+                        modifier = Modifier.padding(top = 1.dp),
                     )
+                    if (isLoading) {
+                        LinearProgressIndicator(
+                            progress = { progress / 100f },
+                            modifier = Modifier
+                                .padding(top = 9.dp)
+                                .fillMaxWidth(0.86f)
+                                .height(3.dp),
+                            color = Color.White,
+                            trackColor = Color.White.copy(alpha = 0.28f),
+                        )
+                    } else {
+                        Text(
+                            text = if (canGoBack) "Previous page available" else statusText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.70f),
+                            modifier = Modifier.padding(top = 5.dp),
+                        )
+                    }
                 }
             }
 
             Surface(
+                onClick = onRefresh,
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
             ) {
-                IconButton(onClick = onRefresh) {
+                Box(contentAlignment = Alignment.Center) {
                     Icon(
                         if (isLoading) Icons.Outlined.Language else Icons.Outlined.Refresh,
                         contentDescription = "Refresh",
                         tint = WebPurpleDark,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }

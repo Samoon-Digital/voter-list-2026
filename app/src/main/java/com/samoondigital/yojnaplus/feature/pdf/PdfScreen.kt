@@ -68,7 +68,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -270,14 +269,14 @@ private fun WizardHeroTopBar(
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = WizardPurpleDark,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
@@ -311,14 +310,14 @@ private fun WizardHeroTopBar(
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.FileDownload,
                         contentDescription = "Downloaded files",
                         tint = WizardPurpleDark,
-                        modifier = Modifier.size(26.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }

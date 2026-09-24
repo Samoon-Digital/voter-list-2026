@@ -150,14 +150,14 @@ private fun HomeHero(onOpenDownloads: () -> Unit) {
                     shape = CircleShape,
                     color = Color.White,
                     shadowElevation = 6.dp,
-                    modifier = Modifier.size(46.dp),
+                    modifier = Modifier.size(44.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Outlined.FileDownload,
                             contentDescription = "Downloads",
                             tint = BrandPurple,
-                            modifier = Modifier.size(25.dp),
+                            modifier = Modifier.size(22.dp),
                         )
                     }
                 }

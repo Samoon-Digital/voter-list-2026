@@ -189,14 +189,14 @@ private fun UpTopBar(
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = UpPurpleDark,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
@@ -230,14 +230,14 @@ private fun UpTopBar(
                 shape = CircleShape,
                 color = Color.White,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.FileDownload,
                         contentDescription = "Open downloads",
                         tint = UpPurpleDark,
-                        modifier = Modifier.size(26.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }

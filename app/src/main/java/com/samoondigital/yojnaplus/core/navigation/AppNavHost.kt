@@ -110,7 +110,6 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         OfficialPdfWebViewScreen(
                             screenTitle = link.stateName,
                             startUrl = link.url,
-                            statusText = "Official deleted-list website",
                             downloadDistrict = link.stateName,
                             onBack = { navController.popBackStack() },
                             onOpenPdf = { uri, title ->
