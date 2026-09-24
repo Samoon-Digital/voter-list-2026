@@ -216,34 +216,40 @@ object AppOpenAdManager {
 
         ad.adEventCallback = object : AppOpenAdEventCallback {
             override fun onAdShowedFullScreenContent() {
-                suppressNextResumeShow = true
-                if (source == ShowSource.Home) {
-                    shownFromHome = true
-                } else {
-                    shownFromForeground = true
+                mainHandler.post {
+                    suppressNextResumeShow = true
+                    if (source == ShowSource.Home) {
+                        shownFromHome = true
+                    } else {
+                        shownFromForeground = true
+                    }
+                    Log.d(Tag, "show-started source=${source.logValue} unit=${AdUnitIds.appOpen}")
                 }
-                Log.d(Tag, "show-started source=${source.logValue} unit=${AdUnitIds.appOpen}")
             }
 
             override fun onAdDismissedFullScreenContent() {
-                showing = false
-                shownCount += 1
-                Log.d(
-                    Tag,
-                    "show-dismissed source=${source.logValue} count=$shownCount unit=${AdUnitIds.appOpen}",
-                )
-                activity.restoreDefaultSystemBarLayout()
-                maybePreloadAfterShow(source, activity.application)
+                mainHandler.post {
+                    showing = false
+                    shownCount += 1
+                    Log.d(
+                        Tag,
+                        "show-dismissed source=${source.logValue} count=$shownCount unit=${AdUnitIds.appOpen}",
+                    )
+                    activity.restoreDefaultSystemBarLayout()
+                    maybePreloadAfterShow(source, activity.application)
+                }
             }
 
             override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
-                showing = false
-                Log.w(
-                    Tag,
-                    "show-failed source=${source.logValue} unit=${AdUnitIds.appOpen} code=${fullScreenContentError.code} message=${fullScreenContentError.message}",
-                )
-                activity.restoreDefaultSystemBarLayout()
-                maybePreloadAfterShow(source, activity.application)
+                mainHandler.post {
+                    showing = false
+                    Log.w(
+                        Tag,
+                        "show-failed source=${source.logValue} unit=${AdUnitIds.appOpen} code=${fullScreenContentError.code} message=${fullScreenContentError.message}",
+                    )
+                    activity.restoreDefaultSystemBarLayout()
+                    maybePreloadAfterShow(source, activity.application)
+                }
             }
 
             override fun onAdImpression() {
@@ -306,24 +312,28 @@ object AppOpenAdManager {
                 AdRequest.Builder(AdUnitIds.appOpen).build(),
                 object : AdLoadCallback<AppOpenAd> {
                     override fun onAdLoaded(ad: AppOpenAd) {
-                        loading = false
-                        retryAttempt = 0
-                        appOpenAd = ad
-                        loadTimeMs = SystemClock.elapsedRealtime()
-                        AdManager.onAdLoaded(Format, AdUnitIds.appOpen, ad.getResponseInfo())
-                        Log.d(
-                            Tag,
-                            "preload-finished status=success homeVisible=$isHomeVisible homeOpportunityActive=$homeOpportunityActive shownCount=$shownCount",
-                        )
-                        if (isHomeVisible) showIfAvailable(ShowSource.Home)
+                        mainHandler.post {
+                            loading = false
+                            retryAttempt = 0
+                            appOpenAd = ad
+                            loadTimeMs = SystemClock.elapsedRealtime()
+                            AdManager.onAdLoaded(Format, AdUnitIds.appOpen, ad.getResponseInfo())
+                            Log.d(
+                                Tag,
+                                "preload-finished status=success homeVisible=$isHomeVisible homeOpportunityActive=$homeOpportunityActive shownCount=$shownCount",
+                            )
+                            if (isHomeVisible) showIfAvailable(ShowSource.Home)
+                        }
                     }
 
                     override fun onAdFailedToLoad(adError: LoadAdError) {
-                        loading = false
-                        appOpenAd = null
-                        retryAttempt += 1
-                        AdManager.onAdFailed(Format, AdUnitIds.appOpen, adError)
-                        scheduleRetry()
+                        mainHandler.post {
+                            loading = false
+                            appOpenAd = null
+                            retryAttempt += 1
+                            AdManager.onAdFailed(Format, AdUnitIds.appOpen, adError)
+                            scheduleRetry()
+                        }
                     }
                 },
             )

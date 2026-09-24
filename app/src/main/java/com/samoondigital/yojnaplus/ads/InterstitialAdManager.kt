@@ -61,26 +61,32 @@ object InterstitialAdManager {
 
             ad.adEventCallback = object : InterstitialAdEventCallback {
                 override fun onAdShowedFullScreenContent() {
-                    Log.d(Tag, "show-started unit=${AdUnitIds.interstitial}")
+                    mainHandler.post {
+                        Log.d(Tag, "show-started unit=${AdUnitIds.interstitial}")
+                    }
                 }
 
                 override fun onAdDismissedFullScreenContent() {
-                    Log.d(Tag, "show-dismissed unit=${AdUnitIds.interstitial}")
-                    activity.restoreDefaultSystemBarLayout()
-                    AppOpenAdManager.onExternalFullScreenAdFinished()
-                    clearAndPreload()
-                    continueOnce()
+                    mainHandler.post {
+                        Log.d(Tag, "show-dismissed unit=${AdUnitIds.interstitial}")
+                        activity.restoreDefaultSystemBarLayout()
+                        AppOpenAdManager.onExternalFullScreenAdFinished()
+                        clearAndPreload()
+                        continueOnce()
+                    }
                 }
 
                 override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
-                    Log.w(
-                        Tag,
-                        "show-failed unit=${AdUnitIds.interstitial} code=${fullScreenContentError.code} message=${fullScreenContentError.message}",
-                    )
-                    activity.restoreDefaultSystemBarLayout()
-                    AppOpenAdManager.onExternalFullScreenAdFinished()
-                    clearAndPreload()
-                    continueOnce()
+                    mainHandler.post {
+                        Log.w(
+                            Tag,
+                            "show-failed unit=${AdUnitIds.interstitial} code=${fullScreenContentError.code} message=${fullScreenContentError.message}",
+                        )
+                        activity.restoreDefaultSystemBarLayout()
+                        AppOpenAdManager.onExternalFullScreenAdFinished()
+                        clearAndPreload()
+                        continueOnce()
+                    }
                 }
 
                 override fun onAdImpression() {
@@ -130,19 +136,23 @@ object InterstitialAdManager {
                 AdRequest.Builder(AdUnitIds.interstitial).build(),
                 object : AdLoadCallback<InterstitialAd> {
                     override fun onAdLoaded(ad: InterstitialAd) {
-                        loading = false
-                        retryAttempt = 0
-                        interstitialAd = ad
-                        AdManager.onAdLoaded(Format, AdUnitIds.interstitial, ad.getResponseInfo())
-                        Log.d(Tag, "preload-finished status=success")
+                        mainHandler.post {
+                            loading = false
+                            retryAttempt = 0
+                            interstitialAd = ad
+                            AdManager.onAdLoaded(Format, AdUnitIds.interstitial, ad.getResponseInfo())
+                            Log.d(Tag, "preload-finished status=success")
+                        }
                     }
 
                     override fun onAdFailedToLoad(adError: LoadAdError) {
-                        loading = false
-                        interstitialAd = null
-                        retryAttempt += 1
-                        AdManager.onAdFailed(Format, AdUnitIds.interstitial, adError)
-                        scheduleRetry()
+                        mainHandler.post {
+                            loading = false
+                            interstitialAd = null
+                            retryAttempt += 1
+                            AdManager.onAdFailed(Format, AdUnitIds.interstitial, adError)
+                            scheduleRetry()
+                        }
                     }
                 },
             )

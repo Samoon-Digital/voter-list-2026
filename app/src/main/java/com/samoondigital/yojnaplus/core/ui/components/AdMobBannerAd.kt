@@ -3,11 +3,14 @@ package com.samoondigital.yojnaplus.core.ui.components
 import android.util.Log
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
 import com.google.android.libraries.ads.mobile.sdk.banner.AdView
@@ -30,9 +33,12 @@ fun AdMobBannerAd(
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val context = LocalContext.current
         val adWidth = maxWidth.value.roundToInt().coerceAtLeast(1)
+        val adSize = remember(context, adWidth) { largeAnchoredAdaptiveBannerSize(context, adWidth) }
+        val bannerHeight = adSize.height.dp
         val adUnitId = AdUnitIds.banner
         val adView = remember(placementKey, adWidth, adUnitId) {
             AdView(context).apply {
+                resize(adSize)
             }
         }
 
@@ -45,7 +51,7 @@ fun AdMobBannerAd(
             ) {
                 if (active.get()) {
                     adView.loadAd(
-                        BannerAdRequest.Builder(adUnitId, anchoredAdaptiveBannerSize(context, adWidth)).build(),
+                        BannerAdRequest.Builder(adUnitId, adSize).build(),
                         object : AdLoadCallback<BannerAd> {
                             override fun onAdLoaded(ad: BannerAd) {
                                 AdManager.onAdLoaded("banner", adUnitId, ad.getResponseInfo())
@@ -82,12 +88,24 @@ fun AdMobBannerAd(
 
         AndroidView(
             factory = { adView },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(bannerHeight),
+            update = { it.resize(adSize) },
         )
     }
 }
 
-private fun anchoredAdaptiveBannerSize(
+@Composable
+fun rememberLargeAdaptiveBannerHeight(adWidth: Dp): Dp {
+    val context = LocalContext.current
+    val widthDp = adWidth.value.roundToInt().coerceAtLeast(1)
+    return remember(context, widthDp) {
+        largeAnchoredAdaptiveBannerSize(context, widthDp).height.dp
+    }
+}
+
+private fun largeAnchoredAdaptiveBannerSize(
     context: android.content.Context,
     adWidth: Int,
 ): AdSize {

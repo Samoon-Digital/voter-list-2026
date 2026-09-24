@@ -1,25 +1,30 @@
 package com.samoondigital.yojnaplus.core.navigation
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
+import com.samoondigital.yojnaplus.core.ui.components.rememberLargeAdaptiveBannerHeight
 import com.samoondigital.yojnaplus.feature.chandigarh.ChandigarhScreen
 import com.samoondigital.yojnaplus.feature.deleted.DeletedListLinks
 import com.samoondigital.yojnaplus.feature.deleted.DeletedListScreen
@@ -69,11 +74,16 @@ fun AppNavHost(modifier: Modifier = Modifier) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
     ) { innerPadding ->
-        Box(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val showBottomBanner = currentRoute != null && shouldShowRouteBottomBanner(currentRoute)
+            val adaptiveBannerHeight = rememberLargeAdaptiveBannerHeight(maxWidth)
+            val bottomBannerHeight = if (showBottomBanner) adaptiveBannerHeight else 0.dp
             NavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = bottomBannerHeight),
             ) {
                 composable(Routes.HOME) {
                     HomeScreen(
@@ -228,8 +238,8 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                     )
                 }
             }
-            if (currentRoute != null && shouldShowRouteBottomBanner(currentRoute)) {
-                BottomRouteBanner()
+            if (showBottomBanner) {
+                BottomRouteBanner(bottomBannerHeight)
             }
         }
     }
@@ -247,7 +257,7 @@ private fun shouldShowRouteBottomBanner(route: String): Boolean =
     )
 
 @Composable
-private fun BoxScope.BottomRouteBanner() {
+private fun BoxScope.BottomRouteBanner(bannerHeight: Dp) {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     AdMobBannerAd(
@@ -255,6 +265,7 @@ private fun BoxScope.BottomRouteBanner() {
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .offset(y = -navigationBarHeight)
+            .height(bannerHeight)
             .fillMaxWidth(),
     )
 }

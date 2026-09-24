@@ -23,6 +23,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -74,10 +75,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
+import com.samoondigital.yojnaplus.core.ui.components.rememberLargeAdaptiveBannerHeight
 
 private const val JammuKashmirUrl = "https://ceo.jk.gov.in/namesearch/"
 private const val ChandigarhUrl = "https://ceochandigarh.gov.in/pages/intensive"
@@ -343,7 +346,8 @@ private fun OfficialWebViewScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val bottomBannerHeight = rememberLargeAdaptiveBannerHeight(maxWidth)
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
@@ -397,7 +401,7 @@ private fun OfficialWebViewScreen(
                     },
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 72.dp),
+                        .padding(bottom = bottomBannerHeight),
                 )
 
                 errorMessage?.let { message ->
@@ -418,17 +422,17 @@ private fun OfficialWebViewScreen(
                         state = state,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(start = 16.dp, end = 16.dp, bottom = 88.dp),
+                            .padding(start = 16.dp, end = 16.dp, bottom = bottomBannerHeight + 16.dp),
                     )
                 }
             }
         }
 
-        WebViewBottomBanner()
+        WebViewBottomBanner(bottomBannerHeight)
     }
 }
 @Composable
-private fun BoxScope.WebViewBottomBanner() {
+private fun BoxScope.WebViewBottomBanner(bannerHeight: Dp) {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     AdMobBannerAd(
@@ -436,6 +440,7 @@ private fun BoxScope.WebViewBottomBanner() {
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .offset(y = -navigationBarHeight)
+            .height(bannerHeight)
             .fillMaxWidth(),
     )
 }
