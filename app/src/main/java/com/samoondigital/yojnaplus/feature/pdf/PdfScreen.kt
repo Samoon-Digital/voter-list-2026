@@ -118,6 +118,8 @@ private val WizardInk = Color(0xFF090B1F)
 private val WizardMuted = Color(0xFF686A8D)
 private val WizardSurface = Color(0xFFFCFCFF)
 private val WizardStroke = Color(0xFFE3E2F5)
+private const val GeneralDistrictPlacement = "general-voter-list-district-to-assembly"
+private const val GeneralLanguagePlacement = "general-voter-list-language-to-captcha"
 private val ChoiceAccents = listOf(
     Color(0xFF4A2CC3),
     Color(0xFF43A66E),
@@ -135,7 +137,8 @@ fun PdfScreen(
     viewModel: ElectoralRollViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
-    val activity = LocalContext.current as? Activity
+    val context = LocalContext.current
+    val activity = context as? Activity
     var openedDownloads by remember { mutableStateOf(false) }
 
     fun handleBack() {
@@ -143,6 +146,9 @@ fun PdfScreen(
     }
 
     BackHandler(onBack = ::handleBack)
+    LaunchedEffect(Unit) {
+        InterstitialAdManager.preload(context.applicationContext)
+    }
     LaunchedEffect(uiState.step, uiState.isDownloading, uiState.completedCount, uiState.failedCount) {
         if (
             !openedDownloads &&
@@ -186,7 +192,10 @@ fun PdfScreen(
                     ElectoralRollStep.Year -> YearStep(uiState, viewModel::selectYear)
                     ElectoralRollStep.RollType -> RollTypeStep(uiState, viewModel::selectRollType)
                     ElectoralRollStep.District -> DistrictStep(uiState) { district ->
-                        InterstitialAdManager.showIfAvailable(activity) {
+                        InterstitialAdManager.showIfAvailable(
+                            activity = activity,
+                            placement = GeneralDistrictPlacement,
+                        ) {
                             viewModel.selectDistrict(district)
                         }
                     }
@@ -217,7 +226,14 @@ fun PdfScreen(
         LanguageBottomSheet(
             uiState = uiState,
             onDismiss = viewModel::dismissLanguageSheet,
-            onSelected = viewModel::selectLanguage,
+            onSelected = { languageCode ->
+                InterstitialAdManager.showIfAvailable(
+                    activity = activity,
+                    placement = GeneralLanguagePlacement,
+                ) {
+                    viewModel.selectLanguage(languageCode)
+                }
+            },
         )
     }
 }

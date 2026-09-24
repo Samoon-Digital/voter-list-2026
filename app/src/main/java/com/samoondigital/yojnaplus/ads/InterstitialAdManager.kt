@@ -32,9 +32,13 @@ object InterstitialAdManager {
         mainHandler.post { preloadOnMain() }
     }
 
-    fun showIfAvailable(activity: Activity?, onContinue: () -> Unit) {
+    fun showIfAvailable(
+        activity: Activity?,
+        placement: String = "default",
+        onContinue: () -> Unit,
+    ) {
         if (activity == null) {
-            Log.d(Tag, "show-skipped reason=activity-null")
+            Log.d(Tag, "show-skipped placement=$placement reason=activity-null")
             appContext?.let(::preload)
             onContinue()
             return
@@ -43,7 +47,7 @@ object InterstitialAdManager {
         mainHandler.post {
             val ad = interstitialAd
             if (ad == null) {
-                Log.d(Tag, "show-skipped reason=not-loaded")
+                Log.d(Tag, "show-skipped placement=$placement reason=not-loaded")
                 preload(activity.applicationContext)
                 onContinue()
                 return@post
@@ -62,13 +66,13 @@ object InterstitialAdManager {
             ad.adEventCallback = object : InterstitialAdEventCallback {
                 override fun onAdShowedFullScreenContent() {
                     mainHandler.post {
-                        Log.d(Tag, "show-started unit=${AdUnitIds.interstitial}")
+                        Log.d(Tag, "show-started placement=$placement unit=${AdUnitIds.interstitial}")
                     }
                 }
 
                 override fun onAdDismissedFullScreenContent() {
                     mainHandler.post {
-                        Log.d(Tag, "show-dismissed unit=${AdUnitIds.interstitial}")
+                        Log.d(Tag, "show-dismissed placement=$placement unit=${AdUnitIds.interstitial}")
                         activity.restoreDefaultSystemBarLayout()
                         AppOpenAdManager.onExternalFullScreenAdFinished()
                         clearAndPreload()
@@ -80,7 +84,7 @@ object InterstitialAdManager {
                     mainHandler.post {
                         Log.w(
                             Tag,
-                            "show-failed unit=${AdUnitIds.interstitial} code=${fullScreenContentError.code} message=${fullScreenContentError.message}",
+                            "show-failed placement=$placement unit=${AdUnitIds.interstitial} code=${fullScreenContentError.code} message=${fullScreenContentError.message}",
                         )
                         activity.restoreDefaultSystemBarLayout()
                         AppOpenAdManager.onExternalFullScreenAdFinished()
@@ -90,17 +94,21 @@ object InterstitialAdManager {
                 }
 
                 override fun onAdImpression() {
-                    Log.d(Tag, "impression format=interstitial unit=${AdUnitIds.interstitial}")
+                    Log.d(Tag, "impression format=interstitial placement=$placement unit=${AdUnitIds.interstitial}")
                 }
 
                 override fun onAdClicked() {
-                    Log.d(Tag, "clicked format=interstitial unit=${AdUnitIds.interstitial}")
+                    Log.d(Tag, "clicked format=interstitial placement=$placement unit=${AdUnitIds.interstitial}")
                 }
             }
 
             runCatching { ad.show(activity) }
                 .onFailure { throwable ->
-                    Log.e(Tag, "show-exception unit=${AdUnitIds.interstitial} exception=${throwable.message}", throwable)
+                    Log.e(
+                        Tag,
+                        "show-exception placement=$placement unit=${AdUnitIds.interstitial} exception=${throwable.message}",
+                        throwable,
+                    )
                     activity.restoreDefaultSystemBarLayout()
                     AppOpenAdManager.onExternalFullScreenAdFinished()
                     clearAndPreload()
