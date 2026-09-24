@@ -373,13 +373,6 @@ open class UpCurrentViewModel(
         val block = current.selectedBlock ?: return
         val gramPanchayat = current.selectedGramPanchayat ?: return
         viewModelScope.launch {
-            val recordId = downloadRepository.createPendingRecord(
-                district = "Uttar Pradesh - ${district.label}",
-                assembly = block.label,
-                village = gramPanchayat.label,
-                partNumber = 1,
-            )
-            downloadRepository.markDownloading(recordId)
             _state.update {
                 it.copy(
                     isDownloading = true,
@@ -394,13 +387,21 @@ open class UpCurrentViewModel(
                     gramPanchayat = gramPanchayat,
                     captcha = current.captchaInput.trim(),
                 ) { downloadedBytes, totalBytes ->
-                    updateProgress(recordId, downloadedBytes.progressPercent(totalBytes))
+                    updateProgress(downloadedBytes.progressPercent(totalBytes))
                 }
             }.onSuccess { result ->
                 when (result) {
-                    is UpSubmitResult.Pdf -> saveDownloadedPdf(recordId, result.pdf, result.pdf.fileName)
+                    is UpSubmitResult.Pdf -> {
+                        val recordId = downloadRepository.createPendingRecord(
+                            district = "Uttar Pradesh - ${district.label}",
+                            assembly = block.label,
+                            village = gramPanchayat.label,
+                            partNumber = 1,
+                        )
+                        downloadRepository.markDownloading(recordId)
+                        saveDownloadedPdf(recordId, result.pdf, result.pdf.fileName)
+                    }
                     is UpSubmitResult.ServerMessage -> {
-                        downloadRepository.markFailed(recordId, result.message)
                         _state.update {
                             it.copy(
                                 isDownloading = false,
@@ -416,7 +417,6 @@ open class UpCurrentViewModel(
             }.onFailure { error ->
                 if (!isActive) return@launch
                 val message = error.userMessage("Download failed")
-                downloadRepository.markFailed(recordId, message)
                 _state.update {
                     it.copy(
                         isDownloading = false,
@@ -528,6 +528,10 @@ open class UpCurrentViewModel(
     private fun updateProgress(recordId: String, progress: Int) {
         _state.update { it.copy(downloadProgress = progress.coerceIn(0, 100)) }
         viewModelScope.launch { downloadRepository.updateProgress(recordId, progress.coerceIn(0, 100)) }
+    }
+
+    private fun updateProgress(progress: Int) {
+        _state.update { it.copy(downloadProgress = progress.coerceIn(0, 100)) }
     }
 
     private suspend fun runLoading(message: String, block: suspend () -> Unit) {
