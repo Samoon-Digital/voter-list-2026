@@ -347,7 +347,12 @@ private fun OfficialWebViewScreen(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val bottomBannerHeight = rememberLargeAdaptiveBannerHeight(maxWidth)
+        val adaptiveBannerHeight = rememberLargeAdaptiveBannerHeight(maxWidth)
+        val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        var bottomBannerHeight by remember(adaptiveBannerHeight) {
+            mutableStateOf(adaptiveBannerHeight)
+        }
+        val bottomOverlayPadding = bottomBannerHeight + navigationBarHeight
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
@@ -399,9 +404,7 @@ private fun OfficialWebViewScreen(
                         isLoading = false
                         errorMessage = it
                     },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = bottomBannerHeight),
+                    modifier = Modifier.fillMaxSize(),
                 )
 
                 errorMessage?.let { message ->
@@ -422,21 +425,28 @@ private fun OfficialWebViewScreen(
                         state = state,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(start = 16.dp, end = 16.dp, bottom = bottomBannerHeight + 16.dp),
+                            .padding(start = 16.dp, end = 16.dp, bottom = bottomOverlayPadding + 16.dp),
                     )
                 }
             }
         }
 
-        WebViewBottomBanner(bottomBannerHeight)
+        WebViewBottomBanner(
+            bannerHeight = bottomBannerHeight,
+            onHeightChanged = { bottomBannerHeight = it },
+        )
     }
 }
 @Composable
-private fun BoxScope.WebViewBottomBanner(bannerHeight: Dp) {
+private fun BoxScope.WebViewBottomBanner(
+    bannerHeight: Dp,
+    onHeightChanged: (Dp) -> Unit,
+) {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     AdMobBannerAd(
         placementKey = "official-webview-bottom-banner",
+        onHeightChanged = onHeightChanged,
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .offset(y = -navigationBarHeight)

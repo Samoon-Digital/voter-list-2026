@@ -14,6 +14,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -77,13 +80,14 @@ fun AppNavHost(modifier: Modifier = Modifier) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val showBottomBanner = currentRoute != null && shouldShowRouteBottomBanner(currentRoute)
             val adaptiveBannerHeight = rememberLargeAdaptiveBannerHeight(maxWidth)
-            val bottomBannerHeight = if (showBottomBanner) adaptiveBannerHeight else 0.dp
+            var routeBannerHeight by remember(currentRoute, adaptiveBannerHeight) {
+                mutableStateOf(adaptiveBannerHeight)
+            }
+            val bottomBannerHeight = if (showBottomBanner) routeBannerHeight else 0.dp
             NavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = bottomBannerHeight),
+                modifier = Modifier.fillMaxSize(),
             ) {
                 composable(Routes.HOME) {
                     HomeScreen(
@@ -239,7 +243,10 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
             }
             if (showBottomBanner) {
-                BottomRouteBanner(bottomBannerHeight)
+                BottomRouteBanner(
+                    bannerHeight = bottomBannerHeight,
+                    onHeightChanged = { routeBannerHeight = it },
+                )
             }
         }
     }
@@ -257,11 +264,15 @@ private fun shouldShowRouteBottomBanner(route: String): Boolean =
     )
 
 @Composable
-private fun BoxScope.BottomRouteBanner(bannerHeight: Dp) {
+private fun BoxScope.BottomRouteBanner(
+    bannerHeight: Dp,
+    onHeightChanged: (Dp) -> Unit,
+) {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     AdMobBannerAd(
         placementKey = "route-bottom-banner",
+        onHeightChanged = onHeightChanged,
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .offset(y = -navigationBarHeight)
