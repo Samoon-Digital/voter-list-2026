@@ -139,6 +139,7 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    implementation(libs.jsoup)
     implementation(libs.kotlinx.serialization.json)
 
     // Room

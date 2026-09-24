@@ -40,6 +40,9 @@ import com.samoondigital.yojnaplus.feature.pdf.PdfScreen
 import com.samoondigital.yojnaplus.feature.pdfviewer.PdfViewerScreen
 import com.samoondigital.yojnaplus.feature.settings.SettingsScreen
 import com.samoondigital.yojnaplus.feature.up2003.UpRollScreen
+import com.samoondigital.yojnaplus.feature.upcurrent.UpRuralVoterListScreen
+import com.samoondigital.yojnaplus.feature.upcurrent.UpStateListScreen
+import com.samoondigital.yojnaplus.feature.upcurrent.UpUrbanVoterListScreen
 import com.samoondigital.yojnaplus.feature.webview.ChandigarhWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.DadraNagarHaveliWebViewScreen
 import com.samoondigital.yojnaplus.feature.webview.GujaratWebViewScreen
@@ -92,10 +95,46 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.HOME) {
                     HomeScreen(
                         onDownloadPdf = { navController.navigate(Routes.PDF) },
+                        onOpenRuralList = { navController.navigate(Routes.RURAL_STATE_LIST) },
+                        onOpenUrbanList = { navController.navigate(Routes.URBAN_STATE_LIST) },
                         onOpenDeletedList = { navController.navigate(Routes.DELETED_LIST) },
                         onOpenOldSir = { navController.navigate(Routes.OLD_SIR) },
                         onOpenDownloads = { navigateToDownloads() },
                         contentPadding = innerPadding,
+                    )
+                }
+                composable(Routes.RURAL_STATE_LIST) {
+                    UpStateListScreen(
+                        title = "Gram Panchayat Voter List",
+                        subtitle = "Choose state for rural voter list",
+                        onBack = { navController.popBackStack() },
+                        onOpenUttarPradesh = { navController.navigate(Routes.UP_RURAL_2026) },
+                    )
+                }
+                composable(Routes.URBAN_STATE_LIST) {
+                    UpStateListScreen(
+                        title = "Urban Voter List",
+                        subtitle = "Choose state for urban local body voter list",
+                        onBack = { navController.popBackStack() },
+                        onOpenUttarPradesh = { navController.navigate(Routes.UP_URBAN_2023) },
+                    )
+                }
+                composable(Routes.UP_RURAL_2026) {
+                    UpRuralVoterListScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenDownloads = { navigateToDownloads() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
+                composable(Routes.UP_URBAN_2023) {
+                    UpUrbanVoterListScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenDownloads = { navigateToDownloads() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
                     )
                 }
                 composable(Routes.DELETED_LIST) {

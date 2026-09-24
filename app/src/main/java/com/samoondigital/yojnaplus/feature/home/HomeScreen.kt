@@ -58,6 +58,8 @@ import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 @Composable
 fun HomeScreen(
     onDownloadPdf: () -> Unit,
+    onOpenRuralList: () -> Unit,
+    onOpenUrbanList: () -> Unit,
     onOpenDeletedList: () -> Unit,
     onOpenOldSir: () -> Unit,
     onOpenDownloads: () -> Unit,
@@ -80,8 +82,8 @@ fun HomeScreen(
         ) {
             SectionTitle()
             CategoryList(
-                onRuralClick = onDownloadPdf,
-                onUrbanClick = onDownloadPdf,
+                onRuralClick = onOpenRuralList,
+                onUrbanClick = onOpenUrbanList,
                 onVoterListClick = onDownloadPdf,
                 onDeletedClick = onOpenDeletedList,
                 onOldSirClick = onOpenOldSir,
