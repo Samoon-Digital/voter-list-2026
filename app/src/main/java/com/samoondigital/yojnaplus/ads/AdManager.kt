@@ -19,11 +19,14 @@ import com.samoondigital.yojnaplus.BuildConfig
 
 object AdUnitIds {
     val appOpen: String = BuildConfig.ADMOB_APP_OPEN_AD_UNIT_ID
+    val foregroundAppOpen: String = BuildConfig.ADMOB_FOREGROUND_APP_OPEN_AD_UNIT_ID
     val banner: String = BuildConfig.ADMOB_BANNER_AD_UNIT_ID
     val interstitial: String = BuildConfig.ADMOB_INTERSTITIAL_AD_UNIT_ID
 
     fun expectedFor(format: String): String? = when (format) {
         "app-open" -> appOpen
+        "app-open-startup" -> appOpen
+        "app-open-foreground" -> foregroundAppOpen
         "banner" -> banner
         "interstitial" -> interstitial
         else -> null
@@ -34,6 +37,7 @@ private object ProductionAdMobConfig {
     const val PackageName = "com.samoondigital.yojnaplus"
     const val AppId = "ca-app-pub-1638673809508848~3940017763"
     const val AppOpen = "ca-app-pub-1638673809508848/5780292909"
+    const val ForegroundAppOpen = "ca-app-pub-1638673809508848/6864651546"
     const val Banner = "ca-app-pub-1638673809508848/5540207067"
     const val Interstitial = "ca-app-pub-1638673809508848/8518136887"
 }
@@ -41,6 +45,7 @@ private object ProductionAdMobConfig {
 private object DebugAdMobConfig {
     const val AppId = "ca-app-pub-3940256099942544~3347511713"
     const val AppOpen = "ca-app-pub-3940256099942544/9257395921"
+    const val ForegroundAppOpen = "ca-app-pub-3940256099942544/9257395921"
     const val Banner = "ca-app-pub-3940256099942544/6300978111"
     const val Interstitial = "ca-app-pub-3940256099942544/1033173712"
 }
@@ -229,11 +234,17 @@ object AdManager {
         val manifestAppId = manifestAppId(context)
         val expectedAppId = if (BuildConfig.DEBUG) DebugAdMobConfig.AppId else ProductionAdMobConfig.AppId
         val expectedAppOpen = if (BuildConfig.DEBUG) DebugAdMobConfig.AppOpen else ProductionAdMobConfig.AppOpen
+        val expectedForegroundAppOpen = if (BuildConfig.DEBUG) {
+            DebugAdMobConfig.ForegroundAppOpen
+        } else {
+            ProductionAdMobConfig.ForegroundAppOpen
+        }
         val expectedBanner = if (BuildConfig.DEBUG) DebugAdMobConfig.Banner else ProductionAdMobConfig.Banner
         val expectedInterstitial = if (BuildConfig.DEBUG) DebugAdMobConfig.Interstitial else ProductionAdMobConfig.Interstitial
         val configuredIds = linkedMapOf(
             "appId" to BuildConfig.ADMOB_APP_ID,
             "appOpen" to AdUnitIds.appOpen,
+            "foregroundAppOpen" to AdUnitIds.foregroundAppOpen,
             "banner" to AdUnitIds.banner,
             "interstitial" to AdUnitIds.interstitial,
         )
@@ -253,6 +264,9 @@ object AdManager {
         }
         if (AdUnitIds.appOpen != expectedAppOpen) {
             reasons += "App Open ID ${AdUnitIds.appOpen} != $expectedAppOpen"
+        }
+        if (AdUnitIds.foregroundAppOpen != expectedForegroundAppOpen) {
+            reasons += "Foreground App Open ID ${AdUnitIds.foregroundAppOpen} != $expectedForegroundAppOpen"
         }
         if (AdUnitIds.banner != expectedBanner) {
             reasons += "Banner ID ${AdUnitIds.banner} != $expectedBanner"
@@ -297,6 +311,7 @@ object AdManager {
             append(" initialized=${isInitialized()}")
             append(" appId=${BuildConfig.ADMOB_APP_ID}")
             append(" appOpen=${AdUnitIds.appOpen}")
+            append(" foregroundAppOpen=${AdUnitIds.foregroundAppOpen}")
             append(" banner=${AdUnitIds.banner}")
             append(" interstitial=${AdUnitIds.interstitial}")
             if (!validation.valid) append(" reasons=${validation.reasons.joinToString("; ")}")

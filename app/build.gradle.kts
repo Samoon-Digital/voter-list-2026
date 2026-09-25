@@ -5,10 +5,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 val ProductionPackageName = "com.samoondigital.yojnaplus"
 val ProductionAdMobAppId = "ca-app-pub-1638673809508848~3940017763"
 val ProductionAppOpenAdUnitId = "ca-app-pub-1638673809508848/5780292909"
+val ProductionForegroundAppOpenAdUnitId = "ca-app-pub-1638673809508848/6864651546"
 val ProductionBannerAdUnitId = "ca-app-pub-1638673809508848/5540207067"
 val ProductionInterstitialAdUnitId = "ca-app-pub-1638673809508848/8518136887"
 val DebugAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
 val DebugAppOpenAdUnitId = "ca-app-pub-3940256099942544/9257395921"
+val DebugForegroundAppOpenAdUnitId = "ca-app-pub-3940256099942544/9257395921"
 val DebugBannerAdUnitId = "ca-app-pub-3940256099942544/6300978111"
 val DebugInterstitialAdUnitId = "ca-app-pub-3940256099942544/1033173712"
 
@@ -61,6 +63,7 @@ android {
             isMinifyEnabled = false
             buildConfigField("String", "ADMOB_APP_ID", "\"$DebugAdMobAppId\"")
             buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$DebugAppOpenAdUnitId\"")
+            buildConfigField("String", "ADMOB_FOREGROUND_APP_OPEN_AD_UNIT_ID", "\"$DebugForegroundAppOpenAdUnitId\"")
             buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$DebugBannerAdUnitId\"")
             buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$DebugInterstitialAdUnitId\"")
             manifestPlaceholders["admobAppId"] = DebugAdMobAppId
@@ -73,6 +76,7 @@ android {
             }
             buildConfigField("String", "ADMOB_APP_ID", "\"$ProductionAdMobAppId\"")
             buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$ProductionAppOpenAdUnitId\"")
+            buildConfigField("String", "ADMOB_FOREGROUND_APP_OPEN_AD_UNIT_ID", "\"$ProductionForegroundAppOpenAdUnitId\"")
             buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$ProductionBannerAdUnitId\"")
             buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$ProductionInterstitialAdUnitId\"")
             manifestPlaceholders["admobAppId"] = ProductionAdMobAppId

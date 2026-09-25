@@ -74,7 +74,10 @@ fun HomeScreen(
             .background(HomeBackground)
             .verticalScroll(rememberScrollState()),
     ) {
-        HomeHero(onOpenDownloads = onOpenDownloads)
+        HomeHero(
+            onOpenDownloads = onOpenDownloads,
+            onOpenVoterList = onDownloadPdf,
+        )
 
         Column(
             modifier = Modifier.padding(horizontal = 17.dp, vertical = 18.dp),
@@ -96,7 +99,10 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHero(onOpenDownloads: () -> Unit) {
+private fun HomeHero(
+    onOpenDownloads: () -> Unit,
+    onOpenVoterList: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -106,7 +112,7 @@ private fun HomeHero(onOpenDownloads: () -> Unit) {
                     colors = listOf(Color(0xFF240E65), Color(0xFF351A87), Color(0xFF4522A8)),
                 ),
             )
-            .padding(start = 21.dp, end = 21.dp, top = 8.dp, bottom = 24.dp),
+            .padding(start = 21.dp, end = 21.dp, top = 10.dp, bottom = 20.dp),
     ) {
         HeaderArtwork(modifier = Modifier.matchParentSize())
 
@@ -115,7 +121,7 @@ private fun HomeHero(onOpenDownloads: () -> Unit) {
                 .fillMaxWidth()
                 .stableStatusBarsPadding(),
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -125,8 +131,6 @@ private fun HomeHero(onOpenDownloads: () -> Unit) {
                         .weight(1f)
                         .padding(end = 14.dp),
                 ) {
-                    LiveBadge()
-                    Spacer(Modifier.height(8.dp))
                     Text(
                         text = "Voter List 2026",
                         color = Color.White,
@@ -165,8 +169,8 @@ private fun HomeHero(onOpenDownloads: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-            NoticeBar()
+            Spacer(Modifier.height(14.dp))
+            NoticeBar(onClick = onOpenVoterList)
         }
     }
 }
@@ -200,52 +204,17 @@ private fun HeaderArtwork(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun LiveBadge() {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = 0.10f))
-            .padding(horizontal = 9.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF34D399)),
-        )
-        Text(
-            text = "Live Electoral Portal 2026",
-            color = Color(0xFFE7DDFF),
-            fontSize = 10.sp,
-            lineHeight = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
-
-@Composable
-private fun NoticeBar() {
+private fun NoticeBar(onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
             .background(Color.White.copy(alpha = 0.12f))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "NEW",
-            color = Color(0xFF1F2937),
-            fontSize = 9.sp,
-            lineHeight = 10.sp,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFFFACC15))
-                .padding(horizontal = 6.dp, vertical = 3.dp),
-        )
+        NewBadge()
         Text(
             text = "Special Intensive Revision (SIR) 2026 Published",
             color = Color(0xFFF4EEFF),
@@ -265,6 +234,22 @@ private fun NoticeBar() {
             modifier = Modifier.size(18.dp),
         )
     }
+}
+
+@Composable
+private fun NewBadge(modifier: Modifier = Modifier) {
+    Text(
+        text = "NEW",
+        color = Color(0xFF1F2937),
+        fontSize = 9.sp,
+        lineHeight = 10.sp,
+        fontWeight = FontWeight.ExtraBold,
+        maxLines = 1,
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFFACC15))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+    )
 }
 
 @Composable
@@ -312,61 +297,46 @@ private fun CategoryList(
         Column(modifier = Modifier.fillMaxWidth()) {
             CategoryRow(
                 title = "Gram Panchayat Voter List",
-                tag = "Rural",
                 description = "Village panchayat and ward-wise voter list",
                 icon = Icons.Outlined.Home,
                 iconTint = Color(0xFF10B981),
                 iconBackground = Color(0xFFECFDF5),
-                tagBackground = Color(0xFFD1FAE5),
-                tagText = Color(0xFF047857),
                 onClick = onRuralClick,
             )
             ListDivider()
             CategoryRow(
                 title = "Urban Voter List",
-                tag = "Urban",
                 description = "Municipality, municipal corporation & civic body list",
                 icon = Icons.Outlined.Apartment,
                 iconTint = BrandPurple,
                 iconBackground = Color(0xFFEEF2FF),
-                tagBackground = Color(0xFFE0E7FF),
-                tagText = Color(0xFF3730A3),
                 onClick = onUrbanClick,
             )
             ListDivider()
             CategoryRow(
                 title = "Voter List 2026",
-                tag = "General 2026",
                 description = "Download latest consolidated electoral roll 2026",
                 icon = Icons.Outlined.Description,
                 iconTint = Color(0xFF2563EB),
                 iconBackground = Color(0xFFEFF6FF),
-                tagBackground = Color(0xFFDBEAFE),
-                tagText = Color(0xFF1D4ED8),
                 onClick = onVoterListClick,
             )
             ListDivider()
             CategoryRow(
                 title = "Deleted List 2026",
-                tag = "Deleted",
                 description = "View list of removed or struck-off voter names",
                 icon = Icons.Outlined.Delete,
                 iconTint = Color(0xFFF43F5E),
                 iconBackground = Color(0xFFFFF1F2),
-                tagBackground = Color(0xFFFFE4E6),
-                tagText = Color(0xFFBE123C),
                 onClick = onDeletedClick,
             )
             ListDivider()
             CategoryRow(
                 title = "Old SIR List",
-                tag = "SIR",
                 description = "Special intensive revision electoral roll from previous enumeration",
                 icon = Icons.Outlined.Schedule,
                 iconTint = Color(0xFFD97706),
                 iconBackground = Color(0xFFFFFBEB),
-                tagBackground = Color(0xFFFEF3C7),
-                tagText = Color(0xFFB45309),
                 onClick = onOldSirClick,
             )
         }
@@ -376,13 +346,10 @@ private fun CategoryList(
 @Composable
 private fun CategoryRow(
     title: String,
-    tag: String,
     description: String,
     icon: ImageVector,
     iconTint: Color,
     iconBackground: Color,
-    tagBackground: Color,
-    tagText: Color,
     onClick: () -> Unit,
 ) {
     Row(
@@ -426,18 +393,7 @@ private fun CategoryRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(weight = 1f, fill = false),
                 )
-                Text(
-                    text = tag,
-                    color = tagText,
-                    fontSize = 9.sp,
-                    lineHeight = 10.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(tagBackground)
-                        .padding(horizontal = 5.dp, vertical = 2.dp),
-                )
+                NewBadge()
             }
             Text(
                 text = description,

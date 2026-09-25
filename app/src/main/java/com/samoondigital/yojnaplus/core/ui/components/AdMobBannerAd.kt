@@ -152,11 +152,7 @@ private fun bannerAdSizes(
 ): List<AdSize> {
     val standardAdaptive = AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, adWidth)
     val largeAdaptive = largeAnchoredAdaptiveBannerSize(context, adWidth)
-    return buildList {
-        if (adWidth >= AdSize.BANNER_WIDTH) add(AdSize.BANNER)
-        add(standardAdaptive)
-        add(largeAdaptive)
-    }.distinct()
+    return listOf(largeAdaptive, standardAdaptive).distinct()
 }
 
 private fun AdSize.widthDp(
