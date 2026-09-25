@@ -304,7 +304,11 @@ private fun UpCurrentFlowScreen(
                         message = uiState.message,
                         headerIcon = Icons.Outlined.LocationCity,
                         itemIcon = Icons.Outlined.LocationCity,
-                        onSelected = viewModel::selectUrbanUlb,
+                        onSelected = { option ->
+                            InterstitialAdManager.showIfAvailable(activity) {
+                                viewModel.selectUrbanUlb(option)
+                            }
+                        },
                     )
                     UpCurrentStep.UrbanWard -> OptionStep(
                         title = "Select Ward",
