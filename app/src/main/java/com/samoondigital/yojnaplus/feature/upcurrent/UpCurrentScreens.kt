@@ -104,14 +104,16 @@ fun UpStateListScreen(
     subtitle: String,
     onBack: () -> Unit,
     onOpenUttarPradesh: () -> Unit,
+    onOpenBihar: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val stateCount = if (onOpenBihar == null) 1 else 2
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             SimpleUpTopBar(
                 title = title,
-                subtitle = "1 state available",
+                subtitle = "$stateCount states available",
                 onBack = onBack,
                 onOpenDownloads = null,
             )
@@ -141,6 +143,17 @@ fun UpStateListScreen(
                     accentIndex = 0,
                     onClick = onOpenUttarPradesh,
                 )
+            }
+            onOpenBihar?.let { openBihar ->
+                item {
+                    ChoiceRow(
+                        title = "Bihar",
+                        subtitle = "Municipality voter list 2026",
+                        icon = Icons.Outlined.LocationOn,
+                        accentIndex = 1,
+                        onClick = openBihar,
+                    )
+                }
             }
         }
     }

@@ -69,6 +69,9 @@ class PdfDownloadManager @Inject constructor(
         } else if (downloadUri.host.equals(WB_ROLL_HOST, ignoreCase = true)) {
             request.addRequestHeader("User-Agent", WB_DOWNLOAD_USER_AGENT)
             request.addRequestHeader("Referer", "https://ceowestbengal.wb.gov.in/Roll_ps/1")
+        } else if (downloadUri.host.equals(BIHAR_ROLL_HOST, ignoreCase = true)) {
+            request.addRequestHeader("User-Agent", BIHAR_DOWNLOAD_USER_AGENT)
+            request.addRequestHeader("Referer", "https://sec.bihar.gov.in/ForPublic/RollPrint2026U1.aspx")
         }
         val id = downloadManager.enqueue(request)
         var completed = false
@@ -198,12 +201,14 @@ class PdfDownloadManager @Inject constructor(
         const val DNH_ROLL_HOST = "ceodaman.nic.in"
         const val DNH_IFRAME_HOST = "ceoddd.in"
         const val WB_ROLL_HOST = "ceowestbengal.wb.gov.in"
+        const val BIHAR_ROLL_HOST = "sec.bihar.gov.in"
         const val ECI_DOWNLOAD_USER_AGENT = "curl/8.10.1 VoterList2026/Android"
         const val UP_DOWNLOAD_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
         const val CHANDIGARH_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
         const val DNH_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
         const val WB_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
+        const val BIHAR_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
     }
 }
 

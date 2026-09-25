@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import com.samoondigital.yojnaplus.core.ui.components.rememberLargeAdaptiveBannerHeight
+import com.samoondigital.yojnaplus.feature.biharurban.BiharUrbanScreen
 import com.samoondigital.yojnaplus.feature.chandigarh.ChandigarhScreen
 import com.samoondigital.yojnaplus.feature.deleted.DeletedListLinks
 import com.samoondigital.yojnaplus.feature.deleted.DeletedListScreen
@@ -112,6 +113,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                         subtitle = "Choose state for urban local body voter list",
                         onBack = { navController.popBackStack() },
                         onOpenUttarPradesh = { navController.navigate(Routes.UP_URBAN_2023) },
+                        onOpenBihar = { navController.navigate(Routes.BIHAR_URBAN_2026) },
                     )
                 }
                 composable(Routes.UP_RURAL_2026) {
@@ -125,6 +127,15 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 }
                 composable(Routes.UP_URBAN_2023) {
                     UpUrbanVoterListScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenDownloads = { navigateToDownloads() },
+                        onOpenPdf = { uri, title ->
+                            navController.navigate(Routes.pdfViewerRoute(uri, title))
+                        },
+                    )
+                }
+                composable(Routes.BIHAR_URBAN_2026) {
+                    BiharUrbanScreen(
                         onBack = { navController.popBackStack() },
                         onOpenDownloads = { navigateToDownloads() },
                         onOpenPdf = { uri, title ->

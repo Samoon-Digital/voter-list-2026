@@ -18,6 +18,7 @@ object Routes {
     const val URBAN_STATE_LIST = "urban_state_list"
     const val UP_RURAL_2026 = "up_rural_2026"
     const val UP_URBAN_2023 = "up_urban_2023"
+    const val BIHAR_URBAN_2026 = "bihar_urban_2026"
     const val OLD_SIR = "old_sir"
     const val DELETED_LIST = "deleted_list"
     const val DELETED_WEB = "deleted_web"
