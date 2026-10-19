@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +34,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -90,7 +88,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -105,6 +102,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.R
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
+import com.samoondigital.yojnaplus.core.ui.theme.IndigoDark
+import com.samoondigital.yojnaplus.core.ui.theme.Indigo
 import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.PartDto
@@ -117,19 +116,10 @@ import com.samoondigital.yojnaplus.viewmodel.ElectoralRollUiState
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollViewModel
 
 
-private val WizardPurple = Color(0xFF3522A8)
-private val WizardPurpleDark = Color(0xFF20106F)
 private val WizardMuted = Color(0xFF686A8D)
 private val WizardStroke = Color(0xFFE3E2F5)
 private const val GeneralDistrictPlacement = "general-voter-list-district-to-assembly"
 private const val GeneralLanguagePlacement = "general-voter-list-language-to-captcha"
-private val ChoiceAccents = listOf(
-    Color(0xFF4A2CC3),
-    Color(0xFF43A66E),
-    Color(0xFFD66C2E),
-    Color(0xFF477CCA),
-    Color(0xFFC83D77),
-)
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -256,14 +246,12 @@ private fun WizardHeroTopBar(
             .heightIn(min = 96.dp)
             .background(
                 Brush.linearGradient(
-                    colors = listOf(WizardPurpleDark, WizardPurple, Color(0xFF2E1B98)),
+                    colors = listOf(IndigoDark, Indigo),
                     start = Offset.Zero,
                     end = Offset(950f, 360f),
                 ),
             ),
     ) {
-        HeaderArtwork(modifier = Modifier.matchParentSize())
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -282,7 +270,7 @@ private fun WizardHeroTopBar(
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.ui_back),
-                        tint = WizardPurpleDark,
+                        tint = IndigoDark,
                         modifier = Modifier.size(22.dp),
                     )
                 }
@@ -321,51 +309,10 @@ private fun WizardHeroTopBar(
                     Icon(
                         Icons.Outlined.FileDownload,
                         contentDescription = stringResource(R.string.ui_saved_pdfs),
-                        tint = WizardPurpleDark,
+                        tint = IndigoDark,
                         modifier = Modifier.size(22.dp),
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HeaderArtwork(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        val wave = Path().apply {
-            moveTo(0f, h * 0.64f)
-            cubicTo(w * 0.10f, h * 0.46f, w * 0.15f, h * 0.78f, w * 0.28f, h * 0.58f)
-            cubicTo(w * 0.42f, h * 0.36f, w * 0.50f, h * 0.78f, w * 0.66f, h * 0.62f)
-            cubicTo(w * 0.78f, h * 0.50f, w * 0.88f, h * 0.80f, w, h * 0.56f)
-            lineTo(w, h)
-            lineTo(0f, h)
-            close()
-        }
-        drawPath(wave, Color(0xFF5B49D7).copy(alpha = 0.30f))
-
-        val map = Path().apply {
-            moveTo(w * 0.68f, h * 0.20f)
-            cubicTo(w * 0.72f, h * 0.12f, w * 0.76f, h * 0.18f, w * 0.76f, h * 0.26f)
-            cubicTo(w * 0.83f, h * 0.25f, w * 0.89f, h * 0.35f, w * 0.86f, h * 0.44f)
-            cubicTo(w * 0.91f, h * 0.50f, w * 0.84f, h * 0.55f, w * 0.78f, h * 0.51f)
-            cubicTo(w * 0.74f, h * 0.58f, w * 0.66f, h * 0.53f, w * 0.70f, h * 0.45f)
-            cubicTo(w * 0.63f, h * 0.39f, w * 0.67f, h * 0.30f, w * 0.68f, h * 0.20f)
-            close()
-        }
-        drawPath(map, Color.White.copy(alpha = 0.13f))
-
-        val dotColor = Color.White.copy(alpha = 0.18f)
-        repeat(4) { row ->
-            repeat(4) { col ->
-                drawCircle(
-                    color = dotColor,
-                    radius = 4.3f,
-                    center = Offset(w * 0.90f + col * 22f, h * 0.60f + row * 22f),
-                )
             }
         }
     }
@@ -398,12 +345,11 @@ private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
         loading = uiState.isLoading,
         message = uiState.message,
     ) { _ ->
-        itemsIndexed(uiState.years, key = { _, year -> year }) { index, year ->
+        items(uiState.years, key = { it }) { year ->
             ChoiceCard(
                 title = year.toString(),
                 subtitle = null,
                 icon = Icons.Outlined.CalendarMonth,
-                accentIndex = index,
                 onClick = { onSelected(year) },
             )
         }
@@ -420,7 +366,7 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
         loading = uiState.isLoading,
         message = uiState.message,
     ) { _ ->
-        itemsIndexed(uiState.rollTypes, key = { _, rollType -> rollType.id }) { index, rollType ->
+        items(uiState.rollTypes, key = { it.id }) { rollType ->
             ChoiceCard(
                 title = rollType.displayName,
                 subtitle = when {
@@ -430,7 +376,6 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
                     else -> null
                 },
                 icon = Icons.AutoMirrored.Outlined.FactCheck,
-                accentIndex = index,
                 onClick = { onSelected(rollType) },
             )
         }
@@ -652,14 +597,14 @@ private fun SuccessStep(uiState: ElectoralRollUiState, onOpenDownloads: () -> Un
         item {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
+                color = MaterialTheme.colorScheme.secondaryContainer,
                 modifier = Modifier.size(72.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Outlined.CheckCircle,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(48.dp),
                     )
                 }
@@ -702,7 +647,7 @@ private fun SuccessStep(uiState: ElectoralRollUiState, onOpenDownloads: () -> Un
                     Icon(
                         Icons.Outlined.PictureAsPdf,
                         contentDescription = null,
-                        tint = WizardPurple,
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(22.dp),
                     )
                     Spacer(Modifier.width(12.dp))
@@ -747,7 +692,7 @@ private fun LanguageBottomSheet(
                 ChoiceCard(
                     title = language.value,
                     subtitle = language.key,
-                    leading = { Icon(Icons.Outlined.Language, contentDescription = null) },
+                    leading = { Icon(Icons.Outlined.Language, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     onClick = { onSelected(language.key) },
                 )
             }
@@ -823,7 +768,6 @@ private fun <T> SearchableChoiceScreen(
                     title = titleKey,
                     subtitle = itemSubtitle(item),
                     icon = itemIcon,
-                    accentIndex = index,
                     onClick = { onSelected(item) },
                 )
             }
@@ -884,14 +828,14 @@ private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
     ) {
         Surface(
             shape = CircleShape,
-            color = Color(0xFFF0EEFF),
+            color = MaterialTheme.colorScheme.primaryContainer,
             modifier = Modifier.size(50.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = WizardPurple,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp),
                 )
             }
@@ -937,7 +881,7 @@ private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedLeadingIconColor = WizardMuted,
     focusedPlaceholderColor = WizardMuted,
     unfocusedPlaceholderColor = WizardMuted,
-    cursorColor = WizardPurple,
+    cursorColor = Indigo,
     focusedTextColor = MaterialTheme.colorScheme.onSurface,
     unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
 )
@@ -949,9 +893,7 @@ private fun ChoiceCard(
     onClick: () -> Unit,
     leading: (@Composable () -> Unit)? = null,
     icon: ImageVector = Icons.Outlined.AccountBalance,
-    accentIndex: Int = 0,
 ) {
-    val accent = ChoiceAccents[accentIndex % ChoiceAccents.size]
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -971,7 +913,7 @@ private fun ChoiceCard(
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = accent,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -997,7 +939,7 @@ private fun ChoiceCard(
             Icon(
                 Icons.AutoMirrored.Outlined.ArrowForward,
                 contentDescription = null,
-                tint = WizardPurple,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -1178,7 +1120,8 @@ private fun SummaryCard(summary: String?, onChange: (() -> Unit)? = null) {
     if (summary.isNullOrBlank()) return
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

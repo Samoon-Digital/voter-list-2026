@@ -10,7 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -56,7 +55,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -78,6 +76,8 @@ import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
 import com.samoondigital.yojnaplus.R
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
+import com.samoondigital.yojnaplus.core.ui.theme.IndigoDark
+import com.samoondigital.yojnaplus.core.ui.theme.Indigo
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -386,10 +386,9 @@ internal fun PdfViewerTopBar(
     Surface(color = Color.Transparent, tonalElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
         Box(
             Modifier.fillMaxWidth().background(
-                Brush.linearGradient(listOf(PdfViewerPurpleDark, PdfViewerPurple, Color(0xFF2E1B98))),
+                Brush.linearGradient(listOf(IndigoDark, Indigo)),
             ),
         ) {
-            PdfViewerHeaderArtwork(Modifier.matchParentSize())
             Column(Modifier.stableStatusBarsPadding().padding(horizontal = 8.dp, vertical = 5.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack) {
@@ -416,34 +415,6 @@ internal fun PdfViewerTopBar(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun PdfViewerHeaderArtwork(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val wave = Path().apply {
-            moveTo(0f, h * 0.58f)
-            cubicTo(w * 0.18f, h * 0.28f, w * 0.32f, h * 0.82f, w * 0.52f, h * 0.52f)
-            cubicTo(w * 0.68f, h * 0.30f, w * 0.82f, h * 0.78f, w, h * 0.46f)
-            lineTo(w, h)
-            lineTo(0f, h)
-            close()
-        }
-        drawPath(wave, Color(0xFF5B49D7).copy(alpha = 0.26f))
-
-        val zigzag = Path().apply {
-            moveTo(w * 0.08f, h * 0.18f)
-            lineTo(w * 0.20f, h * 0.08f)
-            lineTo(w * 0.32f, h * 0.20f)
-            lineTo(w * 0.45f, h * 0.10f)
-            lineTo(w * 0.58f, h * 0.22f)
-            lineTo(w * 0.72f, h * 0.12f)
-            lineTo(w * 0.86f, h * 0.24f)
-        }
-        drawPath(zigzag, Color.White.copy(alpha = 0.08f))
     }
 }
 
@@ -553,5 +524,3 @@ private fun copyRemotePdf(context: Context, uri: Uri): File {
         connection.disconnect()
     }
 }
-private val PdfViewerPurpleDark = Color(0xFF2B137F)
-private val PdfViewerPurple = Color(0xFF4B2DBF)

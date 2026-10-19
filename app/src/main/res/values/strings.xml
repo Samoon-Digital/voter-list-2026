@@ -6,8 +6,7 @@
     <string name="ui_how_title">वोटर लिस्ट कैसे निकालें?</string>
     <string name="ui_how_steps">1. राज्य, साल और सूची चुनें\n2. जिला, विधानसभा और मतदान केंद्र चुनें\n3. तस्वीर का कोड भरें और PDF डाउनलोड करें</string>
     <string name="ui_saved_help">डाउनलोड की हुई PDF खोलें या शेयर करें</string>
-    <string name="ui_independent">यह एक स्वतंत्र सूचना ऐप है। सरकारी ऐप नहीं है।</string>
-    <string name="ui_disclaimer">यह ऐप केवल जानकारी के लिए है। इसका चुनाव आयोग या किसी सरकारी संस्था से संबंध या समर्थन नहीं है।</string>
+    <string name="ui_disclaimer">यह स्वतंत्र सूचना ऐप है। चुनाव आयोग या सरकार से संबद्ध या समर्थित नहीं है।</string>
     <string name="ui_privacy">Privacy Policy</string>
     <string name="ui_follow">Follow Us</string>
     <string name="ui_contact">Contact</string>

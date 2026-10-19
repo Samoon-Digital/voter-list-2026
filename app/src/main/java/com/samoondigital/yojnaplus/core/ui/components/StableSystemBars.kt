@@ -13,12 +13,12 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsControllerCompat
+import com.samoondigital.yojnaplus.core.ui.theme.IndigoDark
 import kotlin.math.max
 
 @Composable
@@ -52,7 +52,7 @@ fun PurpleHeaderStatusBarEffect() {
             val controller = WindowInsetsControllerCompat(window, view)
             val previousLightStatusBars = controller.isAppearanceLightStatusBars
             @Suppress("DEPRECATION")
-            window.statusBarColor = Color(0xFF240E65).toArgb()
+            window.statusBarColor = IndigoDark.toArgb()
             controller.isAppearanceLightStatusBars = false
 
             onDispose {

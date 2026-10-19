@@ -13,7 +13,7 @@ val GreenDark = Color(0xFF0E5C2D)
 val GreenContainer = Color(0xFFDBEFE1)
 val OnGreenContainer = Color(0xFF0B5026)
 
-val SurfaceLight = Color(0xFFF4F5F9)
+val SurfaceLight = Color(0xFFF9FAFB)
 val SurfaceDark = Color(0xFF121318)
 val OutlineLight = Color(0xFFD7D9E0)
 
