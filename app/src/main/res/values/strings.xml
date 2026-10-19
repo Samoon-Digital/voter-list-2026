@@ -2,8 +2,8 @@
     <string name="app_name">Voter List 2026</string>
     <string name="ui_download_list">वोटर लिस्ट डाउनलोड करें</string>
     <string name="ui_saved_pdfs">मेरी PDF</string>
-    <string name="ui_how_title">वोटर लिस्ट कैसे निकालें?</string>
-    <string name="ui_saved_help">डाउनलोड की हुई PDF खोलें या शेयर करें</string>
+    <string name="ui_how_title">कैसे डाउनलोड करें?</string>
+    <string name="ui_saved_help">खोलें या शेयर करें</string>
     <string name="ui_disclaimer">यह स्वतंत्र सूचना ऐप है। चुनाव आयोग या सरकार से संबद्ध या समर्थित नहीं है।</string>
     <string name="ui_privacy">Privacy Policy</string>
     <string name="ui_follow">Follow Us</string>
@@ -91,8 +91,7 @@
     <string name="ui_change_previous">पिछला चयन बदलें</string>
     <string name="ui_chosen_language">PDF की भाषा: %1$s</string>
     <string name="ui_captcha_help">तस्वीर में लिखा कोड भरें, फिर डाउनलोड बटन दबाएँ। कोड साफ न दिखे तो नया कोड लें।</string>
+    <string name="ui_home_download_list">वोटर लिस्ट निकालें</string>
     <string name="ui_home_heading">आपकी वोटर लिस्ट</string>
-    <string name="ui_home_description">PDF डाउनलोड करें, पढ़ें और उसमें नाम खोजें।</string>
-    <string name="ui_home_start_hint">अपना राज्य और मतदान केंद्र चुनकर शुरू करें</string>
-    <string name="ui_home_guide_hint">शुरू करने से पहले 3 आसान कदम देखें</string>
+    <string name="ui_home_start_hint">राज्य और मतदान केंद्र चुनें</string>
 </resources>

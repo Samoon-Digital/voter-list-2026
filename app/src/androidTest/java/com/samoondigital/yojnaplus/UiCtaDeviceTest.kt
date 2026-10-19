@@ -69,7 +69,7 @@ class UiCtaDeviceTest {
             }
         }
         compose.onNodeWithTag("app-toolbar").assertIsDisplayed()
-        compose.onNodeWithText(context.getString(R.string.ui_download_list)).assertIsDisplayed().performClick()
+        compose.onNodeWithText(context.getString(R.string.ui_home_download_list)).assertIsDisplayed().performClick()
         compose.onNodeWithText(context.getString(R.string.ui_saved_pdfs)).assertIsDisplayed().performClick()
         compose.runOnIdle {
             assertEquals(1, downloadClicks)

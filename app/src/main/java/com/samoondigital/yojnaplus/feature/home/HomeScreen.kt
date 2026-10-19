@@ -70,12 +70,12 @@ fun HomeScreen(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(Modifier.padding(top = 24.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(R.string.ui_home_heading), style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onBackground)
-                Text(stringResource(R.string.ui_home_description), style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text(
+                stringResource(R.string.ui_home_heading),
+                modifier = Modifier.padding(top = 24.dp, bottom = 4.dp),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
             DownloadListCard(onDownloadPdf)
             SavedPdfCard(onOpenDownloads)
             Surface(
@@ -87,11 +87,8 @@ fun HomeScreen(
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.AutoMirrored.Outlined.HelpOutline, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(R.string.ui_how_title), style = MaterialTheme.typography.titleSmall)
-                        Text(stringResource(R.string.ui_home_guide_hint), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Text(stringResource(R.string.ui_how_title), style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f))
                     Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null,
                         modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -154,7 +151,7 @@ private fun DownloadListCard(onClick: () -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(Icons.Outlined.FileDownload, contentDescription = null, modifier = Modifier.size(30.dp))
-                Text(stringResource(R.string.ui_download_list), style = MaterialTheme.typography.titleMedium,
+                Text(stringResource(R.string.ui_home_download_list), style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f))
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
