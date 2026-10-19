@@ -131,7 +131,7 @@ private fun SplashAmbientBackground(modifier: Modifier = Modifier) {
         val center = Offset(size.width / 2f, size.height * 0.43f)
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFEFF6FF), Color.Transparent),
+                colors = listOf(Color(0xFFF2F0FB), Color.Transparent),
                 center = center,
                 radius = size.minDimension * 0.75f,
             ),
@@ -139,13 +139,13 @@ private fun SplashAmbientBackground(modifier: Modifier = Modifier) {
             center = center,
         )
         drawCircle(
-            color = Color(0xFFDBEAFE).copy(alpha = 0.42f),
+            color = Color(0xFFE7E5F6).copy(alpha = 0.42f),
             radius = size.minDimension * 0.36f,
             center = center,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f),
         )
         drawCircle(
-            color = Color(0xFFEFF6FF).copy(alpha = 0.72f),
+            color = Color(0xFFF2F0FB).copy(alpha = 0.72f),
             radius = size.minDimension * 0.54f,
             center = center,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.0f),
@@ -166,11 +166,11 @@ private fun SplashBrandMark() {
             modifier = Modifier
                 .size(142.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFDBEAFE).copy(alpha = 0.50f)),
+                .background(Color(0xFFE7E5F6).copy(alpha = 0.50f)),
         )
         Surface(
             shape = CircleShape,
-            color = Color(0xFF2D31E8),
+            color = Color(0xFF2A1F86),
             shadowElevation = 12.dp,
             border = BorderStroke(2.dp, Color.White),
             modifier = Modifier.size(130.dp),
@@ -191,8 +191,8 @@ private fun SplashBrandMark() {
 private fun OfficialEditionPill() {
     Surface(
         shape = RoundedCornerShape(50),
-        color = Color(0xFFF8FBFF),
-        border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
+        color = Color(0xFFF7F6FC),
+        border = BorderStroke(1.dp, Color(0xFFD7D2EF)),
         shadowElevation = 1.dp,
     ) {
         Row(
@@ -204,11 +204,11 @@ private fun OfficialEditionPill() {
                 modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF2563EB)),
+                    .background(Color(0xFF3D2EAE)),
             )
             Text(
                 text = stringResource(R.string.ui_splash_edition),
-                color = Color(0xFF1D4ED8),
+                color = Color(0xFF3D2EAE),
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -222,7 +222,7 @@ private fun SplashTitle() {
     Text(
         text = buildAnnotatedString {
             append("Voter List ")
-            withStyle(SpanStyle(color = Color(0xFF1D4ED8))) {
+            withStyle(SpanStyle(color = Color(0xFF3D2EAE))) {
                 append("2026")
             }
         },
@@ -252,7 +252,7 @@ private fun LoadingSection(progress: Float) {
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
-                    .background(Color(0xFF2563EB)),
+                    .background(Color(0xFF3D2EAE)),
             )
         }
         Text(
@@ -274,7 +274,7 @@ private fun VerificationFooter(versionName: String) {
         Icon(
             imageVector = Icons.Outlined.VerifiedUser,
             contentDescription = null,
-            tint = Color(0xFF2563EB),
+            tint = Color(0xFF3D2EAE),
             modifier = Modifier.size(14.dp),
         )
         Text(

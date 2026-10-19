@@ -6,6 +6,8 @@ import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +27,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
@@ -37,10 +41,11 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -60,11 +65,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -80,7 +85,6 @@ fun DownloadsScreen(
     onDownloadList: () -> Unit,
     onOpenPdf: (uri: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
-    bottomBannerHeight: Dp = 0.dp,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -108,11 +112,19 @@ fun DownloadsScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { AppToolbar(title = stringResource(R.string.ui_downloads_title), onBack = onBack) },
+        topBar = {
+            AppToolbar(title = stringResource(R.string.ui_downloads_title), onBack = onBack) {
+                TextButton(onClick = onDownloadList, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.ui_new_list))
+                }
+            }
+        },
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.padding(bottom = bottomBannerHeight + 12.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
             )
         },
     ) { padding ->
@@ -127,7 +139,6 @@ fun DownloadsScreen(
             onRetry = { onDownloadList() },
             onDownloadList = onDownloadList,
             onCancel = viewModel::cancel,
-            bottomContentPadding = bottomBannerHeight,
             modifier = Modifier.padding(padding),
         )
     }
@@ -165,12 +176,12 @@ internal fun DownloadsContent(
     onRetry: (String) -> Unit,
     onDownloadList: () -> Unit,
     onCancel: (String) -> Unit,
-    bottomContentPadding: Dp,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -180,8 +191,13 @@ internal fun DownloadsContent(
                 onValueChange = onSearch,
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 placeholder = { Text(stringResource(R.string.ui_search_pdfs)) },
+                trailingIcon = if (state.query.isNotBlank()) {{
+                    IconButton(onClick = { onSearch("") }) {
+                        Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.ui_clear_search))
+                    }
+                }} else null,
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))
@@ -205,8 +221,8 @@ internal fun DownloadsContent(
                 }
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = bottomContentPadding + 18.dp),
-                    verticalArrangement = Arrangement.Top,
+                    contentPadding = PaddingValues(bottom = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     item {
                         Text(
@@ -279,14 +295,15 @@ private fun DownloadCard(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = download.status == DownloadStatusEntity.Completed, onClick = onOpen),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.clickable(enabled = download.status == DownloadStatusEntity.Completed, onClick = onOpen).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val sourceDescription = download.sourceDescription
@@ -294,9 +311,7 @@ private fun DownloadCard(
                     Icons.Outlined.PictureAsPdf,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .padding(top = 2.dp)
-                        .size(22.dp),
+                    modifier = Modifier.size(28.dp),
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -311,7 +326,7 @@ private fun DownloadCard(
                             text = sourceDescription,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -351,12 +366,12 @@ private fun DownloadCard(
             }
             if (download.status == DownloadStatusEntity.Completed) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = onOpen, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    Button(onClick = onOpen, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(12.dp)) {
                         Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.ui_open_pdf))
                     }
-                    TextButton(onClick = onShare, modifier = Modifier.heightIn(min = 48.dp)) {
+                    TextButton(onClick = onShare, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                         Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.ui_share))
@@ -373,7 +388,6 @@ private fun DownloadCard(
                 )
             }
         }
-        HorizontalDivider()
     }
 }
 

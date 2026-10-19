@@ -17,6 +17,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,14 +31,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -53,14 +53,12 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -75,9 +73,9 @@ import androidx.pdf.viewer.fragment.PdfViewerFragment
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
 import com.samoondigital.yojnaplus.R
-import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
-import com.samoondigital.yojnaplus.core.ui.theme.IndigoDark
-import com.samoondigital.yojnaplus.core.ui.theme.Indigo
+import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -383,37 +381,30 @@ internal fun PdfViewerTopBar(
     onShare: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(color = Color.Transparent, tonalElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
-        Box(
-            Modifier.fillMaxWidth().background(
-                Brush.linearGradient(listOf(IndigoDark, Indigo)),
-            ),
-        ) {
-            Column(Modifier.stableStatusBarsPadding().padding(horizontal = 8.dp, vertical = 5.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.ui_back), tint = Color.White)
-                    }
-                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color.White)
-                        Text(pageLabel, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    if (onSearch != null) {
-                        TextButton(onClick = onSearch, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Outlined.Search, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.ui_search_in_pdf), color = Color.White)
-                        }
-                    }
-                    TextButton(onClick = onShare) {
-                        Icon(Icons.Outlined.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.ui_share), color = Color.White)
-                    }
-                }
-            }
+    AppToolbar(title = title, subtitle = pageLabel, onBack = onBack, modifier = modifier) {
+        if (onSearch != null) {
+            PdfToolbarAction(label = stringResource(R.string.ui_find),
+                description = stringResource(R.string.ui_search_in_pdf), icon = Icons.Outlined.Search, onClick = onSearch)
+        }
+        PdfToolbarAction(label = stringResource(R.string.ui_share_short),
+            description = stringResource(R.string.ui_share), icon = Icons.Outlined.Share, onClick = onShare)
+    }
+}
+
+@Composable
+private fun PdfToolbarAction(
+    label: String,
+    description: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    TextButton(onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+        modifier = Modifier.semantics { contentDescription = description }) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

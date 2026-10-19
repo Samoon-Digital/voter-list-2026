@@ -6,16 +6,17 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.samoondigital.yojnaplus.core.ui.theme.VoterList2026Theme
 import com.samoondigital.yojnaplus.feature.downloads.DownloadsContent
@@ -28,6 +29,13 @@ import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.pdf.PartsStep
+import com.samoondigital.yojnaplus.feature.pdf.StateStep
+import com.samoondigital.yojnaplus.feature.pdf.SelectionProgress
+import com.samoondigital.yojnaplus.feature.pdf.CaptchaStep
+import com.samoondigital.yojnaplus.viewmodel.ElectoralRollStep
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performScrollTo
 import com.samoondigital.yojnaplus.model.PartDto
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollUiState
 import java.io.File
@@ -85,7 +93,9 @@ class UiCtaDeviceTest {
             }
         }
         compose.onNodeWithText(context.getString(R.string.ui_proceed, 0)).assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithContentDescription(context.getString(R.string.ui_show_selection)).performClick()
         compose.onNodeWithText("Uttar Pradesh / 2026 / Rampur / Rampur").assertIsDisplayed()
+        compose.onNodeWithContentDescription(context.getString(R.string.ui_hide_selection)).performClick()
         compose.onNodeWithText("प्राथमिक विद्यालय, रामपुर").performClick()
         compose.onNodeWithText(context.getString(R.string.ui_proceed, 1)).assertIsDisplayed().assertIsEnabled().performClick()
         compose.runOnIdle { assertEquals(1, proceedClicks) }
@@ -110,7 +120,7 @@ class UiCtaDeviceTest {
                     onOpen = { assertEquals("test-pdf", it); openClicks++ },
                     onShare = { assertEquals("test-pdf", it); shareClicks++ },
                     onRename = {}, onDelete = {}, onRetry = {}, onCancel = {},
-                    onDownloadList = { downloadClicks++ }, bottomContentPadding = 100.dp,
+                    onDownloadList = { downloadClicks++ },
                 )
             }
         }
@@ -142,13 +152,57 @@ class UiCtaDeviceTest {
                 }
             }
         }
-        compose.onNodeWithText(context.getString(R.string.ui_search_in_pdf)).assertIsDisplayed().performClick()
-        compose.onNodeWithText(context.getString(R.string.ui_share)).assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.ui_search_in_pdf)).assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.ui_share)).assertIsDisplayed().performClick()
         compose.runOnIdle {
             assertEquals(1, searchClicks)
             assertEquals(1, shareClicks)
         }
         saveScreenshot("pdf-toolbar-large-font")
+    }
+
+    @Test
+    fun stateSearchSupportsSpacingAndClearInDarkTheme() {
+        var chosen = ""
+        compose.setContent {
+            VoterList2026Theme(darkTheme = true) {
+                Column {
+                    SelectionProgress(ElectoralRollStep.State)
+                    StateStep(ElectoralRollUiState(states = listOf(
+                        StateDto("S24", "Uttar Pradesh"), StateDto("S04", "Bihar"),
+                    ))) { chosen = it.stateName }
+                }
+            }
+        }
+        compose.onNode(hasSetTextAction()).performTextInput("uttar   pradesh")
+        compose.onNodeWithText("Bihar").assertDoesNotExist()
+        compose.onNodeWithText("Uttar Pradesh").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals("Uttar Pradesh", chosen) }
+        compose.onNodeWithContentDescription(context.getString(R.string.ui_clear_search)).performClick()
+        compose.onNodeWithText("Bihar").assertIsDisplayed()
+        saveScreenshot("state-search-dark")
+    }
+
+    @Test
+    fun captchaKeepsDownloadDisabledWhileCodeIsUnavailableAndRefreshIsReachable() {
+        var refreshClicks = 0
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.5f)) {
+                VoterList2026Theme {
+                    CaptchaStep(
+                        uiState = ElectoralRollUiState(selectedPartNumbers = setOf(12)),
+                        onCaptchaChanged = {}, onRefreshCaptcha = { refreshClicks++ },
+                        onStartDownload = {}, onRetry = {}, onCancel = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText(context.getString(R.string.ui_new_code)).assertIsDisplayed().performClick()
+        compose.onNodeWithText(context.getString(R.string.ui_download_count, 1))
+            .performScrollTo().assertIsDisplayed().assertIsNotEnabled()
+        compose.runOnIdle { assertEquals(1, refreshClicks) }
+        saveScreenshot("captcha-large-font")
     }
 
     private fun saveScreenshot(name: String) {

@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +20,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,7 +42,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -48,6 +50,9 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HourglassEmpty
@@ -60,7 +65,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -82,28 +86,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.R
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
-import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
-import com.samoondigital.yojnaplus.core.ui.theme.IndigoDark
-import com.samoondigital.yojnaplus.core.ui.theme.Indigo
+import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
 import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.PartDto
@@ -116,8 +117,6 @@ import com.samoondigital.yojnaplus.viewmodel.ElectoralRollUiState
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollViewModel
 
 
-private val WizardMuted = Color(0xFF686A8D)
-private val WizardStroke = Color(0xFFE3E2F5)
 private const val GeneralDistrictPlacement = "general-voter-list-district-to-assembly"
 private const val GeneralLanguagePlacement = "general-voter-list-language-to-captcha"
 
@@ -127,7 +126,6 @@ fun PdfScreen(
     onBack: () -> Unit,
     onDownloadsComplete: () -> Unit,
     modifier: Modifier = Modifier,
-    bottomBannerHeight: Dp = 0.dp,
     viewModel: ElectoralRollViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
@@ -159,7 +157,7 @@ fun PdfScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            WizardHeroTopBar(
+            WizardTopBar(
                 uiState = uiState,
                 onBack = ::handleBack,
                 onOpenDownloads = onDownloadsComplete,
@@ -170,7 +168,6 @@ fun PdfScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(bottom = bottomBannerHeight)
                 .background(MaterialTheme.colorScheme.background),
         ) {
             AnimatedContent(
@@ -235,83 +232,65 @@ fun PdfScreen(
 }
 
 @Composable
-private fun WizardHeroTopBar(
+private fun WizardTopBar(
     uiState: ElectoralRollUiState,
     onBack: () -> Unit,
     onOpenDownloads: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 96.dp)
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(IndigoDark, Indigo),
-                    start = Offset.Zero,
-                    end = Offset(950f, 360f),
-                ),
-            ),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .stableStatusBarsPadding()
-                .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 16.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Surface(
-                onClick = onBack,
-                shape = CircleShape,
-                color = Color.White,
-                shadowElevation = 8.dp,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.ui_back),
-                        tint = IndigoDark,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+    Column {
+        AppToolbar(title = stringResource(R.string.ui_wizard_title), onBack = onBack) {
+            IconButton(onClick = onOpenDownloads) {
+                Icon(Icons.Outlined.FileDownload, contentDescription = stringResource(R.string.ui_saved_pdfs))
             }
+        }
+        SelectionProgress(uiState.step)
+    }
+}
 
-            Spacer(Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(top = 2.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.ui_wizard_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Text(
-                    text = stringResource(R.string.ui_step, uiState.stepNumber),
-                    maxLines = 1,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.76f),
-                    modifier = Modifier.padding(top = 1.dp),
-                )
-            }
-
-            Surface(
-                onClick = onOpenDownloads,
-                shape = CircleShape,
-                color = Color.White,
-                shadowElevation = 8.dp,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.FileDownload,
-                        contentDescription = stringResource(R.string.ui_saved_pdfs),
-                        tint = IndigoDark,
-                        modifier = Modifier.size(22.dp),
-                    )
+@Composable
+internal fun SelectionProgress(step: ElectoralRollStep) {
+    val activeGroup = when (step) {
+        ElectoralRollStep.State, ElectoralRollStep.Year, ElectoralRollStep.RollType -> 0
+        ElectoralRollStep.District, ElectoralRollStep.Assembly, ElectoralRollStep.Parts -> 1
+        ElectoralRollStep.Captcha, ElectoralRollStep.Success -> 2
+    }
+    val groupProgress = when (step) {
+        ElectoralRollStep.State, ElectoralRollStep.District -> 0f
+        ElectoralRollStep.Year, ElectoralRollStep.Assembly -> 1f / 3f
+        ElectoralRollStep.RollType, ElectoralRollStep.Parts -> 2f / 3f
+        ElectoralRollStep.Captcha -> 0f
+        ElectoralRollStep.Success -> 1f
+    }
+    val labels = listOf(R.string.ui_group_list, R.string.ui_group_area, R.string.ui_group_pdf)
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            labels.forEachIndexed { index, label ->
+                val reached = index <= activeGroup
+                val status = stringResource(when {
+                    index < activeGroup || step == ElectoralRollStep.Success -> R.string.ui_group_complete
+                    index == activeGroup -> R.string.ui_group_current
+                    else -> R.string.ui_group_upcoming
+                })
+                Column(Modifier.weight(1f).semantics(mergeDescendants = true) { stateDescription = status },
+                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Surface(shape = CircleShape,
+                            color = if (reached) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (reached) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant) {
+                            Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                                if (index < activeGroup || step == ElectoralRollStep.Success) Icon(Icons.Outlined.Check, contentDescription = stringResource(R.string.ui_group_complete), modifier = Modifier.size(14.dp))
+                                else Text((index + 1).toString(), style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        Text(stringResource(label), style = MaterialTheme.typography.labelMedium,
+                            color = if (index == activeGroup) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f))
+                    }
+                    val progress = if (index < activeGroup) 1f else if (index == activeGroup) groupProgress else 0f
+                    Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(MaterialTheme.colorScheme.outlineVariant)) {
+                        Box(Modifier.fillMaxWidth(progress).height(3.dp).background(MaterialTheme.colorScheme.primary))
+                    }
                 }
             }
         }
@@ -319,7 +298,7 @@ private fun WizardHeroTopBar(
 }
 
 @Composable
-private fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> Unit) {
+internal fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> Unit) {
     SearchableChoiceScreen(
         title = stringResource(R.string.ui_state_title),
         subtitle = stringResource(R.string.ui_state_help),
@@ -435,7 +414,7 @@ internal fun PartsStep(
             it.partName.matchesSearchQuery(term) || it.partNumber.toString().matchesSearchQuery(term)
         }
     }
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
         Box(Modifier.weight(1f)) {
             ChoiceListScaffold(
                 title = stringResource(R.string.ui_parts_title),
@@ -461,7 +440,6 @@ internal fun PartsStep(
                         colors = searchFieldColors(),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     )
-                    Text(stringResource(R.string.ui_selected_count, uiState.selectedPartNumbers.size), style = MaterialTheme.typography.labelLarge)
                     if (filtered.isEmpty() && !uiState.isLoading && uiState.parts.isNotEmpty()) {
                         Text(stringResource(R.string.ui_no_results), style = MaterialTheme.typography.bodyMedium)
                     }
@@ -472,11 +450,10 @@ internal fun PartsStep(
                 }
             }
         }
-        Surface(shadowElevation = 4.dp) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                if (uiState.selectedPartNumbers.isEmpty()) {
-                    Text(stringResource(R.string.ui_select_first), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp))
-                }
+                Text(stringResource(if (uiState.selectedPartNumbers.isEmpty()) R.string.ui_select_first else R.string.ui_selected_count, uiState.selectedPartNumbers.size),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
                 Button(
                     onClick = onProceed,
                     enabled = uiState.selectedPartNumbers.isNotEmpty() && !uiState.isLoading,
@@ -493,8 +470,9 @@ internal fun PartsStep(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CaptchaStep(
+internal fun CaptchaStep(
     uiState: ElectoralRollUiState,
     onCaptchaChanged: (String) -> Unit,
     onRefreshCaptcha: () -> Unit,
@@ -505,15 +483,16 @@ private fun CaptchaStep(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .imePadding(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { SummaryCard(uiState.selectedSummary()) }
         item {
-            ElevatedCard(shape = RoundedCornerShape(8.dp)) {
+            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text(
@@ -521,9 +500,9 @@ private fun CaptchaStep(
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         CaptchaImage(uiState.captcha?.captcha)
                         OutlinedButton(
@@ -658,7 +637,7 @@ private fun SuccessStep(uiState: ElectoralRollUiState, onOpenDownloads: () -> Un
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                HorizontalDivider(color = WizardStroke)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
@@ -757,7 +736,7 @@ private fun <T> SearchableChoiceScreen(
                 )
             }
         } else null,
-    ) { listState ->
+    ) { _ ->
         if (filtered.isEmpty() && !loading && items.isNotEmpty()) {
             item { Text(stringResource(R.string.ui_no_results), modifier = Modifier.padding(vertical = 16.dp)) }
         }
@@ -788,76 +767,34 @@ private fun ChoiceListScaffold(
     content: androidx.compose.foundation.lazy.LazyListScope.(LazyListState) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.Top,
-    ) {
-        item(key = "choice-header-$title") {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                StepHeading(
-                    icon = headerIcon,
-                    title = title,
-                    subtitle = subtitle,
-                )
-                SummaryCard(selectedSummary, onChangeSelection)
-                if (loading) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                }
-                message?.takeUnless { loading }?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-                trailingHeader?.invoke(this)
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            StepHeading(headerIcon, title, subtitle)
+            SummaryCard(selectedSummary, onChangeSelection)
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            message?.takeUnless { loading }?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
             }
+            trailingHeader?.invoke(this)
         }
-        content(listState)
-        item(key = "choice-bottom-space-$title") { Spacer(Modifier.height(88.dp)) }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) { content(listState) }
     }
 }
+
 @Composable
 private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(50.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
         }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -875,15 +812,10 @@ private fun String.normalizedForSearch(): String = lowercase()
     .trim()
 @Composable
 private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = WizardStroke,
-    unfocusedBorderColor = WizardStroke,
-    focusedLeadingIconColor = WizardMuted,
-    unfocusedLeadingIconColor = WizardMuted,
-    focusedPlaceholderColor = WizardMuted,
-    unfocusedPlaceholderColor = WizardMuted,
-    cursorColor = Indigo,
-    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+    focusedContainerColor = MaterialTheme.colorScheme.surface,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
 )
 
 @Composable
@@ -894,78 +826,41 @@ private fun ChoiceCard(
     leading: (@Composable () -> Unit)? = null,
     icon: ImageVector = Icons.Outlined.AccountBalance,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 54.dp)
-                .padding(horizontal = 2.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (leading != null) {
-                leading()
-            } else {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (leading != null) leading() else Icon(icon, contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                 subtitle?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Icon(
-                Icons.AutoMirrored.Outlined.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
+            Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         }
-        HorizontalDivider(color = WizardStroke)
     }
 }
 
 @Composable
 private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-            .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() }),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Checkbox(checked = selected, onCheckedChange = null)
-            Column(Modifier.weight(1f)) {
+    Surface(shape = RoundedCornerShape(16.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(if (selected) 2.dp else 1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.fillMaxWidth().toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
+            .heightIn(min = 80.dp).padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(part.partName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.ui_part_number, part.partNumber), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.ui_part_number, part.partNumber), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            Checkbox(checked = selected, onCheckedChange = null)
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -1003,7 +898,7 @@ private fun DownloadPanel(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    ElevatedCard(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1017,13 +912,13 @@ private fun DownloadPanel(
                 progress = { uiState.downloadProgress / 100f },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = stringResource(R.string.ui_progress, uiState.downloadProgress, uiState.completedCount, uiState.downloadItems.size),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Text(
+                if (uiState.failedCount > 0) Text(
                     text = stringResource(R.string.ui_failed_count, uiState.failedCount),
                     style = MaterialTheme.typography.labelLarge,
                     color = if (uiState.failedCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1088,7 +983,7 @@ private fun DownloadItemRow(item: ElectoralRollDownloadItem) {
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Part ${item.partNumber}",
+                text = stringResource(R.string.ui_part_number, item.partNumber),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -1118,18 +1013,28 @@ private fun DownloadItemRow(item: ElectoralRollDownloadItem) {
 @Composable
 private fun SummaryCard(summary: String?, onChange: (() -> Unit)? = null) {
     if (summary.isNullOrBlank()) return
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.ui_selected_details), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                if (onChange != null) TextButton(onClick = onChange) { Text(stringResource(R.string.ui_change)) }
+    var expanded by rememberSaveable(summary) { mutableStateOf(false) }
+    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(start = 14.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.ui_selected_details), style = MaterialTheme.typography.labelMedium)
+                    if (!expanded) Text(summary.substringAfterLast(" / "), style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = stringResource(if (expanded) R.string.ui_hide_selection else R.string.ui_show_selection))
+                }
             }
-            Text(summary, style = MaterialTheme.typography.bodyMedium)
+            AnimatedVisibility(expanded) {
+                Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)) {
+                    Text(summary, style = MaterialTheme.typography.bodyMedium)
+                    if (onChange != null) TextButton(onClick = onChange) { Text(stringResource(R.string.ui_change)) }
+                }
+            }
         }
     }
 }
@@ -1147,13 +1052,14 @@ private fun ElectoralRollUiState.selectedSummary(): String? {
     ).takeIf { it.isNotEmpty() }?.joinToString(" / ")
 }
 
+@Composable
 private fun DownloadStatus.label(error: String?): String =
     when (this) {
-        DownloadStatus.Waiting -> "Waiting in queue"
-        DownloadStatus.Downloading -> "Downloading..."
-        DownloadStatus.Completed -> "Completed"
-        DownloadStatus.Failed -> error ?: "Failed"
-        DownloadStatus.Cancelled -> "Cancelled"
+        DownloadStatus.Waiting -> stringResource(R.string.ui_status_waiting)
+        DownloadStatus.Downloading -> stringResource(R.string.ui_downloading)
+        DownloadStatus.Completed -> stringResource(R.string.ui_download_complete)
+        DownloadStatus.Failed -> error ?: stringResource(R.string.ui_status_failed)
+        DownloadStatus.Cancelled -> stringResource(R.string.ui_status_cancelled)
     }
 
 private fun DistrictDto.primaryDistrictName(): String =

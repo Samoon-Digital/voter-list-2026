@@ -4,14 +4,12 @@
     <string name="ui_saved_pdfs">मेरी डाउनलोड की हुई PDF</string>
     <string name="ui_home_help">अपना राज्य और मतदान केंद्र चुनें। PDF डाउनलोड करें और उसमें खोजें।</string>
     <string name="ui_how_title">वोटर लिस्ट कैसे निकालें?</string>
-    <string name="ui_how_steps">1. राज्य, साल और सूची चुनें\n2. जिला, विधानसभा और मतदान केंद्र चुनें\n3. तस्वीर का कोड भरें और PDF डाउनलोड करें</string>
     <string name="ui_saved_help">डाउनलोड की हुई PDF खोलें या शेयर करें</string>
     <string name="ui_disclaimer">यह स्वतंत्र सूचना ऐप है। चुनाव आयोग या सरकार से संबद्ध या समर्थित नहीं है।</string>
     <string name="ui_privacy">Privacy Policy</string>
     <string name="ui_follow">Follow Us</string>
     <string name="ui_contact">Contact</string>
     <string name="ui_wizard_title">वोटर लिस्ट डाउनलोड</string>
-    <string name="ui_step">चरण %1$d / 7</string>
     <string name="ui_back">वापस</string>
     <string name="ui_state_title">अपना राज्य चुनें</string>
     <string name="ui_state_help">जिस राज्य की वोटर लिस्ट चाहिए, उसे चुनें।</string>
@@ -34,7 +32,7 @@
     <string name="ui_search_parts">गाँव या भाग संख्या खोजें</string>
     <string name="ui_selected_count">%1$d / 10 मतदान केंद्र चुने</string>
     <string name="ui_part_number">भाग / Part %1$d</string>
-    <string name="ui_proceed">आगे बढ़ें · %1$d चुने</string>
+    <string name="ui_proceed">%1$d PDF के लिए आगे बढ़ें</string>
     <string name="ui_select_first">पहले एक मतदान केंद्र चुनें</string>
     <string name="ui_captcha_title">तस्वीर में लिखा कोड भरें</string>
     <string name="ui_captcha_label">यहाँ कोड लिखें</string>
@@ -81,4 +79,20 @@
     <string name="ui_splash_footer">स्वतंत्र सूचना ऐप</string>
     <string name="ui_delete_title">PDF हटाएँ?</string>
     <string name="ui_delete_message">%1$s फोन से भी हट जाएगी।</string>
+    <string name="ui_home_title">अपनी वोटर लिस्ट पाएँ</string>
+    <string name="ui_guide_list">राज्य, साल और सूची का प्रकार चुनें</string>
+    <string name="ui_guide_area">जिला, विधानसभा और मतदान केंद्र चुनें</string>
+    <string name="ui_guide_pdf">तस्वीर का कोड भरें और PDF पाएँ</string>
+    <string name="ui_group_list">सूची चुनें</string>
+    <string name="ui_group_area">क्षेत्र चुनें</string>
+    <string name="ui_group_pdf">PDF लें</string>
+    <string name="ui_group_complete">पूरा हुआ</string>
+    <string name="ui_show_selection">पूरा चयन देखें</string>
+    <string name="ui_hide_selection">चयन छोटा करें</string>
+    <string name="ui_download_complete">डाउनलोड पूरी हुई</string>
+    <string name="ui_new_list">नई सूची</string>
+    <string name="ui_find">खोजें</string>
+    <string name="ui_share_short">शेयर</string>
+    <string name="ui_group_current">अभी यह चरण चुनें</string>
+    <string name="ui_group_upcoming">अगला चरण</string>
 </resources>
