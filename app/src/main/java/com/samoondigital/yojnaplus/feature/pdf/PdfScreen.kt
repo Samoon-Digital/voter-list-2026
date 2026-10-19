@@ -14,12 +14,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,33 +35,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -91,12 +83,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -157,7 +149,7 @@ fun PdfScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            WizardTopBar(
+            SelectionToolbar(
                 uiState = uiState,
                 onBack = ::handleBack,
                 onOpenDownloads = onDownloadsComplete,
@@ -183,7 +175,7 @@ fun PdfScreen(
                     ElectoralRollStep.State -> StateStep(uiState, viewModel::selectState)
                     ElectoralRollStep.Year -> YearStep(uiState, viewModel::selectYear)
                     ElectoralRollStep.RollType -> RollTypeStep(uiState, viewModel::selectRollType)
-                    ElectoralRollStep.District -> DistrictStep(uiState, onChangeSelection = ::handleBack) { district ->
+                    ElectoralRollStep.District -> DistrictStep(uiState) { district ->
                         InterstitialAdManager.showIfAvailable(
                             activity = activity,
                             placement = GeneralDistrictPlacement,
@@ -191,12 +183,11 @@ fun PdfScreen(
                             viewModel.selectDistrict(district)
                         }
                     }
-                    ElectoralRollStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly, ::handleBack)
+                    ElectoralRollStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
                     ElectoralRollStep.Parts -> PartsStep(
                         uiState = uiState,
                         onPartToggled = viewModel::togglePart,
                         onProceed = viewModel::showLanguageSheet,
-                        onChangeSelection = ::handleBack,
                     )
                     ElectoralRollStep.Captcha -> CaptchaStep(
                         uiState = uiState,
@@ -231,120 +222,125 @@ fun PdfScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WizardTopBar(
+internal fun SelectionToolbar(
     uiState: ElectoralRollUiState,
     onBack: () -> Unit,
     onOpenDownloads: () -> Unit,
 ) {
-    Column {
-        AppToolbar(title = stringResource(R.string.ui_wizard_title), onBack = onBack) {
-            IconButton(onClick = onOpenDownloads) {
-                Icon(Icons.Outlined.FileDownload, contentDescription = stringResource(R.string.ui_saved_pdfs))
+    var menuOpen by remember { mutableStateOf(false) }
+    var panel by rememberSaveable(uiState.step) { mutableStateOf<String?>(null) }
+    val summary = uiState.selectedSummary()
+    AppToolbar(title = selectionTitle(uiState.step), onBack = onBack) {
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.ui_options))
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                if (summary != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ui_show_selection)) },
+                        onClick = { menuOpen = false; panel = "selection" },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.ui_help)) },
+                    onClick = { menuOpen = false; panel = "help" },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.ui_downloads_title)) },
+                    onClick = { menuOpen = false; onOpenDownloads() },
+                )
             }
         }
-        SelectionProgress(uiState.step)
+    }
+    if (panel != null) {
+        ModalBottomSheet(
+            onDismissRequest = { panel = null },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            Column(
+                Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                    .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    stringResource(if (panel == "help") R.string.ui_help else R.string.ui_selected_details),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    if (panel == "help") selectionHelp(uiState) else summary.orEmpty(),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                if (panel == "selection") {
+                    if (uiState.selectedPartNumbers.isNotEmpty()) {
+                        Text(stringResource(R.string.ui_selected_count, uiState.selectedPartNumbers.size))
+                    }
+                    uiState.selectedLanguageCode?.let { code ->
+                        Text(stringResource(R.string.ui_chosen_language, uiState.languages[code] ?: code))
+                    }
+                    if (uiState.step != ElectoralRollStep.State && uiState.step != ElectoralRollStep.Success && !uiState.isDownloading) {
+                        TextButton(onClick = { panel = null; onBack() }) {
+                            Text(stringResource(R.string.ui_change_previous))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
     }
 }
 
 @Composable
-internal fun SelectionProgress(step: ElectoralRollStep) {
-    val activeGroup = when (step) {
-        ElectoralRollStep.State, ElectoralRollStep.Year, ElectoralRollStep.RollType -> 0
-        ElectoralRollStep.District, ElectoralRollStep.Assembly, ElectoralRollStep.Parts -> 1
-        ElectoralRollStep.Captcha, ElectoralRollStep.Success -> 2
-    }
-    val groupProgress = when (step) {
-        ElectoralRollStep.State, ElectoralRollStep.District -> 0f
-        ElectoralRollStep.Year, ElectoralRollStep.Assembly -> 1f / 3f
-        ElectoralRollStep.RollType, ElectoralRollStep.Parts -> 2f / 3f
-        ElectoralRollStep.Captcha -> 0f
-        ElectoralRollStep.Success -> 1f
-    }
-    val labels = listOf(R.string.ui_group_list, R.string.ui_group_area, R.string.ui_group_pdf)
-    Surface(color = MaterialTheme.colorScheme.surface) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            labels.forEachIndexed { index, label ->
-                val reached = index <= activeGroup
-                val status = stringResource(when {
-                    index < activeGroup || step == ElectoralRollStep.Success -> R.string.ui_group_complete
-                    index == activeGroup -> R.string.ui_group_current
-                    else -> R.string.ui_group_upcoming
-                })
-                Column(Modifier.weight(1f).semantics(mergeDescendants = true) { stateDescription = status },
-                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Surface(shape = CircleShape,
-                            color = if (reached) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (reached) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant) {
-                            Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
-                                if (index < activeGroup || step == ElectoralRollStep.Success) Icon(Icons.Outlined.Check, contentDescription = stringResource(R.string.ui_group_complete), modifier = Modifier.size(14.dp))
-                                else Text((index + 1).toString(), style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                        Text(stringResource(label), style = MaterialTheme.typography.labelMedium,
-                            color = if (index == activeGroup) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f))
-                    }
-                    val progress = if (index < activeGroup) 1f else if (index == activeGroup) groupProgress else 0f
-                    Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(MaterialTheme.colorScheme.outlineVariant)) {
-                        Box(Modifier.fillMaxWidth(progress).height(3.dp).background(MaterialTheme.colorScheme.primary))
-                    }
-                }
-            }
-        }
-    }
+private fun selectionTitle(step: ElectoralRollStep): String = stringResource(when (step) {
+    ElectoralRollStep.State -> R.string.ui_state_title
+    ElectoralRollStep.Year -> R.string.ui_year_title
+    ElectoralRollStep.RollType -> R.string.ui_roll_title
+    ElectoralRollStep.District -> R.string.ui_district_title
+    ElectoralRollStep.Assembly -> R.string.ui_assembly_title
+    ElectoralRollStep.Parts -> R.string.ui_parts_title
+    ElectoralRollStep.Captcha -> R.string.ui_wizard_title
+    ElectoralRollStep.Success -> R.string.ui_success_title
+})
+
+@Composable
+private fun selectionHelp(state: ElectoralRollUiState): String = when (state.step) {
+    ElectoralRollStep.State -> stringResource(R.string.ui_state_help)
+    ElectoralRollStep.Year -> stringResource(R.string.ui_year_help, state.selectedState?.stateName.orEmpty())
+    ElectoralRollStep.RollType -> stringResource(R.string.ui_roll_help, state.selectedYear ?: 2026)
+    ElectoralRollStep.District -> stringResource(R.string.ui_district_help)
+    ElectoralRollStep.Assembly -> stringResource(R.string.ui_assembly_help)
+    ElectoralRollStep.Parts -> stringResource(R.string.ui_parts_help)
+    ElectoralRollStep.Captcha -> stringResource(R.string.ui_captcha_help)
+    ElectoralRollStep.Success -> stringResource(R.string.ui_success_count, state.completedCount, state.failedCount)
 }
 
 @Composable
 internal fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> Unit) {
     SearchableChoiceScreen(
-        title = stringResource(R.string.ui_state_title),
-        subtitle = stringResource(R.string.ui_state_help),
         queryPlaceholder = stringResource(R.string.ui_search_state),
         items = uiState.states,
         itemTitle = StateDto::stateName,
         itemSubtitle = { null },
-        headerIcon = Icons.Outlined.Map,
-        itemIcon = Icons.Outlined.Map,
         loading = uiState.isLoading && uiState.states.isEmpty(),
         message = uiState.message,
-        showSearch = true,
         onSelected = onSelected,
     )
 }
 
 @Composable
 private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
-    ChoiceListScaffold(
-        title = stringResource(R.string.ui_year_title),
-        subtitle = stringResource(R.string.ui_year_help, uiState.selectedState?.stateName.orEmpty()),
-        headerIcon = Icons.Outlined.CalendarMonth,
-        loading = uiState.isLoading,
-        message = uiState.message,
-    ) { _ ->
+    ChoiceListScaffold(loading = uiState.isLoading, message = uiState.message) {
         items(uiState.years, key = { it }) { year ->
-            ChoiceCard(
-                title = year.toString(),
-                subtitle = null,
-                icon = Icons.Outlined.CalendarMonth,
-                onClick = { onSelected(year) },
-            )
+            ChoiceCard(title = year.toString(), subtitle = null, onClick = { onSelected(year) })
         }
-
     }
 }
 
 @Composable
 private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto) -> Unit) {
-    ChoiceListScaffold(
-        title = stringResource(R.string.ui_roll_title),
-        subtitle = stringResource(R.string.ui_roll_help, uiState.selectedYear ?: 2026),
-        headerIcon = Icons.AutoMirrored.Outlined.FactCheck,
-        loading = uiState.isLoading,
-        message = uiState.message,
-    ) { _ ->
+    ChoiceListScaffold(loading = uiState.isLoading, message = uiState.message) {
         items(uiState.rollTypes, key = { it.id }) { rollType ->
             ChoiceCard(
                 title = rollType.displayName,
@@ -354,48 +350,34 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
                     rollType.displayName.contains("supplement", ignoreCase = true) -> stringResource(R.string.ui_supplement_help)
                     else -> null
                 },
-                icon = Icons.AutoMirrored.Outlined.FactCheck,
                 onClick = { onSelected(rollType) },
             )
         }
-
     }
 }
 
 @Composable
-private fun DistrictStep(uiState: ElectoralRollUiState, onChangeSelection: () -> Unit, onSelected: (DistrictDto) -> Unit) {
+private fun DistrictStep(uiState: ElectoralRollUiState, onSelected: (DistrictDto) -> Unit) {
     SearchableChoiceScreen(
-        title = stringResource(R.string.ui_district_title),
-        subtitle = stringResource(R.string.ui_district_help),
         queryPlaceholder = stringResource(R.string.ui_search_district),
         items = uiState.districts,
         itemTitle = { it.primaryDistrictName() },
         itemSubtitle = { it.hindiSubtitle(it.primaryDistrictName()) },
-        headerIcon = Icons.Outlined.LocationOn,
-        itemIcon = Icons.Outlined.AccountBalance,
         loading = uiState.isLoading && uiState.districts.isEmpty(),
         message = uiState.message,
-        selectedSummary = uiState.selectedSummary(),
-        onChangeSelection = onChangeSelection,
         onSelected = onSelected,
     )
 }
 
 @Composable
-private fun AssemblyStep(uiState: ElectoralRollUiState, onSelected: (AssemblyDto) -> Unit, onChangeSelection: () -> Unit) {
+private fun AssemblyStep(uiState: ElectoralRollUiState, onSelected: (AssemblyDto) -> Unit) {
     SearchableChoiceScreen(
-        title = stringResource(R.string.ui_assembly_title),
-        subtitle = stringResource(R.string.ui_assembly_help),
         queryPlaceholder = stringResource(R.string.ui_search_assembly),
         items = uiState.assemblies,
         itemTitle = { it.asmblyName },
         itemSubtitle = { it.asmblyName.hindiLineExcept(it.asmblyName) },
-        headerIcon = Icons.Outlined.AccountBalance,
-        itemIcon = Icons.Outlined.AccountBalance,
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
         message = uiState.message,
-        selectedSummary = uiState.selectedSummary(),
-        onChangeSelection = onChangeSelection,
         onSelected = onSelected,
     )
 }
@@ -405,9 +387,8 @@ internal fun PartsStep(
     uiState: ElectoralRollUiState,
     onPartToggled: (Int) -> Unit,
     onProceed: () -> Unit,
-    onChangeSelection: () -> Unit,
 ) {
-    var query by remember(uiState.selectedAssembly?.asmblyNo) { mutableStateOf("") }
+    var query by rememberSaveable(uiState.selectedAssembly?.asmblyNo) { mutableStateOf("") }
     val filtered = remember(uiState.parts, query) {
         val term = query.trim()
         if (term.isBlank()) uiState.parts else uiState.parts.filter {
@@ -417,53 +398,44 @@ internal fun PartsStep(
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
         Box(Modifier.weight(1f)) {
             ChoiceListScaffold(
-                title = stringResource(R.string.ui_parts_title),
-                subtitle = stringResource(R.string.ui_parts_help),
-                headerIcon = Icons.Outlined.AccountBalance,
                 loading = uiState.isLoading && uiState.parts.isEmpty(),
                 message = uiState.message,
-                selectedSummary = uiState.selectedSummary(),
-                onChangeSelection = onChangeSelection,
-                trailingHeader = {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                        trailingIcon = if (query.isNotBlank()) {{
-                            IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.ui_clear_search))
-                            }
-                        }} else null,
-                        placeholder = { Text(stringResource(R.string.ui_search_parts)) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = searchFieldColors(),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                    )
-                    if (filtered.isEmpty() && !uiState.isLoading && uiState.parts.isNotEmpty()) {
-                        Text(stringResource(R.string.ui_no_results), style = MaterialTheme.typography.bodyMedium)
-                    }
+                search = {
+                    ChoiceSearchField(query, { query = it }, stringResource(R.string.ui_search_parts))
                 },
-            ) { _ ->
+            ) {
+                if (filtered.isEmpty() && !uiState.isLoading && uiState.parts.isNotEmpty()) {
+                    item { NoResults() }
+                }
                 items(filtered, key = { it.partNumber }) { part ->
-                    PartChoiceCard(part, part.partNumber in uiState.selectedPartNumbers) { onPartToggled(part.partNumber) }
+                    PartChoiceCard(part, part.partNumber in uiState.selectedPartNumbers) {
+                        onPartToggled(part.partNumber)
+                    }
                 }
             }
         }
-        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                Text(stringResource(if (uiState.selectedPartNumbers.isEmpty()) R.string.ui_select_first else R.string.ui_selected_count, uiState.selectedPartNumbers.size),
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+        val actionDescription = stringResource(R.string.ui_proceed, uiState.selectedPartNumbers.size)
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    stringResource(R.string.ui_selected_short, uiState.selectedPartNumbers.size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
                 Button(
                     onClick = onProceed,
                     enabled = uiState.selectedPartNumbers.isNotEmpty() && !uiState.isLoading,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                    contentPadding = PaddingValues(14.dp),
+                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = actionDescription },
                     shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                 ) {
-                    Text(stringResource(R.string.ui_proceed, uiState.selectedPartNumbers.size), style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.width(12.dp))
-                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
+                    Text(stringResource(R.string.ui_continue))
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -488,7 +460,6 @@ internal fun CaptchaStep(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { SummaryCard(uiState.selectedSummary()) }
         item {
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(
@@ -525,6 +496,7 @@ internal fun CaptchaStep(
                         enabled = !uiState.isDownloading,
                         label = { Text(stringResource(R.string.ui_captcha_label)) },
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Button(
@@ -671,7 +643,6 @@ private fun LanguageBottomSheet(
                 ChoiceCard(
                     title = language.value,
                     subtitle = language.key,
-                    leading = { Icon(Icons.Outlined.Language, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     onClick = { onSelected(language.key) },
                 )
             }
@@ -682,120 +653,87 @@ private fun LanguageBottomSheet(
 
 @Composable
 private fun <T> SearchableChoiceScreen(
-    title: String,
-    subtitle: String,
     queryPlaceholder: String,
-    showSearch: Boolean = true,
     items: List<T>,
     itemTitle: (T) -> String,
     itemSubtitle: (T) -> String?,
     loading: Boolean,
     message: String?,
-    selectedSummary: String? = null,
-    onChangeSelection: (() -> Unit)? = null,
-    headerIcon: ImageVector,
-    itemIcon: ImageVector,
     onSelected: (T) -> Unit,
 ) {
-    var query by remember(title) { mutableStateOf("") }
+    var query by rememberSaveable(queryPlaceholder) { mutableStateOf("") }
     val filtered = remember(items, query) {
         val term = query.trim()
         if (term.isBlank()) items else items.filter {
-            itemTitle(it).matchesSearchQuery(term) ||
-                itemSubtitle(it).orEmpty().matchesSearchQuery(term)
+            itemTitle(it).matchesSearchQuery(term) || itemSubtitle(it).orEmpty().matchesSearchQuery(term)
         }
     }
-
     ChoiceListScaffold(
-        title = title,
-        subtitle = subtitle,
-        headerIcon = headerIcon,
         loading = loading,
         message = message,
-        selectedSummary = selectedSummary,
-        onChangeSelection = onChangeSelection,
-        trailingHeader = if (showSearch) {
-            {
-                OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                trailingIcon = if (query.isNotBlank()) {{
-                    IconButton(onClick = { query = "" }) {
-                        Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.ui_clear_search))
-                    }
-                }} else null,
-                placeholder = { Text(queryPlaceholder) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = searchFieldColors(),
-                textStyle = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                )
-            }
-        } else null,
-    ) { _ ->
-        if (filtered.isEmpty() && !loading && items.isNotEmpty()) {
-            item { Text(stringResource(R.string.ui_no_results), modifier = Modifier.padding(vertical = 16.dp)) }
-        }
+        search = { ChoiceSearchField(query, { query = it }, queryPlaceholder) },
+    ) {
+        if (filtered.isEmpty() && !loading && items.isNotEmpty()) item { NoResults() }
         filtered.forEachIndexed { index, item ->
-            val titleKey = itemTitle(item)
-            item(key = "choice-$title-$index-$titleKey") {
-                ChoiceCard(
-                    title = titleKey,
-                    subtitle = itemSubtitle(item),
-                    icon = itemIcon,
-                    onClick = { onSelected(item) },
-                )
+            val title = itemTitle(item)
+            item(key = "choice-$index-$title") {
+                ChoiceCard(title, itemSubtitle(item), onClick = { onSelected(item) })
             }
         }
     }
+}
+
+@Composable
+private fun ChoiceSearchField(query: String, onQueryChanged: (String) -> Unit, placeholder: String) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChanged,
+        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+        trailingIcon = if (query.isNotBlank()) {{
+            IconButton(onClick = { onQueryChanged("") }) {
+                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.ui_clear_search))
+            }
+        }} else null,
+        placeholder = { Text(placeholder) },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = searchFieldColors(),
+        textStyle = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
 private fun ChoiceListScaffold(
-    title: String,
-    subtitle: String,
-    headerIcon: ImageVector,
     loading: Boolean,
     message: String?,
-    selectedSummary: String? = null,
-    onChangeSelection: (() -> Unit)? = null,
-    trailingHeader: (@Composable ColumnScope.() -> Unit)? = null,
-    content: androidx.compose.foundation.lazy.LazyListScope.(LazyListState) -> Unit,
+    search: (@Composable () -> Unit)? = null,
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
-    val listState = rememberLazyListState()
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            StepHeading(headerIcon, title, subtitle)
-            SummaryCard(selectedSummary, onChangeSelection)
-            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            message?.takeUnless { loading }?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-            }
-            trailingHeader?.invoke(this)
+        if (search != null) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) { search() }
         }
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) { content(listState) }
+            modifier = Modifier.weight(1f).fillMaxWidth().testTag("selection-list"),
+            contentPadding = PaddingValues(bottom = 8.dp),
+        ) {
+            message?.takeUnless { loading }?.let { message ->
+                item {
+                    Text(message, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error)
+                }
+            }
+            content()
+        }
     }
 }
 
 @Composable
-private fun StepHeading(icon: ImageVector, title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-        }
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+private fun NoResults() {
+    Text(stringResource(R.string.ui_no_results), Modifier.padding(16.dp),
+        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 private fun String.matchesSearchQuery(query: String): Boolean {
@@ -819,49 +757,37 @@ private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
-private fun ChoiceCard(
-    title: String,
-    subtitle: String?,
-    onClick: () -> Unit,
-    leading: (@Composable () -> Unit)? = null,
-    icon: ImageVector = Icons.Outlined.AccountBalance,
-) {
-    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Row(Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (leading != null) leading() else Icon(icon, contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                subtitle?.takeIf { it.isNotBlank() }?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+private fun ChoiceCard(title: String, subtitle: String?, onClick: () -> Unit) {
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.Center) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            subtitle?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         }
     }
+    HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
 private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit) {
-    Surface(shape = RoundedCornerShape(16.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        border = BorderStroke(if (selected) 2.dp else 1.dp,
-            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
-        Row(Modifier.fillMaxWidth().toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
-            .heightIn(min = 80.dp).padding(14.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(part.partName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+    Surface(color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface) {
+        Row(
+            Modifier.fillMaxWidth().toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
+                .heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(part.partName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 Text(stringResource(R.string.ui_part_number, part.partNumber), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Checkbox(checked = selected, onCheckedChange = null)
         }
     }
+    HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
@@ -1010,34 +936,7 @@ private fun DownloadItemRow(item: ElectoralRollDownloadItem) {
     }
 }
 
-@Composable
-private fun SummaryCard(summary: String?, onChange: (() -> Unit)? = null) {
-    if (summary.isNullOrBlank()) return
-    var expanded by rememberSaveable(summary) { mutableStateOf(false) }
-    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Column {
-            Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(start = 14.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f).padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(stringResource(R.string.ui_selected_details), style = MaterialTheme.typography.labelMedium)
-                    if (!expanded) Text(summary.substringAfterLast(" / "), style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = stringResource(if (expanded) R.string.ui_hide_selection else R.string.ui_show_selection))
-                }
-            }
-            AnimatedVisibility(expanded) {
-                Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)) {
-                    Text(summary, style = MaterialTheme.typography.bodyMedium)
-                    if (onChange != null) TextButton(onClick = onChange) { Text(stringResource(R.string.ui_change)) }
-                }
-            }
-        }
-    }
-}
+
 
 private fun ElectoralRollUiState.selectedSummary(): String? {
     val roll = selectedRollType?.displayName

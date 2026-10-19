@@ -30,10 +30,15 @@ import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.pdf.PartsStep
 import com.samoondigital.yojnaplus.feature.pdf.StateStep
-import com.samoondigital.yojnaplus.feature.pdf.SelectionProgress
+import com.samoondigital.yojnaplus.feature.pdf.SelectionToolbar
 import com.samoondigital.yojnaplus.feature.pdf.CaptchaStep
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollStep
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.onNodeWithTag
+import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performScrollTo
 import com.samoondigital.yojnaplus.model.PartDto
@@ -63,12 +68,16 @@ class UiCtaDeviceTest {
                 }
             }
         }
+        compose.onNodeWithTag("app-toolbar").assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.ui_download_list)).assertIsDisplayed().performClick()
         compose.onNodeWithText(context.getString(R.string.ui_saved_pdfs)).assertIsDisplayed().performClick()
         compose.runOnIdle {
             assertEquals(1, downloadClicks)
             assertEquals(1, savedClicks)
         }
+        compose.onNodeWithText(context.getString(R.string.ui_how_title)).performClick()
+        compose.onNodeWithText(context.getString(R.string.ui_guide_list)).assertIsDisplayed()
+        androidx.test.espresso.Espresso.pressBack()
         saveScreenshot("home-large-font")
     }
 
@@ -84,20 +93,27 @@ class UiCtaDeviceTest {
         var proceedClicks = 0
         compose.setContent {
             VoterList2026Theme {
-                PartsStep(
-                    uiState = state.value,
-                    onPartToggled = { part -> state.value = state.value.copy(selectedPartNumbers = setOf(part)) },
-                    onProceed = { proceedClicks++ },
-                    onChangeSelection = {},
-                )
+                Column(Modifier.fillMaxSize()) {
+                    SelectionToolbar(state.value.copy(step = ElectoralRollStep.Parts), onBack = {}, onOpenDownloads = {})
+                    Box(Modifier.weight(1f)) {
+                        PartsStep(
+                            uiState = state.value,
+                            onPartToggled = { part -> state.value = state.value.copy(selectedPartNumbers = setOf(part)) },
+                            onProceed = { proceedClicks++ },
+                        )
+                    }
+                }
             }
         }
-        compose.onNodeWithText(context.getString(R.string.ui_proceed, 0)).assertIsDisplayed().assertIsNotEnabled()
-        compose.onNodeWithContentDescription(context.getString(R.string.ui_show_selection)).performClick()
+        compose.onNodeWithTag("app-toolbar").assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.ui_continue)).assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithText(context.getString(R.string.ui_selected_details)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.ui_options)).performClick()
+        compose.onNodeWithText(context.getString(R.string.ui_show_selection)).performClick()
         compose.onNodeWithText("Uttar Pradesh / 2026 / Rampur / Rampur").assertIsDisplayed()
-        compose.onNodeWithContentDescription(context.getString(R.string.ui_hide_selection)).performClick()
+        androidx.test.espresso.Espresso.pressBack()
         compose.onNodeWithText("प्राथमिक विद्यालय, रामपुर").performClick()
-        compose.onNodeWithText(context.getString(R.string.ui_proceed, 1)).assertIsDisplayed().assertIsEnabled().performClick()
+        compose.onNodeWithText(context.getString(R.string.ui_continue)).assertIsDisplayed().assertIsEnabled().performClick()
         compose.runOnIdle { assertEquals(1, proceedClicks) }
         saveScreenshot("polling-centre-selected")
     }
@@ -152,6 +168,7 @@ class UiCtaDeviceTest {
                 }
             }
         }
+        compose.onNodeWithTag("app-toolbar").assertIsDisplayed()
         compose.onNodeWithContentDescription(context.getString(R.string.ui_search_in_pdf)).assertIsDisplayed().performClick()
         compose.onNodeWithContentDescription(context.getString(R.string.ui_share)).assertIsDisplayed().performClick()
         compose.runOnIdle {
@@ -167,13 +184,14 @@ class UiCtaDeviceTest {
         compose.setContent {
             VoterList2026Theme(darkTheme = true) {
                 Column {
-                    SelectionProgress(ElectoralRollStep.State)
+                    SelectionToolbar(ElectoralRollUiState(), onBack = {}, onOpenDownloads = {})
                     StateStep(ElectoralRollUiState(states = listOf(
                         StateDto("S24", "Uttar Pradesh"), StateDto("S04", "Bihar"),
                     ))) { chosen = it.stateName }
                 }
             }
         }
+        compose.onNodeWithTag("app-toolbar").assertIsDisplayed()
         compose.onNode(hasSetTextAction()).performTextInput("uttar   pradesh")
         compose.onNodeWithText("Bihar").assertDoesNotExist()
         compose.onNodeWithText("Uttar Pradesh").assertIsDisplayed().performClick()
@@ -203,6 +221,31 @@ class UiCtaDeviceTest {
             .performScrollTo().assertIsDisplayed().assertIsNotEnabled()
         compose.runOnIdle { assertEquals(1, refreshClicks) }
         saveScreenshot("captcha-large-font")
+    }
+
+    @Test
+    fun pollingCentreListGetsMostOfTheScreenAndShowsMoreThanThreeRows() {
+        compose.setContent {
+            VoterList2026Theme {
+                val state = ElectoralRollUiState(
+                    step = ElectoralRollStep.Parts,
+                    parts = (1..30).map { PartDto(partNumber = it, partName = "मतदान केंद्र $it") },
+                )
+                Column(Modifier.fillMaxSize()) {
+                    SelectionToolbar(state, onBack = {}, onOpenDownloads = {})
+                    Box(Modifier.weight(1f)) {
+                        PartsStep(state, onPartToggled = {}, onProceed = {})
+                    }
+                }
+            }
+        }
+        val screen = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val list = compose.onNodeWithTag("selection-list").fetchSemanticsNode().boundsInRoot
+        val ratio = list.height / screen.height
+        assertTrue("List uses only ${ratio * 100}% of the screen", ratio >= 0.70f)
+        compose.onNodeWithText("मतदान केंद्र 6").assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.ui_parts_help)).assertDoesNotExist()
+        saveScreenshot("parts-list-space")
     }
 
     private fun saveScreenshot(name: String) {

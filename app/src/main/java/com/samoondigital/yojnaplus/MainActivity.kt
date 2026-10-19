@@ -34,6 +34,7 @@ import com.samoondigital.yojnaplus.ads.AdManager
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.ads.ConsentManager
 import com.samoondigital.yojnaplus.core.navigation.AppNavHost
+import com.samoondigital.yojnaplus.core.ui.components.AppHeaderSystemBarEffect
 import com.samoondigital.yojnaplus.core.ui.theme.VoterList2026Theme
 import com.samoondigital.yojnaplus.feature.splash.StartupSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -102,6 +103,10 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                     }
+                }
+                // The splash owns system-bar styling until it has left the composition.
+                if (!showStartupSplash) {
+                    AppHeaderSystemBarEffect()
                 }
             }
         }

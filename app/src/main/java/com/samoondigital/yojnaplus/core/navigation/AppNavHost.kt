@@ -11,7 +11,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
-import com.samoondigital.yojnaplus.core.ui.components.PurpleHeaderStatusBarEffect
 import com.samoondigital.yojnaplus.feature.downloads.DownloadsScreen
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
 import com.samoondigital.yojnaplus.feature.pdf.PdfScreen
@@ -19,7 +18,6 @@ import com.samoondigital.yojnaplus.feature.pdfviewer.PdfViewerScreen
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
-    PurpleHeaderStatusBarEffect()
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route

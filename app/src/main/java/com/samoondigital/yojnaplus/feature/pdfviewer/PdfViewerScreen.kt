@@ -381,7 +381,7 @@ internal fun PdfViewerTopBar(
     onShare: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    AppToolbar(title = title, subtitle = pageLabel, onBack = onBack, modifier = modifier) {
+    AppToolbar(title = title, subtitle = pageLabel, onBack = onBack, modifier = modifier, titleMaxLines = 1) {
         if (onSearch != null) {
             PdfToolbarAction(label = stringResource(R.string.ui_find),
                 description = stringResource(R.string.ui_search_in_pdf), icon = Icons.Outlined.Search, onClick = onSearch)
@@ -400,7 +400,7 @@ private fun PdfToolbarAction(
 ) {
     TextButton(onClick = onClick,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-        colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
         modifier = Modifier.semantics { contentDescription = description }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))

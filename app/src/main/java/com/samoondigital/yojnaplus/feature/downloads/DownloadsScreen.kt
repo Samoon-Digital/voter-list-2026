@@ -65,7 +65,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -114,7 +113,7 @@ fun DownloadsScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             AppToolbar(title = stringResource(R.string.ui_downloads_title), onBack = onBack) {
-                TextButton(onClick = onDownloadList, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+                TextButton(onClick = onDownloadList, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)) {
                     Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(stringResource(R.string.ui_new_list))
