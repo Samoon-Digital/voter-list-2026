@@ -1,8 +1,5 @@
 package com.samoondigital.yojnaplus.feature.downloads
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -65,7 +62,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,7 +69,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.R
-import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
 import com.samoondigital.yojnaplus.feature.downloads.data.DownloadStatusEntity
 import kotlinx.coroutines.flow.collectLatest
@@ -87,7 +82,6 @@ fun DownloadsScreen(
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val activity = LocalContext.current.findActivity()
     var deleteTarget by remember { mutableStateOf<DownloadItemUi?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -96,9 +90,7 @@ fun DownloadsScreen(
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collectLatest { event ->
             when (event) {
-                is DownloadsEvent.OpenPdf -> InterstitialAdManager.showIfAvailable(activity) {
-                    onOpenPdf(event.uri, event.title)
-                }
+                is DownloadsEvent.OpenPdf -> onOpenPdf(event.uri, event.title)
             }
         }
     }
@@ -489,9 +481,3 @@ private val DownloadItemUi.sourceDescription: String
         .filter { it.isNotBlank() && it != "--" }
         .distinct()
         .joinToString(" / ")
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}

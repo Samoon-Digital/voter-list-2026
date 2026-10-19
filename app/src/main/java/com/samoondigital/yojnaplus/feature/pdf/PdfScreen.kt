@@ -112,7 +112,6 @@ import com.samoondigital.yojnaplus.viewmodel.ElectoralRollUiState
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollViewModel
 
 
-private const val GeneralDistrictPlacement = "general-voter-list-district-to-assembly"
 private const val GeneralLanguagePlacement = "general-voter-list-language-to-captcha"
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -180,14 +179,7 @@ fun PdfScreen(
                     ElectoralRollStep.State -> StateStep(uiState, inlineBanner, viewModel::selectState)
                     ElectoralRollStep.Year -> YearStep(uiState, inlineBanner, viewModel::selectYear)
                     ElectoralRollStep.RollType -> RollTypeStep(uiState, inlineBanner, viewModel::selectRollType)
-                    ElectoralRollStep.District -> DistrictStep(uiState, inlineBanner) { district ->
-                        InterstitialAdManager.showIfAvailable(
-                            activity = activity,
-                            placement = GeneralDistrictPlacement,
-                        ) {
-                            viewModel.selectDistrict(district)
-                        }
-                    }
+                    ElectoralRollStep.District -> DistrictStep(uiState, inlineBanner, viewModel::selectDistrict)
                     ElectoralRollStep.Assembly -> AssemblyStep(uiState, inlineBanner, viewModel::selectAssembly)
                     ElectoralRollStep.Parts -> PartsStep(
                         uiState = uiState,
