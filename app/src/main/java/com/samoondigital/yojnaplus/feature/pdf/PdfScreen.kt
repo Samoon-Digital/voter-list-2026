@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -95,6 +96,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samoondigital.yojnaplus.R
+import com.samoondigital.yojnaplus.ads.InlineBanner
+import com.samoondigital.yojnaplus.ads.rememberInlineBanner
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
 import com.samoondigital.yojnaplus.model.AssemblyDto
@@ -156,14 +159,16 @@ fun PdfScreen(
             )
         },
     ) { padding ->
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background),
         ) {
+            val banner = rememberInlineBanner((maxWidth - 32.dp).value.toInt())
+            val inlineBanner: @Composable () -> Unit = { InlineBanner(banner) }
             AnimatedContent(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxSize(),
                 targetState = uiState.step,
                 transitionSpec = {
                     (slideInHorizontally { it / 4 } + fadeIn())
@@ -172,10 +177,10 @@ fun PdfScreen(
                 label = "electoral-roll-step",
             ) { step ->
                 when (step) {
-                    ElectoralRollStep.State -> StateStep(uiState, viewModel::selectState)
-                    ElectoralRollStep.Year -> YearStep(uiState, viewModel::selectYear)
-                    ElectoralRollStep.RollType -> RollTypeStep(uiState, viewModel::selectRollType)
-                    ElectoralRollStep.District -> DistrictStep(uiState) { district ->
+                    ElectoralRollStep.State -> StateStep(uiState, inlineBanner, viewModel::selectState)
+                    ElectoralRollStep.Year -> YearStep(uiState, inlineBanner, viewModel::selectYear)
+                    ElectoralRollStep.RollType -> RollTypeStep(uiState, inlineBanner, viewModel::selectRollType)
+                    ElectoralRollStep.District -> DistrictStep(uiState, inlineBanner) { district ->
                         InterstitialAdManager.showIfAvailable(
                             activity = activity,
                             placement = GeneralDistrictPlacement,
@@ -183,11 +188,12 @@ fun PdfScreen(
                             viewModel.selectDistrict(district)
                         }
                     }
-                    ElectoralRollStep.Assembly -> AssemblyStep(uiState, viewModel::selectAssembly)
+                    ElectoralRollStep.Assembly -> AssemblyStep(uiState, inlineBanner, viewModel::selectAssembly)
                     ElectoralRollStep.Parts -> PartsStep(
                         uiState = uiState,
                         onPartToggled = viewModel::togglePart,
                         onProceed = viewModel::showLanguageSheet,
+                        inlineBanner = inlineBanner,
                     )
                     ElectoralRollStep.Captcha -> CaptchaStep(
                         uiState = uiState,
@@ -317,31 +323,45 @@ private fun selectionHelp(state: ElectoralRollUiState): String = when (state.ste
 }
 
 @Composable
-internal fun StateStep(uiState: ElectoralRollUiState, onSelected: (StateDto) -> Unit) {
+internal fun StateStep(
+    uiState: ElectoralRollUiState,
+    inlineBanner: (@Composable () -> Unit)? = null,
+    onSelected: (StateDto) -> Unit,
+) {
     SearchableChoiceScreen(
         queryPlaceholder = stringResource(R.string.ui_search_state),
         items = uiState.states,
+        itemKey = { it.stateCd },
         itemTitle = StateDto::stateName,
         itemSubtitle = { null },
         loading = uiState.isLoading && uiState.states.isEmpty(),
         message = uiState.message,
         onSelected = onSelected,
+        inlineBanner = inlineBanner,
     )
 }
 
 @Composable
-private fun YearStep(uiState: ElectoralRollUiState, onSelected: (Int) -> Unit) {
+private fun YearStep(
+    uiState: ElectoralRollUiState,
+    inlineBanner: (@Composable () -> Unit)? = null,
+    onSelected: (Int) -> Unit,
+) {
     ChoiceListScaffold(loading = uiState.isLoading, message = uiState.message) {
-        items(uiState.years, key = { it }) { year ->
+        choicesWithInlineBanner(uiState.years, key = { it }, inlineBanner = inlineBanner) { year ->
             ChoiceCard(title = year.toString(), subtitle = null, onClick = { onSelected(year) })
         }
     }
 }
 
 @Composable
-private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto) -> Unit) {
+private fun RollTypeStep(
+    uiState: ElectoralRollUiState,
+    inlineBanner: (@Composable () -> Unit)? = null,
+    onSelected: (RollTypeDto) -> Unit,
+) {
     ChoiceListScaffold(loading = uiState.isLoading, message = uiState.message) {
-        items(uiState.rollTypes, key = { it.id }) { rollType ->
+        choicesWithInlineBanner(uiState.rollTypes, key = { it.id }, inlineBanner = inlineBanner) { rollType ->
             ChoiceCard(
                 title = rollType.displayName,
                 subtitle = when {
@@ -357,28 +377,40 @@ private fun RollTypeStep(uiState: ElectoralRollUiState, onSelected: (RollTypeDto
 }
 
 @Composable
-private fun DistrictStep(uiState: ElectoralRollUiState, onSelected: (DistrictDto) -> Unit) {
+private fun DistrictStep(
+    uiState: ElectoralRollUiState,
+    inlineBanner: (@Composable () -> Unit)? = null,
+    onSelected: (DistrictDto) -> Unit,
+) {
     SearchableChoiceScreen(
         queryPlaceholder = stringResource(R.string.ui_search_district),
         items = uiState.districts,
+        itemKey = { it.districtCd },
         itemTitle = { it.primaryDistrictName() },
         itemSubtitle = { it.hindiSubtitle(it.primaryDistrictName()) },
         loading = uiState.isLoading && uiState.districts.isEmpty(),
         message = uiState.message,
         onSelected = onSelected,
+        inlineBanner = inlineBanner,
     )
 }
 
 @Composable
-private fun AssemblyStep(uiState: ElectoralRollUiState, onSelected: (AssemblyDto) -> Unit) {
+private fun AssemblyStep(
+    uiState: ElectoralRollUiState,
+    inlineBanner: (@Composable () -> Unit)? = null,
+    onSelected: (AssemblyDto) -> Unit,
+) {
     SearchableChoiceScreen(
         queryPlaceholder = stringResource(R.string.ui_search_assembly),
         items = uiState.assemblies,
+        itemKey = { it.asmblyNo },
         itemTitle = { it.asmblyName },
         itemSubtitle = { it.asmblyName.hindiLineExcept(it.asmblyName) },
         loading = uiState.isLoading && uiState.assemblies.isEmpty(),
         message = uiState.message,
         onSelected = onSelected,
+        inlineBanner = inlineBanner,
     )
 }
 
@@ -387,6 +419,7 @@ internal fun PartsStep(
     uiState: ElectoralRollUiState,
     onPartToggled: (Int) -> Unit,
     onProceed: () -> Unit,
+    inlineBanner: (@Composable () -> Unit)? = null,
 ) {
     var query by rememberSaveable(uiState.selectedAssembly?.asmblyNo) { mutableStateOf("") }
     val filtered = remember(uiState.parts, query) {
@@ -407,7 +440,7 @@ internal fun PartsStep(
                 if (filtered.isEmpty() && !uiState.isLoading && uiState.parts.isNotEmpty()) {
                     item { NoResults() }
                 }
-                items(filtered, key = { it.partNumber }) { part ->
+                choicesWithInlineBanner(filtered, key = { it.partNumber }, inlineBanner = inlineBanner) { part ->
                     PartChoiceCard(part, part.partNumber in uiState.selectedPartNumbers) {
                         onPartToggled(part.partNumber)
                     }
@@ -655,11 +688,13 @@ private fun LanguageBottomSheet(
 private fun <T> SearchableChoiceScreen(
     queryPlaceholder: String,
     items: List<T>,
+    itemKey: (T) -> Any,
     itemTitle: (T) -> String,
     itemSubtitle: (T) -> String?,
     loading: Boolean,
     message: String?,
     onSelected: (T) -> Unit,
+    inlineBanner: (@Composable () -> Unit)? = null,
 ) {
     var query by rememberSaveable(queryPlaceholder) { mutableStateOf("") }
     val filtered = remember(items, query) {
@@ -674,12 +709,25 @@ private fun <T> SearchableChoiceScreen(
         search = { ChoiceSearchField(query, { query = it }, queryPlaceholder) },
     ) {
         if (filtered.isEmpty() && !loading && items.isNotEmpty()) item { NoResults() }
-        filtered.forEachIndexed { index, item ->
-            val title = itemTitle(item)
-            item(key = "choice-$index-$title") {
-                ChoiceCard(title, itemSubtitle(item), onClick = { onSelected(item) })
-            }
+        choicesWithInlineBanner(filtered, key = itemKey, inlineBanner = inlineBanner) { item ->
+            ChoiceCard(itemTitle(item), itemSubtitle(item), onClick = { onSelected(item) })
         }
+    }
+}
+
+internal fun <T> androidx.compose.foundation.lazy.LazyListScope.choicesWithInlineBanner(
+    choices: List<T>,
+    key: (T) -> Any,
+    inlineBanner: (@Composable () -> Unit)?,
+    itemContent: @Composable (T) -> Unit,
+) {
+    val split = minOf(5, choices.size)
+    items(count = split, key = { key(choices[it]) }) { itemContent(choices[it]) }
+    if (choices.isNotEmpty() && inlineBanner != null) {
+        item(key = "inline-banner", contentType = "inline-banner") { inlineBanner() }
+    }
+    items(count = choices.size - split, key = { key(choices[it + split]) }) {
+        itemContent(choices[it + split])
     }
 }
 

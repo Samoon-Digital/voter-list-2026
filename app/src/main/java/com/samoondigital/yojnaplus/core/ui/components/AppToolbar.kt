@@ -54,17 +54,19 @@ fun AppToolbar(
                             contentDescription = stringResource(R.string.ui_back), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Box(Modifier.size(if (onBack == null) 32.dp else 24.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.HowToVote, contentDescription = null,
-                            modifier = Modifier.size(if (onBack == null) 22.dp else 17.dp))
+                if (onBack == null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.HowToVote, contentDescription = null, modifier = Modifier.size(22.dp))
+                        }
                     }
                 }
-                Column(Modifier.weight(1f).padding(start = 10.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)) {
+                Column(Modifier.weight(1f).padding(start = if (onBack == null) 10.dp else 0.dp,
+                    end = 8.dp, top = 6.dp, bottom = 6.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium, maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
                     if (!subtitle.isNullOrBlank()) {
                         Text(subtitle, style = MaterialTheme.typography.labelMedium,

@@ -94,4 +94,5 @@
     <string name="ui_home_download_list">वोटर लिस्ट निकालें</string>
     <string name="ui_home_heading">आपकी वोटर लिस्ट</string>
     <string name="ui_home_start_hint">राज्य और मतदान केंद्र चुनें</string>
+    <string name="ui_advertisement">विज्ञापन</string>
 </resources>
