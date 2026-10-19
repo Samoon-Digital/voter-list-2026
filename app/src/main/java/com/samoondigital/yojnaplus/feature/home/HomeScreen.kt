@@ -1,6 +1,5 @@
 package com.samoondigital.yojnaplus.feature.home
 
-import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -21,34 +21,33 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowInsetsControllerCompat
+import com.samoondigital.yojnaplus.R
 import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 
 @Composable
@@ -58,12 +57,10 @@ fun HomeScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    HomeStatusBarEffect()
-
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(HomeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState()),
     ) {
         HomeHero(
@@ -75,11 +72,8 @@ fun HomeScreen(
             modifier = Modifier.padding(horizontal = 17.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            SectionTitle()
-            CategoryList(
-                onVoterListClick = onDownloadPdf,
-            )
-            TrustBadge()
+            SavedPdfCard(onOpenDownloads)
+            HowToDownload()
             HomeDisclaimer()
             Spacer(Modifier.height(contentPadding.calculateBottomPadding() + 8.dp))
         }
@@ -129,13 +123,11 @@ private fun HomeHero(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = "Download & search electoral roll easily.",
+                        text = stringResource(R.string.ui_home_help),
                         color = Color(0xFFE4D8FF),
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
 
@@ -144,12 +136,12 @@ private fun HomeHero(
                     shape = CircleShape,
                     color = Color.White,
                     shadowElevation = 6.dp,
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Outlined.FileDownload,
-                            contentDescription = "Downloads",
+                            contentDescription = stringResource(R.string.ui_saved_pdfs),
                             tint = BrandPurple,
                             modifier = Modifier.size(22.dp),
                         )
@@ -158,7 +150,21 @@ private fun HomeHero(
             }
 
             Spacer(Modifier.height(14.dp))
-            NoticeBar(onClick = onOpenVoterList)
+            Button(
+                onClick = onOpenVoterList,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = BrandPurple),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+            ) {
+                Icon(Icons.Outlined.FileDownload, contentDescription = null)
+                Text(
+                    stringResource(R.string.ui_download_list),
+                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
+            }
         }
     }
 }
@@ -192,231 +198,37 @@ private fun HeaderArtwork(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun NoticeBar(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .background(Color.White.copy(alpha = 0.12f))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        NewBadge()
-        Text(
-            text = "Special Intensive Revision (SIR) 2026 Published",
-            color = Color(0xFFF4EEFF),
-            fontSize = 11.sp,
-            lineHeight = 13.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 8.dp),
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-            contentDescription = null,
-            tint = Color(0xFFE5D9FF),
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-@Composable
-private fun NewBadge(modifier: Modifier = Modifier) {
-    Text(
-        text = "NEW",
-        color = Color(0xFF1F2937),
-        fontSize = 9.sp,
-        lineHeight = 10.sp,
-        fontWeight = FontWeight.ExtraBold,
-        maxLines = 1,
-        modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0xFFFACC15))
-            .padding(horizontal = 6.dp, vertical = 3.dp),
-    )
-}
-
-@Composable
-private fun SectionTitle() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "SELECT VOTER LIST CATEGORY",
-            color = MutedText,
-            fontSize = 11.sp,
-            lineHeight = 13.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 0.sp,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = "1 Option",
-            color = BrandPurple,
-            fontSize = 11.sp,
-            lineHeight = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
-
-@Composable
-private fun CategoryList(
-    onVoterListClick: () -> Unit,
-) {
+private fun SavedPdfCard(onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        shadowElevation = 2.dp,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            CategoryRow(
-                title = "Voter List 2026",
-                description = "Download latest consolidated electoral roll 2026",
-                icon = Icons.Outlined.Description,
-                iconTint = Color(0xFF2563EB),
-                iconBackground = Color(0xFFEFF6FF),
-                onClick = onVoterListClick,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CategoryRow(
-    title: String,
-    description: String,
-    icon: ImageVector,
-    iconTint: Color,
-    iconBackground: Color,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(41.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(iconBackground),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(21.dp),
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp, end = 8.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = title,
-                    color = PrimaryText,
-                    fontSize = 13.5.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(weight = 1f, fill = false),
-                )
-                NewBadge()
-            }
-            Text(
-                text = description,
-                color = SecondaryText,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 3.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun TrustBadge() {
-    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFF6F0FF),
-        border = BorderStroke(1.dp, Color(0xFFE9D5FF)),
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(29.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFE9D5FF)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.VerifiedUser,
-                    contentDescription = null,
-                    tint = BrandPurple,
-                    modifier = Modifier.size(18.dp),
-                )
+            Icon(Icons.Outlined.Description, contentDescription = null, tint = BrandPurple, modifier = Modifier.size(28.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.ui_saved_pdfs), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.ui_saved_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 11.dp, end = 8.dp),
-            ) {
-                Text(
-                    text = "100% Secure & Direct Access",
-                    color = PrimaryText,
-                    fontSize = 12.sp,
-                    lineHeight = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "Reference portal based on official electoral sources",
-                    color = SecondaryText,
-                    fontSize = 10.5.sp,
-                    lineHeight = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                text = "Verified",
-                color = BrandPurple,
-                fontSize = 10.sp,
-                lineHeight = 11.sp,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color.White)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            )
+            Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null, tint = BrandPurple)
         }
+    }
+}
+
+@Composable
+private fun HowToDownload() {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(stringResource(R.string.ui_how_title), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.ui_how_steps), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -438,17 +250,17 @@ private fun HomeDisclaimer() {
             verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Text(
-                text = "DISCLAIMER",
-                color = Color(0xFF334155),
-                fontSize = 11.sp,
-                lineHeight = 13.sp,
+                text = stringResource(R.string.ui_independent),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
                 fontWeight = FontWeight.ExtraBold,
             )
             Text(
-                text = "This application is for informational reference only and is not affiliated with or endorsed by the Election Commission or any government entity.",
-                color = SecondaryText,
-                fontSize = 11.sp,
-                lineHeight = 17.sp,
+                text = stringResource(R.string.ui_disclaimer),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp,
+                lineHeight = 22.sp,
             )
         }
 
@@ -460,19 +272,19 @@ private fun HomeDisclaimer() {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             FooterLink(
-                label = "Privacy Policy",
+                label = stringResource(R.string.ui_privacy),
                 icon = Icons.Outlined.Link,
                 onClick = { uriHandler.openUri(privacyUrl) },
             )
             FooterDot()
             FooterLink(
-                label = "Follow Us",
+                label = stringResource(R.string.ui_follow),
                 icon = Icons.Outlined.Link,
                 onClick = { uriHandler.openUri(instagramUrl) },
             )
             FooterDot()
             FooterLink(
-                label = "Contact / Email",
+                label = stringResource(R.string.ui_contact),
                 icon = Icons.Outlined.Email,
                 onClick = { uriHandler.openUri("mailto:$email") },
             )
@@ -490,6 +302,7 @@ private fun FooterLink(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
+            .heightIn(min = 48.dp)
             .padding(horizontal = 3.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -503,8 +316,8 @@ private fun FooterLink(
         Text(
             text = label,
             color = Color(0xFF475569),
-            fontSize = 11.sp,
-            lineHeight = 13.sp,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
@@ -521,33 +334,5 @@ private fun FooterDot() {
     )
 }
 
-@Composable
-private fun HomeStatusBarEffect() {
-    val view = LocalView.current
-    DisposableEffect(view) {
-        val window = (view.context as? Activity)?.window
-        if (window == null || view.isInEditMode) {
-            onDispose { }
-        } else {
-            @Suppress("DEPRECATION")
-            val previousColor = window.statusBarColor
-            val controller = WindowInsetsControllerCompat(window, view)
-            val previousLightStatusBars = controller.isAppearanceLightStatusBars
-            @Suppress("DEPRECATION")
-            window.statusBarColor = Color(0xFF240E65).toArgb()
-            controller.isAppearanceLightStatusBars = false
 
-            onDispose {
-                @Suppress("DEPRECATION")
-                window.statusBarColor = previousColor
-                controller.isAppearanceLightStatusBars = previousLightStatusBars
-            }
-        }
-    }
-}
-
-private val HomeBackground = Color(0xFFF8FAFC)
 private val BrandPurple = Color(0xFF522DE0)
-private val PrimaryText = Color(0xFF0F172A)
-private val SecondaryText = Color(0xFF64748B)
-private val MutedText = Color(0xFF94A3B8)

@@ -1,6 +1,5 @@
 package com.samoondigital.yojnaplus.feature.pdfviewer
 
-import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
@@ -43,23 +42,25 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -75,6 +76,8 @@ import androidx.pdf.view.search.PdfSearchView
 import androidx.pdf.viewer.fragment.PdfViewerFragment
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
+import com.samoondigital.yojnaplus.R
+import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -94,6 +97,7 @@ fun PdfViewerScreen(
     var androidXPdfFragment by remember(state.uri) { mutableStateOf<PdfViewerFragment?>(null) }
     var isAndroidXPdfSearchActive by remember(state.uri) { mutableStateOf(false) }
     var searchBarOffsetPx by remember(state.uri) { mutableFloatStateOf(0f) }
+    var toolbarHeight by remember { mutableStateOf(128.dp) }
     val density = LocalDensity.current
     val maxSearchBarLiftPx = with(density) { 220.dp.toPx() }
     val searchBarDragState = rememberDraggableState { delta ->
@@ -130,7 +134,7 @@ fun PdfViewerScreen(
                     AndroidXPdfPages(
                         uri = source.uri,
                         onReady = { androidXPdfFragment = it },
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().padding(top = toolbarHeight),
                     )
                 } else {
                     LegacyPdfPages(
@@ -140,7 +144,7 @@ fun PdfViewerScreen(
                         onLoaded = viewModel::onLoaded,
                         onPageChanged = viewModel::onPageChanged,
                         onError = viewModel::onError,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().padding(top = toolbarHeight),
                     )
                 }
             }
@@ -154,7 +158,8 @@ fun PdfViewerScreen(
 
         PdfViewerTopBar(
             title = state.title,
-            pageLabel = state.pageLabel,
+            pageLabel = if (state.pageCount > 0) state.pageLabel else stringResource(R.string.ui_pdf_ready),
+            modifier = Modifier.onSizeChanged { size -> toolbarHeight = with(density) { size.height.toDp() } },
             onBack = onBack,
             onSearch = if (useAndroidXPdfViewer) {
                 {
@@ -272,7 +277,7 @@ private fun AndroidXPdfPages(
     }
 
     AndroidView(
-        modifier = modifier.padding(top = 78.dp),
+        modifier = modifier,
         factory = { viewContext ->
             FrameLayout(viewContext).apply { id = containerId }
         },
@@ -315,7 +320,7 @@ private fun LegacyPdfPages(
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     AndroidView(
-        modifier = modifier.padding(top = 78.dp),
+        modifier = modifier,
         factory = { context ->
             PdfRendererView(context).apply {
                 setBackgroundColor(AndroidColor.TRANSPARENT)
@@ -370,73 +375,44 @@ private fun PdfRendererView.loadPdf(uri: Uri, lifecycleOwner: androidx.lifecycle
 }
 
 @Composable
-private fun PdfViewerTopBar(
+internal fun PdfViewerTopBar(
     title: String,
     pageLabel: String,
     onBack: () -> Unit,
     onSearch: (() -> Unit)?,
     onShare: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Surface(
-        color = Color.Transparent,
-        tonalElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    Surface(color = Color.Transparent, tonalElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(PdfViewerPurpleDark, PdfViewerPurple, Color(0xFF2E1B98)),
-                        start = Offset.Zero,
-                        end = Offset(850f, 260f),
-                    ),
-                ),
+            Modifier.fillMaxWidth().background(
+                Brush.linearGradient(listOf(PdfViewerPurpleDark, PdfViewerPurple, Color(0xFF2E1B98))),
+            ),
         ) {
-            PdfViewerHeaderArtwork(modifier = Modifier.matchParentSize())
-            Row(
-                modifier = Modifier
-                    .stableStatusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White,
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = Color.White,
-                    )
-                    Text(
-                        text = pageLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.78f),
-                    )
-                }
-                if (onSearch != null) {
-                    IconButton(onClick = onSearch) {
-                        Icon(
-                            Icons.Outlined.Search,
-                            contentDescription = "Search text",
-                            tint = Color.White,
-                        )
+            PdfViewerHeaderArtwork(Modifier.matchParentSize())
+            Column(Modifier.stableStatusBarsPadding().padding(horizontal = 8.dp, vertical = 5.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.ui_back), tint = Color.White)
+                    }
+                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color.White)
+                        Text(pageLabel, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
                     }
                 }
-                IconButton(onClick = onShare) {
-                    Icon(
-                        Icons.Outlined.Share,
-                        contentDescription = "Share",
-                        tint = Color.White,
-                    )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    if (onSearch != null) {
+                        TextButton(onClick = onSearch, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Outlined.Search, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.ui_search_in_pdf), color = Color.White)
+                        }
+                    }
+                    TextButton(onClick = onShare) {
+                        Icon(Icons.Outlined.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.ui_share), color = Color.White)
+                    }
                 }
             }
         }

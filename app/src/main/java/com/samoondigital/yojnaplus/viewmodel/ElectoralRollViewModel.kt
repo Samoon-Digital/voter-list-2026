@@ -516,6 +516,11 @@ class ElectoralRollViewModel @Inject constructor(
     private suspend fun runLoading(message: String?, block: suspend () -> Unit) {
         _state.update { it.copy(isLoading = true, message = message) }
         runCatching { block() }
+            .onSuccess {
+                _state.update { current ->
+                    if (current.message == message) current.copy(message = null) else current
+                }
+            }
             .onFailure { error ->
                 _state.update { it.copy(message = error.userMessage("Request failed")) }
             }

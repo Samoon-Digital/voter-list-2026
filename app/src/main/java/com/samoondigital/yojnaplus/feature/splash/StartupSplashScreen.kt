@@ -33,7 +33,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +44,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -103,7 +103,7 @@ fun StartupSplashScreen(
             SplashTitle()
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Electoral Roll & Voter Services",
+                text = stringResource(R.string.ui_wizard_title),
                 color = Color(0xFF64748B),
                 fontSize = 14.sp,
                 lineHeight = 18.sp,
@@ -207,7 +207,7 @@ private fun OfficialEditionPill() {
                     .background(Color(0xFF2563EB)),
             )
             Text(
-                text = "OFFICIAL EDITION 2026",
+                text = stringResource(R.string.ui_splash_edition),
                 color = Color(0xFF1D4ED8),
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
@@ -256,8 +256,8 @@ private fun LoadingSection(progress: Float) {
             )
         }
         Text(
-            text = "Preparing portal data...",
-            color = Color(0xFF94A3B8),
+            text = stringResource(R.string.ui_splash_loading),
+            color = Color(0xFF475569),
             fontSize = 11.sp,
             lineHeight = 13.sp,
             fontWeight = FontWeight.Medium,
@@ -278,7 +278,7 @@ private fun VerificationFooter(versionName: String) {
             modifier = Modifier.size(14.dp),
         )
         Text(
-            text = "Secure & Verified Data",
+            text = stringResource(R.string.ui_splash_footer),
             color = Color(0xFF475569),
             fontSize = 11.sp,
             lineHeight = 13.sp,
@@ -292,7 +292,7 @@ private fun VerificationFooter(versionName: String) {
         )
         Text(
             text = "Version $versionName",
-            color = Color(0xFF94A3B8),
+            color = Color(0xFF475569),
             fontSize = 11.sp,
             lineHeight = 13.sp,
             fontWeight = FontWeight.Medium,

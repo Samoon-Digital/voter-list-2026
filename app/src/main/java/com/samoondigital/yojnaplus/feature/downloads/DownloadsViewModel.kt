@@ -109,27 +109,6 @@ class DownloadsViewModel @Inject constructor(
         _state.update { it.copy(message = "Download cancelled") }
     }
 
-    fun retry(id: String) {
-        val record = records.value.firstOrNull { it.id == id } ?: return
-        _state.update {
-            it.copy(message = "Retry from Voter List Download for ${record.village}")
-        }
-    }
-
-    fun pause(id: String) {
-        val record = records.value.firstOrNull { it.id == id } ?: return
-        _state.update {
-            it.copy(message = "Pause is not supported for ${record.fileName}")
-        }
-    }
-
-    fun resume(id: String) {
-        val record = records.value.firstOrNull { it.id == id } ?: return
-        _state.update {
-            it.copy(message = "Resume from Voter List Download for ${record.village}")
-        }
-    }
-
     fun syncNow() = viewModelScope.launch {
         _state.update { it.copy(isLoading = true) }
         repository.syncWithLocalStorage()
