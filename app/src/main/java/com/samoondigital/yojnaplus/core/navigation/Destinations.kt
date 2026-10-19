@@ -1,11 +1,6 @@
 package com.samoondigital.yojnaplus.core.navigation
 
 import android.net.Uri
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Article
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * Single source of truth for navigation routes. Keeping routes as constants
@@ -14,45 +9,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 object Routes {
     const val HOME = "home"
     const val PDF = "pdf"
-    const val RURAL_STATE_LIST = "rural_state_list"
-    const val URBAN_STATE_LIST = "urban_state_list"
-    const val UP_RURAL_2026 = "up_rural_2026"
-    const val UP_URBAN_2023 = "up_urban_2023"
-    const val BIHAR_URBAN_2026 = "bihar_urban_2026"
-    const val OLD_SIR = "old_sir"
-    const val DELETED_LIST = "deleted_list"
-    const val DELETED_WEB = "deleted_web"
-    const val DELETED_WEB_ROUTE = "$DELETED_WEB/{stateId}"
-    const val UP_2003 = "up_2003"
-    const val JHARKHAND_2003 = "jharkhand_2003"
-    const val WEST_BENGAL_2002 = "west_bengal_2002"
-    const val JAMMU_KASHMIR_WEB = "jammu_kashmir_web"
-    const val CHANDIGARH_WEB = "chandigarh_web"
-    const val CHANDIGARH_2002 = "chandigarh_2002"
-    const val DADRA_NAGAR_HAVELI_WEB = "dadra_nagar_haveli_web"
-    const val GUJARAT_WEB = "gujarat_web"
-    const val KARNATAKA_WEB = "karnataka_web"
-    const val UTTARAKHAND_WEB = "uttarakhand_web"
     const val DOWNLOADS = "downloads"
     const val PDF_VIEWER = "pdf_viewer"
     const val PDF_VIEWER_ROUTE = "$PDF_VIEWER/{uri}/{title}"
-    const val NEWS = "news"
-    const val SETTINGS = "settings"
 
     fun pdfViewerRoute(uri: String, title: String): String =
         "$PDF_VIEWER/${Uri.encode(uri)}/${Uri.encode(title)}"
-
-    fun deletedWebRoute(stateId: String): String =
-        "$DELETED_WEB/${Uri.encode(stateId)}"
-}
-
-/** Items shown in the bottom navigation bar. */
-enum class TopLevelDestination(
-    val route: String,
-    val label: String,
-    val icon: ImageVector,
-) {
-    HOME(Routes.HOME, "Home", Icons.Outlined.Home),
-    NEWS(Routes.NEWS, "News", Icons.AutoMirrored.Outlined.Article),
-    SETTINGS(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
 }

@@ -7,9 +7,6 @@ import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.model.CaptchaData
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.GeneratePdfRequest
-import com.samoondigital.yojnaplus.model.OldSirAssemblyDto
-import com.samoondigital.yojnaplus.model.OldSirDistrictDto
-import com.samoondigital.yojnaplus.model.OldSirPartDto
 import com.samoondigital.yojnaplus.model.PartDto
 import com.samoondigital.yojnaplus.model.PartListRequest
 import com.samoondigital.yojnaplus.model.RollTypeDto
@@ -140,45 +137,6 @@ class ElectoralRollRepository @Inject constructor(
             base64Pdf = payload,
             fileName = response.refId?.ifBlank { null } ?: "electoral-roll-$fileId.pdf",
         )
-    }
-
-    suspend fun getOldSirDistricts(stateCd: String): List<OldSirDistrictDto> =
-        gatewayApi.getOldSirDistricts(stateCd)
-            .requirePayload()
-            .sortedBy { it.districtNo }
-
-    suspend fun getOldSirAssemblies(stateCd: String, districtNo: Int): List<OldSirAssemblyDto> =
-        gatewayApi.getOldSirAssemblies(stateCd, districtNo)
-            .requirePayload()
-            .sortedBy { it.acNo }
-
-    suspend fun getOldSirParts(stateCd: String, acNumber: Int): List<OldSirPartDto> =
-        gatewayApi.getOldSirParts(stateCd, acNumber)
-            .requirePayload()
-            .sortedBy { it.partNumber }
-
-    fun isOldSirStateSupported(stateCd: String): Boolean {
-        val normalizedStateCd = stateCd.uppercase()
-        return normalizedStateCd == "S04" || oldSirPdfFolder(normalizedStateCd) != null
-    }
-
-    fun resolveOldSirPdfUrl(stateCd: String, part: OldSirPartDto): String? {
-        val normalizedStateCd = stateCd.uppercase()
-        if (normalizedStateCd == "S04") {
-            return part.oldPdfUrl?.trim()?.takeIf(String::isNotEmpty)
-        }
-        val folder = oldSirPdfFolder(normalizedStateCd) ?: return null
-        return "https://www.eci.gov.in/sir/$folder/$normalizedStateCd/data/OLDSIRROLL/" +
-            "$normalizedStateCd/${part.acNumber}/" +
-            "${normalizedStateCd}_${part.acNumber}_${part.partNumber}.pdf"
-    }
-
-    private fun oldSirPdfFolder(stateCd: String): String? = when (stateCd) {
-        "S01", "S02", "S03", "S05", "S07", "S08" -> "f1"
-        "S11", "S12", "S13", "S14", "S15", "S16", "S17", "S18", "S19" -> "f2"
-        "S20", "S21", "S22", "S23", "S26" -> "f3"
-        "S29", "U01", "U05", "U06", "U07", "U09" -> "f4"
-        else -> null
     }
 
     private fun <T> com.samoondigital.yojnaplus.model.EciEnvelope<T>.requirePayload(): T {

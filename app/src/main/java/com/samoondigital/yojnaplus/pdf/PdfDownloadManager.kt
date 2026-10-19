@@ -52,27 +52,6 @@ class PdfDownloadManager @Inject constructor(
                 Environment.DIRECTORY_DOWNLOADS,
                 "VoterList2026/$fileName",
             )
-        if (downloadUri.host.equals(ECI_OLD_SIR_HOST, ignoreCase = true)) {
-            // ECI's edge server rejects Android DownloadManager's default User-Agent.
-            request.addRequestHeader("User-Agent", ECI_DOWNLOAD_USER_AGENT)
-        } else if (downloadUri.host.equals(UP_ROLL_HOST, ignoreCase = true)) {
-            request.addRequestHeader("User-Agent", UP_DOWNLOAD_USER_AGENT)
-        } else if (downloadUri.host.equals(CHANDIGARH_ROLL_HOST, ignoreCase = true)) {
-            request.addRequestHeader("User-Agent", CHANDIGARH_DOWNLOAD_USER_AGENT)
-            request.addRequestHeader("Referer", "https://ceochandigarh.gov.in/pages/intensive")
-        } else if (downloadUri.host.equals(DNH_ROLL_HOST, ignoreCase = true)) {
-            request.addRequestHeader("User-Agent", DNH_DOWNLOAD_USER_AGENT)
-            request.addRequestHeader("Referer", "https://ceodaman.nic.in/ceoindex.html")
-        } else if (downloadUri.host.equals(DNH_IFRAME_HOST, ignoreCase = true)) {
-            request.addRequestHeader("User-Agent", DNH_DOWNLOAD_USER_AGENT)
-            request.addRequestHeader("Referer", "https://ceoddd.in/Home/PSSearch")
-        } else if (downloadUri.host.equals(WB_ROLL_HOST, ignoreCase = true)) {
-            request.addRequestHeader("User-Agent", WB_DOWNLOAD_USER_AGENT)
-            request.addRequestHeader("Referer", "https://ceowestbengal.wb.gov.in/Roll_ps/1")
-        } else if (downloadUri.host.equals(BIHAR_ROLL_HOST, ignoreCase = true)) {
-            request.addRequestHeader("User-Agent", BIHAR_DOWNLOAD_USER_AGENT)
-            request.addRequestHeader("Referer", "https://sec.bihar.gov.in/ForPublic/RollPrint2026U1.aspx")
-        }
         val id = downloadManager.enqueue(request)
         var completed = false
         try {
@@ -193,23 +172,6 @@ class PdfDownloadManager @Inject constructor(
     }
     private fun sanitizeFileName(value: String): String =
         value.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-
-    private companion object {
-        const val ECI_OLD_SIR_HOST = "www.eci.gov.in"
-        const val UP_ROLL_HOST = "ceouttarpradesh.nic.in"
-        const val CHANDIGARH_ROLL_HOST = "ceochandigarh.gov.in"
-        const val DNH_ROLL_HOST = "ceodaman.nic.in"
-        const val DNH_IFRAME_HOST = "ceoddd.in"
-        const val WB_ROLL_HOST = "ceowestbengal.wb.gov.in"
-        const val BIHAR_ROLL_HOST = "sec.bihar.gov.in"
-        const val ECI_DOWNLOAD_USER_AGENT = "curl/8.10.1 VoterList2026/Android"
-        const val UP_DOWNLOAD_USER_AGENT =
-            "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
-        const val CHANDIGARH_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
-        const val DNH_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
-        const val WB_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
-        const val BIHAR_DOWNLOAD_USER_AGENT = UP_DOWNLOAD_USER_AGENT
-    }
 }
 
 data class DownloadedPdf(

@@ -22,14 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Apartment
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -58,10 +54,6 @@ import com.samoondigital.yojnaplus.core.ui.components.stableStatusBarsPadding
 @Composable
 fun HomeScreen(
     onDownloadPdf: () -> Unit,
-    onOpenRuralList: () -> Unit,
-    onOpenUrbanList: () -> Unit,
-    onOpenDeletedList: () -> Unit,
-    onOpenOldSir: () -> Unit,
     onOpenDownloads: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -85,11 +77,7 @@ fun HomeScreen(
         ) {
             SectionTitle()
             CategoryList(
-                onRuralClick = onOpenRuralList,
-                onUrbanClick = onOpenUrbanList,
                 onVoterListClick = onDownloadPdf,
-                onDeletedClick = onOpenDeletedList,
-                onOldSirClick = onOpenOldSir,
             )
             TrustBadge()
             HomeDisclaimer()
@@ -270,7 +258,7 @@ private fun SectionTitle() {
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = "5 Options",
+            text = "1 Option",
             color = BrandPurple,
             fontSize = 11.sp,
             lineHeight = 13.sp,
@@ -281,11 +269,7 @@ private fun SectionTitle() {
 
 @Composable
 private fun CategoryList(
-    onRuralClick: () -> Unit,
-    onUrbanClick: () -> Unit,
     onVoterListClick: () -> Unit,
-    onDeletedClick: () -> Unit,
-    onOldSirClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -296,48 +280,12 @@ private fun CategoryList(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             CategoryRow(
-                title = "Gram Panchayat Voter List",
-                description = "Village panchayat and ward-wise voter list",
-                icon = Icons.Outlined.Home,
-                iconTint = Color(0xFF10B981),
-                iconBackground = Color(0xFFECFDF5),
-                onClick = onRuralClick,
-            )
-            ListDivider()
-            CategoryRow(
-                title = "Urban Voter List",
-                description = "Municipality, municipal corporation & civic body list",
-                icon = Icons.Outlined.Apartment,
-                iconTint = BrandPurple,
-                iconBackground = Color(0xFFEEF2FF),
-                onClick = onUrbanClick,
-            )
-            ListDivider()
-            CategoryRow(
                 title = "Voter List 2026",
                 description = "Download latest consolidated electoral roll 2026",
                 icon = Icons.Outlined.Description,
                 iconTint = Color(0xFF2563EB),
                 iconBackground = Color(0xFFEFF6FF),
                 onClick = onVoterListClick,
-            )
-            ListDivider()
-            CategoryRow(
-                title = "Deleted List 2026",
-                description = "View list of removed or struck-off voter names",
-                icon = Icons.Outlined.Delete,
-                iconTint = Color(0xFFF43F5E),
-                iconBackground = Color(0xFFFFF1F2),
-                onClick = onDeletedClick,
-            )
-            ListDivider()
-            CategoryRow(
-                title = "Old SIR List",
-                description = "Special intensive revision electoral roll from previous enumeration",
-                icon = Icons.Outlined.Schedule,
-                iconTint = Color(0xFFD97706),
-                iconBackground = Color(0xFFFFFBEB),
-                onClick = onOldSirClick,
             )
         }
     }
@@ -406,15 +354,6 @@ private fun CategoryRow(
             )
         }
     }
-}
-
-@Composable
-private fun ListDivider() {
-    HorizontalDivider(
-        thickness = 1.dp,
-        color = Color(0xFFF1F5F9),
-        modifier = Modifier.padding(start = 67.dp),
-    )
 }
 
 @Composable

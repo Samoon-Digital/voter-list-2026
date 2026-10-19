@@ -1,7 +1,6 @@
 package com.samoondigital.yojnaplus.ads
 
 import android.Manifest
-import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
@@ -194,24 +193,6 @@ object AdManager {
             RuntimeException("Ad load failure stack trace"),
         )
         logResponse(format, adUnitId, error.responseInfo)
-    }
-
-    fun openAdInspector(activity: Activity) {
-        if (AdsTemporarilyDisabled) {
-            Log.d(Tag, "ads-temporarily-disabled inspector-skipped")
-            return
-        }
-        if (!BuildConfig.DEBUG) {
-            Log.d(Tag, "ad-inspector-skipped reason=debug-only buildType=${BuildConfig.BUILD_TYPE}")
-            return
-        }
-        MobileAds.openAdInspector { error ->
-            if (error == null) {
-                Log.d(Tag, "ad-inspector-closed")
-            } else {
-                Log.w(Tag, "ad-inspector-error code=${error.code} message=${error.message}")
-            }
-        }
     }
 
     private fun drainPendingLoadsIfReady() {

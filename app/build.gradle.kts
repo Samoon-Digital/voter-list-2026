@@ -143,7 +143,6 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
-    implementation(libs.jsoup)
     implementation(libs.kotlinx.serialization.json)
 
     // Room
@@ -155,8 +154,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)
 
-    // Image loading
-    implementation(libs.coil.compose)
+    // PDF viewing
     implementation(libs.afreaky.pdf.viewer)
     implementation(libs.androidx.pdf.viewer.fragment)
     implementation(libs.ads.mobile.sdk)

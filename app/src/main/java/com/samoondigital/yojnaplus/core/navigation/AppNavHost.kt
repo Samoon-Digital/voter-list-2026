@@ -23,30 +23,10 @@ import androidx.navigation.compose.rememberNavController
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.core.ui.components.AdMobBannerAd
 import com.samoondigital.yojnaplus.core.ui.components.rememberLargeAdaptiveBannerHeight
-import com.samoondigital.yojnaplus.feature.biharurban.BiharUrbanScreen
-import com.samoondigital.yojnaplus.feature.chandigarh.ChandigarhScreen
-import com.samoondigital.yojnaplus.feature.deleted.DeletedListLinks
-import com.samoondigital.yojnaplus.feature.deleted.DeletedListScreen
 import com.samoondigital.yojnaplus.feature.downloads.DownloadsScreen
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
-import com.samoondigital.yojnaplus.feature.jharkhand.JharkhandScreen
-import com.samoondigital.yojnaplus.feature.news.NewsScreen
-import com.samoondigital.yojnaplus.feature.oldsir.OldSirScreen
 import com.samoondigital.yojnaplus.feature.pdf.PdfScreen
 import com.samoondigital.yojnaplus.feature.pdfviewer.PdfViewerScreen
-import com.samoondigital.yojnaplus.feature.settings.SettingsScreen
-import com.samoondigital.yojnaplus.feature.up2003.UpRollScreen
-import com.samoondigital.yojnaplus.feature.upcurrent.UpRuralVoterListScreen
-import com.samoondigital.yojnaplus.feature.upcurrent.UpStateListScreen
-import com.samoondigital.yojnaplus.feature.upcurrent.UpUrbanVoterListScreen
-import com.samoondigital.yojnaplus.feature.webview.ChandigarhWebViewScreen
-import com.samoondigital.yojnaplus.feature.webview.DadraNagarHaveliWebViewScreen
-import com.samoondigital.yojnaplus.feature.webview.GujaratWebViewScreen
-import com.samoondigital.yojnaplus.feature.webview.JammuKashmirWebViewScreen
-import com.samoondigital.yojnaplus.feature.webview.KarnatakaWebViewScreen
-import com.samoondigital.yojnaplus.feature.webview.OfficialPdfWebViewScreen
-import com.samoondigital.yojnaplus.feature.webview.UttarakhandWebViewScreen
-import com.samoondigital.yojnaplus.feature.westbengal.WestBengalScreen
 
 @Composable
 fun AppNavHost(modifier: Modifier = Modifier) {
@@ -91,181 +71,10 @@ fun AppNavHost(modifier: Modifier = Modifier) {
                 composable(Routes.HOME) {
                     HomeScreen(
                         onDownloadPdf = { navController.navigate(Routes.PDF) },
-                        onOpenRuralList = { navController.navigate(Routes.RURAL_STATE_LIST) },
-                        onOpenUrbanList = { navController.navigate(Routes.URBAN_STATE_LIST) },
-                        onOpenDeletedList = { navController.navigate(Routes.DELETED_LIST) },
-                        onOpenOldSir = { navController.navigate(Routes.OLD_SIR) },
                         onOpenDownloads = { navigateToDownloads() },
                         contentPadding = innerPadding,
                     )
                 }
-                composable(Routes.RURAL_STATE_LIST) {
-                    UpStateListScreen(
-                        title = "Gram Panchayat Voter List",
-                        subtitle = "Choose state for rural voter list",
-                        onBack = { navController.popBackStack() },
-                        onOpenUttarPradesh = { navController.navigate(Routes.UP_RURAL_2026) },
-                    )
-                }
-                composable(Routes.URBAN_STATE_LIST) {
-                    UpStateListScreen(
-                        title = "Urban Voter List",
-                        subtitle = "Choose state for urban local body voter list",
-                        onBack = { navController.popBackStack() },
-                        onOpenUttarPradesh = { navController.navigate(Routes.UP_URBAN_2023) },
-                        onOpenBihar = { navController.navigate(Routes.BIHAR_URBAN_2026) },
-                    )
-                }
-                composable(Routes.UP_RURAL_2026) {
-                    UpRuralVoterListScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenDownloads = { navigateToDownloads() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.UP_URBAN_2023) {
-                    UpUrbanVoterListScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenDownloads = { navigateToDownloads() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.BIHAR_URBAN_2026) {
-                    BiharUrbanScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenDownloads = { navigateToDownloads() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.DELETED_LIST) {
-                    DeletedListScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenState = { link -> navController.navigate(Routes.deletedWebRoute(link.id)) },
-                    )
-                }
-                composable(Routes.DELETED_WEB_ROUTE) { entry ->
-                    val link = DeletedListLinks.find(entry.arguments?.getString("stateId"))
-                    if (link?.url != null) {
-                        OfficialPdfWebViewScreen(
-                            screenTitle = link.stateName,
-                            startUrl = link.url,
-                            downloadDistrict = link.stateName,
-                            onBack = { navController.popBackStack() },
-                            onOpenPdf = { uri, title ->
-                                navController.navigate(Routes.pdfViewerRoute(uri, title))
-                            },
-                        )
-                    } else {
-                        DeletedListScreen(
-                            onBack = { navController.popBackStack() },
-                            onOpenState = { state -> navController.navigate(Routes.deletedWebRoute(state.id)) },
-                        )
-                    }
-                }
-                composable(Routes.OLD_SIR) {
-                    OldSirScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenUttarPradesh = { navController.navigate(Routes.UP_2003) },
-                        onOpenJammuKashmir = { navController.navigate(Routes.JAMMU_KASHMIR_WEB) },
-                        onOpenChandigarh = { navController.navigate(Routes.CHANDIGARH_2002) },
-                        onOpenDadraNagarHaveli = { navController.navigate(Routes.DADRA_NAGAR_HAVELI_WEB) },
-                        onOpenGujarat = { navController.navigate(Routes.GUJARAT_WEB) },
-                        onOpenKarnataka = { navController.navigate(Routes.KARNATAKA_WEB) },
-                        onOpenUttarakhand = { navController.navigate(Routes.UTTARAKHAND_WEB) },
-                        onOpenJharkhand = { navController.navigate(Routes.JHARKHAND_2003) },
-                        onOpenWestBengal = { navController.navigate(Routes.WEST_BENGAL_2002) },
-                        onOpenDownloads = { navigateToDownloads() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.UP_2003) {
-                    UpRollScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenDownloads = { navigateToDownloads() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.JHARKHAND_2003) {
-                    JharkhandScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenDownloads = { navigateToDownloads() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.WEST_BENGAL_2002) {
-                    WestBengalScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenDownloads = { navigateToDownloads() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.JAMMU_KASHMIR_WEB) {
-                    JammuKashmirWebViewScreen(
-                        onBack = { navController.popBackStack() },
-                    )
-                }
-                composable(Routes.CHANDIGARH_WEB) {
-                    ChandigarhWebViewScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.CHANDIGARH_2002) {
-                    ChandigarhScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenDownloads = { navigateToDownloads() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.DADRA_NAGAR_HAVELI_WEB) {
-                    DadraNagarHaveliWebViewScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.GUJARAT_WEB) {
-                    GujaratWebViewScreen(
-                        onBack = { navController.popBackStack() },
-                    )
-                }
-                composable(Routes.KARNATAKA_WEB) {
-                    KarnatakaWebViewScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.UTTARAKHAND_WEB) {
-                    UttarakhandWebViewScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenPdf = { uri, title ->
-                            navController.navigate(Routes.pdfViewerRoute(uri, title))
-                        },
-                    )
-                }
-                composable(Routes.NEWS) { NewsScreen(contentPadding = innerPadding) }
-                composable(Routes.SETTINGS) { SettingsScreen(contentPadding = innerPadding) }
                 composable(Routes.PDF) {
                     PdfScreen(
                         onBack = { navController.popBackStack() },
@@ -298,16 +107,7 @@ fun AppNavHost(modifier: Modifier = Modifier) {
 }
 
 private fun shouldShowRouteBottomBanner(route: String): Boolean =
-    route != Routes.HOME && route !in setOf(
-        Routes.JAMMU_KASHMIR_WEB,
-        Routes.CHANDIGARH_WEB,
-        Routes.DADRA_NAGAR_HAVELI_WEB,
-        Routes.GUJARAT_WEB,
-        Routes.KARNATAKA_WEB,
-        Routes.UTTARAKHAND_WEB,
-        Routes.DELETED_WEB_ROUTE,
-        Routes.PDF_VIEWER_ROUTE,
-    )
+    route == Routes.PDF || route == Routes.DOWNLOADS
 
 @Composable
 private fun BoxScope.BottomRouteBanner(
