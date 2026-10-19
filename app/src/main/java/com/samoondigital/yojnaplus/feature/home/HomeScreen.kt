@@ -1,5 +1,9 @@
 package com.samoondigital.yojnaplus.feature.home
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -45,10 +49,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.samoondigital.yojnaplus.R
 import com.samoondigital.yojnaplus.core.ui.components.AppToolbar
+import com.samoondigital.yojnaplus.ads.ConsentManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -193,6 +200,8 @@ private fun SavedPdfCard(onClick: () -> Unit) {
 @Composable
 private fun HomeDisclaimer() {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val privacyOptionsRequired by ConsentManager.privacyOptionsRequired.collectAsStateWithLifecycle()
     val privacyUrl = "https://sites.google.com/view/voterlist2026/home"
     val instagramUrl = "https://www.instagram.com/samoon_digital/"
     val email = "alimailsamun@gmail.com"
@@ -220,6 +229,13 @@ private fun HomeDisclaimer() {
             TextButton(onClick = { uriHandler.openUri(privacyUrl) }) {
                 Text(stringResource(R.string.ui_privacy), style = MaterialTheme.typography.labelMedium)
             }
+            PrivacyChoicesButton(required = privacyOptionsRequired, onClick = {
+                context.findActivity()?.let { activity ->
+                    ConsentManager.showPrivacyOptions(activity) {
+                        Toast.makeText(context, R.string.ui_privacy_options_error, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
             TextButton(onClick = { uriHandler.openUri(instagramUrl) }) {
                 Text(stringResource(R.string.ui_follow), style = MaterialTheme.typography.labelMedium)
             }
@@ -228,4 +244,19 @@ private fun HomeDisclaimer() {
             }
         }
     }
+}
+
+@Composable
+internal fun PrivacyChoicesButton(required: Boolean, onClick: () -> Unit) {
+    if (required) {
+        TextButton(onClick = onClick) {
+            Text(stringResource(R.string.ui_privacy_choices), style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -16,9 +17,13 @@ import androidx.work.WorkManager
 import com.samoondigital.yojnaplus.feature.downloads.worker.DownloadStorageSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -29,6 +34,8 @@ class DownloadRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val dao: DownloadRecordDao,
 ) {
+    private val fileMutationMutex = Mutex()
+
     fun observeDownloads(): Flow<List<DownloadRecordEntity>> = dao.observeAll()
 
     suspend fun createPendingRecord(
@@ -86,35 +93,78 @@ class DownloadRepository @Inject constructor(
         updateStatus(id, DownloadStatusEntity.Cancelled, errorMessage = null)
 
     suspend fun delete(id: String) = withContext(Dispatchers.IO) {
-        val record = dao.getById(id) ?: return@withContext
-        record.uri?.let { uri ->
-            runCatching { context.contentResolver.delete(uri.toUri(), null, null) }
+        fileMutationMutex.withLock {
+            val record = dao.getById(id) ?: return@withLock
+            // Finish the storage change and its database update together if the screen is closed.
+            withContext(NonCancellable) {
+                record.uri?.let { value ->
+                    val uri = value.toUri()
+                    val file = localFile(uri)
+                    val deleted = if (file != null) file.delete() else {
+                        context.contentResolver.delete(uri, null, null) > 0
+                    }
+                    if (!deleted) throw IOException("Unable to delete PDF from storage")
+                }
+                dao.delete(record)
+            }
         }
-        dao.delete(record)
     }
 
     suspend fun rename(id: String, rawName: String) = withContext(Dispatchers.IO) {
-        val record = dao.getById(id) ?: return@withContext
-        val safeName = sanitizePdfName(rawName)
-        val uri = record.uri
-        if (uri != null) {
-            val parsed = uri.toUri()
-            val updated = runCatching {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, safeName)
+        fileMutationMutex.withLock {
+            val record = dao.getById(id) ?: return@withLock
+            val uri = record.uri?.toUri() ?: throw IOException("PDF file is not available to rename")
+            val safeName = sanitizePdfName(rawName)
+            withContext(NonCancellable) {
+                val source = localFile(uri)
+                val updatedRecord = if (source != null) {
+                    if (!source.isFile) throw IOException("PDF file is missing from storage")
+                    val target = File(source.parentFile, safeName)
+                    if (source != target) {
+                        if (target.exists()) throw IOException("A PDF with this name already exists")
+                        if (!source.renameTo(target)) throw IOException("Unable to rename PDF in storage")
+                    }
+                    val updatedUri = if (uri.scheme == "file") Uri.fromFile(target) else {
+                        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", target)
+                    }
+                    record.copy(fileName = target.name, uri = updatedUri.toString())
+                } else {
+                    val values = ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, safeName)
+                    }
+                    if (context.contentResolver.update(uri, values, null, null) <= 0) {
+                        throw IOException("Unable to rename PDF in storage")
+                    }
+                    // MediaStore may choose a unique filename when the requested name already exists.
+                    val storedName = context.contentResolver.query(
+                        uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null,
+                    )?.use { cursor ->
+                        if (cursor.moveToFirst()) cursor.getString(0) else null
+                    } ?: throw IOException("Unable to verify renamed PDF")
+                    record.copy(fileName = storedName)
                 }
-                context.contentResolver.update(parsed, values, null, null)
-            }.getOrDefault(0)
-            if (updated == 0 && parsed.scheme == "file") {
-                val source = File(parsed.path.orEmpty())
-                val target = File(source.parentFile, safeName)
-                if (source.exists() && source.renameTo(target)) {
-                    dao.update(record.copy(fileName = safeName, uri = Uri.fromFile(target).toString()))
-                    return@withContext
-                }
+                dao.update(updatedRecord)
             }
         }
-        dao.update(record.copy(fileName = safeName))
+    }
+
+    private fun localFile(uri: Uri): File? {
+        if (uri.scheme == "file") return File(uri.path ?: throw IOException("Invalid PDF path")).canonicalFile
+        if (uri.scheme != "content" || uri.authority != "${context.packageName}.fileprovider") return null
+        // Resolve only roots declared by our own FileProvider, including legacy Android downloads.
+        val segments = uri.pathSegments
+        val root = when (segments.firstOrNull()) {
+            "external_files" -> context.getExternalFilesDir(null)
+            "cache" -> context.cacheDir
+            else -> null
+        }?.canonicalFile ?: throw IOException("Unsupported PDF storage location")
+        val file = File(root, segments.drop(1).joinToString(File.separator)).canonicalFile
+        if (!file.path.startsWith(root.path + File.separator) ||
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file) != uri
+        ) {
+            throw IOException("Invalid PDF storage location")
+        }
+        return file
     }
 
     fun share(record: DownloadRecordEntity) {

@@ -6,6 +6,8 @@
     <string name="ui_saved_help">खोलें या शेयर करें</string>
     <string name="ui_disclaimer">यह स्वतंत्र सूचना ऐप है। चुनाव आयोग या सरकार से संबद्ध या समर्थित नहीं है।</string>
     <string name="ui_privacy">Privacy Policy</string>
+    <string name="ui_privacy_choices">Privacy choices</string>
+    <string name="ui_privacy_options_error">Unable to open privacy choices. Please try again.</string>
     <string name="ui_follow">Follow Us</string>
     <string name="ui_contact">Contact</string>
     <string name="ui_wizard_title">वोटर लिस्ट डाउनलोड</string>

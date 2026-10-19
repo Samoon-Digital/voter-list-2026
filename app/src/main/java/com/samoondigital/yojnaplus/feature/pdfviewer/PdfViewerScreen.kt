@@ -5,15 +5,10 @@ import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.os.Build
-import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,11 +16,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,10 +37,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -59,7 +49,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
@@ -68,7 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.pdf.view.search.PdfSearchView
+import androidx.pdf.PdfDocument
 import androidx.pdf.viewer.fragment.PdfViewerFragment
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
@@ -79,7 +68,6 @@ import androidx.compose.ui.semantics.contentDescription
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.math.roundToInt
 
 @Composable
 fun PdfViewerScreen(
@@ -88,19 +76,21 @@ fun PdfViewerScreen(
     viewModel: PdfViewerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    BackHandler(onBack = onBack)
 
     val context = LocalContext.current
     val useAndroidXPdfViewer = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
-    var androidXPdfFragment by remember(state.uri) { mutableStateOf<PdfViewerFragment?>(null) }
-    var isAndroidXPdfSearchActive by remember(state.uri) { mutableStateOf(false) }
-    var searchBarOffsetPx by remember(state.uri) { mutableFloatStateOf(0f) }
+    var androidXPdfFragment by remember(state.uri) { mutableStateOf<AppPdfViewerFragment?>(null) }
     var toolbarHeight by remember { mutableStateOf(128.dp) }
     val density = LocalDensity.current
-    val maxSearchBarLiftPx = with(density) { 220.dp.toPx() }
-    val searchBarDragState = rememberDraggableState { delta ->
-        searchBarOffsetPx = (searchBarOffsetPx + delta).coerceIn(-maxSearchBarLiftPx, 0f)
+    val handleBack = {
+        val fragment = androidXPdfFragment
+        if (fragment?.isTextSearchActive == true) {
+            fragment.isTextSearchActive = false
+        } else {
+            onBack()
+        }
     }
+    BackHandler(onBack = handleBack)
     val sourceState by produceState<PdfSourceState>(PdfSourceState.Loading, state.uri) {
         value = PdfSourceState.Loading
         value = runCatching { PdfSourceState.Ready(preparePdfViewerUri(context, state.uri.toUri())) }
@@ -110,14 +100,10 @@ fun PdfViewerScreen(
     LaunchedEffect(sourceState) {
         when (val source = sourceState) {
             PdfSourceState.Loading -> viewModel.setLoading()
-            is PdfSourceState.Ready -> viewModel.onLoaded(pageCount = 0)
+            is PdfSourceState.Ready -> {
+                if (useAndroidXPdfViewer) viewModel.setLoading() else viewModel.onLoaded(pageCount = 0)
+            }
             is PdfSourceState.Error -> viewModel.onError(source.message)
-        }
-    }
-
-    LaunchedEffect(isAndroidXPdfSearchActive) {
-        if (!isAndroidXPdfSearchActive) {
-            searchBarOffsetPx = 0f
         }
     }
 
@@ -132,6 +118,8 @@ fun PdfViewerScreen(
                     AndroidXPdfPages(
                         uri = source.uri,
                         onReady = { androidXPdfFragment = it },
+                        onLoaded = { viewModel.onLoaded(pageCount = 0) },
+                        onError = viewModel::onError,
                         modifier = Modifier.fillMaxSize().padding(top = toolbarHeight),
                     )
                 } else {
@@ -153,17 +141,13 @@ fun PdfViewerScreen(
             )
             PdfSourceState.Loading -> Unit
         }
-
         PdfViewerTopBar(
             title = state.title,
             pageLabel = if (state.pageCount > 0) state.pageLabel else stringResource(R.string.ui_pdf_ready),
             modifier = Modifier.onSizeChanged { size -> toolbarHeight = with(density) { size.height.toDp() } },
-            onBack = onBack,
-            onSearch = if (useAndroidXPdfViewer) {
-                {
-                    isAndroidXPdfSearchActive = true
-                    runCatching { androidXPdfFragment?.isTextSearchActive = true }
-                }
+            onBack = handleBack,
+            onSearch = if (useAndroidXPdfViewer && androidXPdfFragment?.isDocumentReady == true) {
+                { androidXPdfFragment?.isTextSearchActive = true }
             } else {
                 null
             },
@@ -181,77 +165,15 @@ fun PdfViewerScreen(
             LoadingOverlay()
         }
 
-        if (useAndroidXPdfViewer) {
-            AndroidXPdfSearchBarHost(
-                fragment = androidXPdfFragment,
-                isActive = isAndroidXPdfSearchActive,
-                onClosed = { isAndroidXPdfSearchActive = false },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .imePadding()
-                    .navigationBarsPadding()
-                    .offset { IntOffset(x = 0, y = searchBarOffsetPx.roundToInt()) }
-                    .draggable(
-                        state = searchBarDragState,
-                        orientation = Orientation.Vertical,
-                        enabled = isAndroidXPdfSearchActive,
-                    )
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-            )
-        }
     }
 }
 
 @Composable
-private fun AndroidXPdfSearchBarHost(
-    fragment: PdfViewerFragment?,
-    isActive: Boolean,
-    onClosed: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AndroidView(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(if (isActive) 52.dp else 0.dp),
-        factory = { context -> FrameLayout(context) },
-        update = { host ->
-            if (!isActive) {
-                host.visibility = View.GONE
-                host.getChildAt(0)?.visibility = View.GONE
-                return@AndroidView
-            }
-            val searchView = fragment?.searchViewOrNull()
-            host.visibility = if (searchView != null) View.VISIBLE else View.GONE
-            if (searchView == null) {
-                host.removeAllViews()
-                return@AndroidView
-            }
-            if (searchView.parent !== host) {
-                (searchView.parent as? ViewGroup)?.removeView(searchView)
-                host.removeAllViews()
-                host.addView(
-                    searchView,
-                    FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        Gravity.CENTER,
-                    ),
-                )
-            }
-            searchView.visibility = View.VISIBLE
-            searchView.closeButton.setOnClickListener {
-                fragment.isTextSearchActive = false
-                onClosed()
-            }
-        },
-    )
-}
-
-
-@Composable
 private fun AndroidXPdfPages(
     uri: Uri,
-    onReady: (PdfViewerFragment) -> Unit,
+    onReady: (AppPdfViewerFragment) -> Unit,
+    onLoaded: (Int) -> Unit,
+    onError: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -264,12 +186,16 @@ private fun AndroidXPdfPages(
     }
 
     val fragmentManager = fragmentActivity.supportFragmentManager
-    val containerId = remember(uri) { View.generateViewId() }
+    val containerId = rememberSaveable(uri) { View.generateViewId() }
     val fragmentTag = remember(uri) { "androidx-pdf-viewer-${uri.hashCode()}" }
 
     DisposableEffect(fragmentManager, fragmentTag) {
         onDispose {
             val fragment = fragmentManager.findFragmentByTag(fragmentTag) ?: return@onDispose
+            (fragment as? AppPdfViewerFragment)?.apply {
+                onDocumentLoaded = null
+                onDocumentError = null
+            }
             fragmentManager.beginTransaction().remove(fragment).commitAllowingStateLoss()
         }
     }
@@ -280,29 +206,60 @@ private fun AndroidXPdfPages(
             FrameLayout(viewContext).apply { id = containerId }
         },
         update = { container ->
-            val fragment = (fragmentManager.findFragmentByTag(fragmentTag) as? PdfViewerFragment)
-                ?: PdfViewerFragment().also { newFragment ->
+            val existing = fragmentManager.findFragmentByTag(fragmentTag) as? AppPdfViewerFragment
+            // A restored Fragment can create its view before Compose adds this container.
+            // Reattach through FragmentManager so it owns the view and its lifecycle again.
+            if (existing != null && existing.view?.parent !== container) {
+                fragmentManager.beginTransaction().detach(existing).commitNowAllowingStateLoss()
+                fragmentManager.beginTransaction().attach(existing).commitNowAllowingStateLoss()
+            }
+            val fragment = existing
+                ?: AppPdfViewerFragment().also { newFragment ->
                     fragmentManager.beginTransaction()
                         .replace(container.id, newFragment, fragmentTag)
                         .commitNowAllowingStateLoss()
                 }
+            fragment.onDocumentLoaded = { pageCount ->
+                onReady(fragment)
+                onLoaded(pageCount)
+            }
+            fragment.onDocumentError = onError
+            fragment.isToolboxVisible = false
             if (fragment.documentUri != uri) {
                 fragment.documentUri = uri
+            } else if (fragment.isDocumentReady) {
+                onReady(fragment)
+                onLoaded(0)
             }
-            fragment.view?.hideAndroidXPdfToolBox()
-            container.post { fragment.view?.hideAndroidXPdfToolBox() }
-            onReady(fragment)
         },
     )
 }
 
-private fun View.hideAndroidXPdfToolBox() {
-    val toolBoxId = resources.getIdentifier("toolBoxView", "id", context.packageName)
-    val toolBoxView = if (toolBoxId != 0) findViewById<View>(toolBoxId) else null
-    toolBoxView?.apply {
-        visibility = View.GONE
-        isEnabled = false
-        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+// Public, no-argument fragment so FragmentManager can restore it after recreation.
+class AppPdfViewerFragment : PdfViewerFragment() {
+    var isDocumentReady: Boolean = false
+        private set
+    var onDocumentLoaded: ((Int) -> Unit)? = null
+    var onDocumentError: ((String) -> Unit)? = null
+
+    override fun onLoadDocumentSuccess(document: PdfDocument) {
+        super.onLoadDocumentSuccess(document)
+        isDocumentReady = true
+        isToolboxVisible = false
+        onDocumentLoaded?.invoke(document.pageCount)
+    }
+
+    override fun onLoadDocumentError(error: Throwable) {
+        super.onLoadDocumentError(error)
+        isDocumentReady = false
+        onDocumentError?.invoke(error.message ?: "Unable to open PDF")
+    }
+
+    override fun onDestroyView() {
+        isDocumentReady = false
+        onDocumentLoaded = null
+        onDocumentError = null
+        super.onDestroyView()
     }
 }
 
@@ -459,14 +416,6 @@ private fun ErrorPanel(message: String, onBack: () -> Unit, modifier: Modifier =
         }
     }
 }
-
-private fun PdfViewerFragment.searchViewOrNull(): PdfSearchView? =
-    runCatching {
-        PdfViewerFragment::class.java
-            .getDeclaredMethod("getPdfSearchView")
-            .apply { isAccessible = true }
-            .invoke(this) as? PdfSearchView
-    }.getOrNull()
 
 sealed interface PdfSourceState {
     data object Loading : PdfSourceState

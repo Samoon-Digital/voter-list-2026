@@ -13,6 +13,7 @@ import com.samoondigital.yojnaplus.pdf.DownloadedPdf
 import com.samoondigital.yojnaplus.pdf.PdfDownloadManager
 import com.samoondigital.yojnaplus.repository.ElectoralRollRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
@@ -35,6 +36,10 @@ class ElectoralRollViewModel @Inject constructor(
     private val currentYear = LocalDate.now().year
     private val rollTypesByYear = mutableMapOf<Int, List<RollTypeDto>>()
     private var downloadJob: Job? = null
+    private var selectionJob: Job? = null
+    private var selectionRequestId = 0L
+    private var captchaJob: Job? = null
+    private var captchaRequestId = 0L
 
     private val _state = MutableStateFlow(ElectoralRollUiState())
     val state: StateFlow<ElectoralRollUiState> = _state.asStateFlow()
@@ -43,13 +48,15 @@ class ElectoralRollViewModel @Inject constructor(
         loadStates()
     }
 
-    fun loadStates() = viewModelScope.launch {
-        runLoading("Loading states") {
-            _state.update { it.copy(states = repository.getStates()) }
-        }
+    fun loadStates() = loadSelection("Loading states") {
+        val states = repository.getStates()
+        currentCoroutineContext().ensureActive()
+        _state.update { it.copy(states = states) }
     }
 
     fun selectState(state: StateDto) {
+        cancelSelectionRequests()
+        cancelCaptchaRequest()
         rollTypesByYear.clear()
         _state.update {
             it.resetAfterState().copy(
@@ -62,6 +69,8 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     fun selectYear(year: Int) {
+        cancelSelectionRequests()
+        cancelCaptchaRequest()
         val rollTypes = rollTypesByYear[year].orEmpty()
         _state.update {
             it.resetAfterYear().copy(
@@ -75,6 +84,8 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     fun selectRollType(rollType: RollTypeDto) {
+        cancelSelectionRequests()
+        cancelCaptchaRequest()
         val stateCd = _state.value.selectedState?.stateCd
         _state.update {
             it.resetAfterRollType().copy(
@@ -89,6 +100,8 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     fun selectDistrict(district: DistrictDto) {
+        cancelSelectionRequests()
+        cancelCaptchaRequest()
         _state.update {
             it.resetAfterDistrict().copy(
                 step = ElectoralRollStep.Assembly,
@@ -100,6 +113,8 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     fun selectAssembly(assembly: AssemblyDto) {
+        cancelSelectionRequests()
+        cancelCaptchaRequest()
         _state.update {
             it.resetAfterAssembly().copy(
                 step = ElectoralRollStep.Parts,
@@ -153,20 +168,29 @@ class ElectoralRollViewModel @Inject constructor(
         refreshCaptcha()
     }
 
-    fun refreshCaptcha() = viewModelScope.launch {
-        _state.update { it.copy(isCaptchaLoading = true, captchaInput = "", message = null) }
-        runCatching { repository.getCaptcha() }
-            .onSuccess { captcha ->
-                _state.update { it.copy(captcha = captcha, isCaptchaLoading = false) }
-            }
-            .onFailure { error ->
-                _state.update {
-                    it.copy(
-                        isCaptchaLoading = false,
-                        message = error.userMessage("Unable to load captcha"),
-                    )
+    fun refreshCaptcha(): Job {
+        captchaJob?.cancel()
+        val requestId = ++captchaRequestId
+        _state.update { it.copy(isCaptchaLoading = true, captcha = null, captchaInput = "", message = null) }
+        return viewModelScope.launch {
+            try {
+                val captcha = repository.getCaptcha()
+                currentCoroutineContext().ensureActive()
+                if (requestId == captchaRequestId) {
+                    _state.update { it.copy(captcha = captcha) }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (requestId == captchaRequestId && isActive) {
+                    _state.update { it.copy(message = error.userMessage("Unable to load captcha")) }
+                }
+            } finally {
+                if (requestId == captchaRequestId) {
+                    _state.update { it.copy(isCaptchaLoading = false) }
                 }
             }
+        }.also { captchaJob = it }
     }
 
     fun updateCaptchaInput(value: String) {
@@ -225,6 +249,8 @@ class ElectoralRollViewModel @Inject constructor(
             ElectoralRollStep.Captcha -> ElectoralRollStep.Parts
             ElectoralRollStep.Success -> ElectoralRollStep.Captcha
         }
+        cancelSelectionRequests()
+        if (previous.ordinal < ElectoralRollStep.Captcha.ordinal) cancelCaptchaRequest()
         _state.update { it.copy(step = previous, isLanguageSheetVisible = false, message = null) }
         return true
     }
@@ -233,67 +259,64 @@ class ElectoralRollViewModel @Inject constructor(
         _state.update { it.copy(message = null) }
     }
 
-    private fun loadAvailableYears(stateCd: String) = viewModelScope.launch {
-        runLoading("Loading available revision years") {
-            val available = mutableListOf<Int>()
-            val candidates = (currentYear downTo currentYear - 5).toList()
-            candidates.forEach { year ->
-                runCatching { repository.getRollTypes(stateCd, year) }
-                    .onSuccess { rollTypes ->
-                        if (rollTypes.isNotEmpty()) {
-                            rollTypesByYear[year] = rollTypes
-                            available += year
-                        }
-                    }
-            }
-            _state.update {
-                it.copy(
-                    years = available,
-                    message = if (available.isEmpty()) "No electoral roll years found" else null,
-                )
+    private fun loadAvailableYears(stateCd: String) = loadSelection("Loading available revision years") {
+        // Keep partial results local: an obsolete request must never populate the next state's cache.
+        val available = mutableMapOf<Int, List<RollTypeDto>>()
+        for (year in currentYear downTo currentYear - 5) {
+            try {
+                val rollTypes = repository.getRollTypes(stateCd, year)
+                currentCoroutineContext().ensureActive()
+                if (rollTypes.isNotEmpty()) available[year] = rollTypes
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                currentCoroutineContext().ensureActive()
+                // Some revision years are not published; continue checking the remaining years.
             }
         }
-    }
-
-    private fun loadDistricts(stateCd: String) = viewModelScope.launch {
-        runLoading(null) {
-            _state.update { it.copy(districts = repository.getDistricts(stateCd)) }
+        currentCoroutineContext().ensureActive()
+        rollTypesByYear.clear()
+        rollTypesByYear.putAll(available)
+        _state.update {
+            it.copy(
+                years = available.keys.toList(),
+                message = if (available.isEmpty()) "No electoral roll years found" else null,
+            )
         }
     }
 
-    private fun loadAssemblies(districtCd: String) = viewModelScope.launch {
-        runLoading(null) {
-            _state.update { it.copy(assemblies = repository.getAssemblies(districtCd)) }
-        }
+    private fun loadDistricts(stateCd: String) = loadSelection(null) {
+        val districts = repository.getDistricts(stateCd)
+        currentCoroutineContext().ensureActive()
+        _state.update { it.copy(districts = districts) }
     }
 
-    private fun loadLanguagesAndParts() = viewModelScope.launch {
+    private fun loadAssemblies(districtCd: String) = loadSelection(null) {
+        val assemblies = repository.getAssemblies(districtCd)
+        currentCoroutineContext().ensureActive()
+        _state.update { it.copy(assemblies = assemblies) }
+    }
+
+    private fun loadLanguagesAndParts() = loadSelection(null) {
         val current = state.value
-        val selectedState = current.selectedState ?: return@launch
-        val selectedAssembly = current.selectedAssembly ?: return@launch
-        val selectedRollType = current.selectedRollType ?: return@launch
-        val selectedYear = current.selectedYear ?: return@launch
-
-        runLoading(null) {
-            val languages = repository.getLanguages(
-                stateCd = selectedState.stateCd,
-                acNumber = selectedAssembly.asmblyNo,
-                rollType = selectedRollType,
-            )
-            val parts = repository.getParts(
-                stateCd = selectedState.stateCd,
-                acNumber = selectedAssembly.asmblyNo,
-                rollType = selectedRollType,
-                year = selectedYear,
-            )
-            _state.update {
-                it.copy(
-                    languages = languages,
-                    selectedLanguageCode = null,
-                    parts = parts,
-                )
-            }
-        }
+        val selectedState = current.selectedState ?: return@loadSelection
+        val selectedAssembly = current.selectedAssembly ?: return@loadSelection
+        val selectedRollType = current.selectedRollType ?: return@loadSelection
+        val selectedYear = current.selectedYear ?: return@loadSelection
+        val languages = repository.getLanguages(
+            stateCd = selectedState.stateCd,
+            acNumber = selectedAssembly.asmblyNo,
+            rollType = selectedRollType,
+        )
+        currentCoroutineContext().ensureActive()
+        val parts = repository.getParts(
+            stateCd = selectedState.stateCd,
+            acNumber = selectedAssembly.asmblyNo,
+            rollType = selectedRollType,
+            year = selectedYear,
+        )
+        currentCoroutineContext().ensureActive()
+        _state.update { it.copy(languages = languages, selectedLanguageCode = null, parts = parts) }
     }
 
     private suspend fun downloadSelectedPdfs(retryOnlyFailed: Boolean) {
@@ -513,18 +536,45 @@ class ElectoralRollViewModel @Inject constructor(
         }
     }
 
-    private suspend fun runLoading(message: String?, block: suspend () -> Unit) {
+    private fun cancelSelectionRequests() {
+        selectionRequestId++
+        selectionJob?.cancel()
+        selectionJob = null
+        _state.update { it.copy(isLoading = false) }
+    }
+
+    private fun cancelCaptchaRequest() {
+        captchaRequestId++
+        captchaJob?.cancel()
+        captchaJob = null
+        _state.update { it.copy(isCaptchaLoading = false, captcha = null, captchaInput = "") }
+    }
+
+    private fun loadSelection(message: String?, block: suspend () -> Unit): Job {
+        cancelSelectionRequests()
+        val requestId = selectionRequestId
         _state.update { it.copy(isLoading = true, message = message) }
-        runCatching { block() }
-            .onSuccess {
-                _state.update { current ->
-                    if (current.message == message) current.copy(message = null) else current
+        return viewModelScope.launch {
+            try {
+                block()
+                currentCoroutineContext().ensureActive()
+                if (requestId == selectionRequestId) {
+                    _state.update { current ->
+                        if (current.message == message) current.copy(message = null) else current
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (requestId == selectionRequestId && isActive) {
+                    _state.update { it.copy(message = error.userMessage("Request failed")) }
+                }
+            } finally {
+                if (requestId == selectionRequestId) {
+                    _state.update { it.copy(isLoading = false) }
                 }
             }
-            .onFailure { error ->
-                _state.update { it.copy(message = error.userMessage("Request failed")) }
-            }
-        _state.update { it.copy(isLoading = false) }
+        }.also { selectionJob = it }
     }
 
     private fun Throwable.userMessage(fallback: String): String =

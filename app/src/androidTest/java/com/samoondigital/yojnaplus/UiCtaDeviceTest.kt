@@ -28,6 +28,7 @@ import com.samoondigital.yojnaplus.model.StateDto
 import com.samoondigital.yojnaplus.model.DistrictDto
 import com.samoondigital.yojnaplus.model.AssemblyDto
 import com.samoondigital.yojnaplus.feature.home.HomeScreen
+import com.samoondigital.yojnaplus.feature.home.PrivacyChoicesButton
 import com.samoondigital.yojnaplus.feature.pdf.PartsStep
 import com.samoondigital.yojnaplus.feature.pdf.StateStep
 import com.samoondigital.yojnaplus.feature.pdf.SelectionToolbar
@@ -51,6 +52,23 @@ import org.junit.Test
 class UiCtaDeviceTest {
     @get:Rule val compose = createComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
+
+    @Test
+    fun privacyChoicesEntryIsVisibleAndClickableOnlyWhenRequired() {
+        val required = mutableStateOf(false)
+        var clicks = 0
+        compose.setContent {
+            VoterList2026Theme {
+                PrivacyChoicesButton(required = required.value, onClick = { clicks++ })
+            }
+        }
+        val label = context.getString(R.string.ui_privacy_choices)
+        compose.onNodeWithText(label).assertDoesNotExist()
+        compose.runOnIdle { required.value = true }
+        compose.onNodeWithText(label).assertIsDisplayed().assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(1, clicks); required.value = false }
+        compose.onNodeWithText(label).assertDoesNotExist()
+    }
 
     @Test
     fun homeActionsRemainVisibleAtLargeFontAndOpenCorrectDestinations() {
