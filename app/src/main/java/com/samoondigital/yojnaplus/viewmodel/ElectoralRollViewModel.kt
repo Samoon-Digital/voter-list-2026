@@ -40,6 +40,9 @@ class ElectoralRollViewModel @Inject constructor(
     private var selectionRequestId = 0L
     private var captchaJob: Job? = null
     private var captchaRequestId = 0L
+    private var captchaTransitionSequence = 0L
+    private var pendingCaptchaLanguage: String? = null
+    private var journeyInterstitialAttempted = false
 
     private val _state = MutableStateFlow(ElectoralRollUiState())
     val state: StateFlow<ElectoralRollUiState> = _state.asStateFlow()
@@ -126,6 +129,7 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     fun togglePart(partNumber: Int) {
+        if (_state.value.isPreparingCaptcha) return
         _state.update { current ->
             val selected = current.selectedPartNumbers
             val updated = if (partNumber in selected) {
@@ -142,6 +146,7 @@ class ElectoralRollViewModel @Inject constructor(
 
     fun showLanguageSheet() {
         val current = _state.value
+        if (current.isPreparingCaptcha) return
         when {
             current.selectedPartNumbers.isEmpty() ->
                 _state.update { it.copy(message = "Please select at least one part") }
@@ -157,6 +162,7 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     fun selectLanguage(code: String) {
+        cancelCaptchaTransition()
         _state.update {
             it.copy(
                 selectedLanguageCode = code,
@@ -166,6 +172,51 @@ class ElectoralRollViewModel @Inject constructor(
             )
         }
         refreshCaptcha()
+    }
+
+    fun beginCaptchaTransition(code: String): CaptchaTransitionRequest? {
+        val current = _state.value
+        if (current.isPreparingCaptcha || current.step != ElectoralRollStep.Parts ||
+            !current.isLanguageSheetVisible || code !in current.languages ||
+            current.selectedPartNumbers.isEmpty() || current.isDownloading
+        ) return null
+
+        cancelCaptchaRequest()
+        val request = CaptchaTransitionRequest(
+            id = ++captchaTransitionSequence,
+            showInterstitial = !journeyInterstitialAttempted,
+        )
+        // Consume this opportunity even if no ad is ready. Back/retry must not add another interruption.
+        journeyInterstitialAttempted = true
+        pendingCaptchaLanguage = code
+        _state.update {
+            it.copy(isLanguageSheetVisible = false, captchaTransitionId = request.id, isCaptchaTransitionReady = false)
+        }
+        return request
+    }
+
+    fun isCaptchaTransitionActive(id: Long): Boolean =
+        _state.value.captchaTransitionId == id && pendingCaptchaLanguage != null &&
+            _state.value.step == ElectoralRollStep.Parts
+
+    fun onCaptchaInterstitialFinished(id: Long) {
+        if (isCaptchaTransitionActive(id)) {
+            _state.update { it.copy(isCaptchaTransitionReady = true) }
+        }
+    }
+
+    // Called by the visible route only after both the ad and the foreground lifecycle are ready.
+    fun completeCaptchaTransition() {
+        val current = _state.value
+        val id = current.captchaTransitionId ?: return
+        if (!current.isCaptchaTransitionReady || !isCaptchaTransitionActive(id)) return
+        val language = pendingCaptchaLanguage ?: return
+        selectLanguage(language)
+    }
+
+    private fun cancelCaptchaTransition() {
+        pendingCaptchaLanguage = null
+        _state.update { it.copy(captchaTransitionId = null, isCaptchaTransitionReady = false) }
     }
 
     fun refreshCaptcha(): Job {
@@ -544,6 +595,7 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     private fun cancelCaptchaRequest() {
+        cancelCaptchaTransition()
         captchaRequestId++
         captchaJob?.cancel()
         captchaJob = null
@@ -580,6 +632,8 @@ class ElectoralRollViewModel @Inject constructor(
     private fun Throwable.userMessage(fallback: String): String =
         message?.takeIf { it.isNotBlank() } ?: fallback
 }
+
+data class CaptchaTransitionRequest(val id: Long, val showInterstitial: Boolean)
 
 enum class ElectoralRollStep {
     State,
@@ -634,12 +688,17 @@ data class ElectoralRollUiState(
     val downloadItems: List<ElectoralRollDownloadItem> = emptyList(),
     val isLoading: Boolean = false,
     val isCaptchaLoading: Boolean = false,
+    val captchaTransitionId: Long? = null,
+    val isCaptchaTransitionReady: Boolean = false,
     val isDownloading: Boolean = false,
     val isLanguageSheetVisible: Boolean = false,
     val isCdnBatch: Boolean = false,
     val downloadProgress: Int = 0,
     val message: String? = null,
 ) {
+    val isPreparingCaptcha: Boolean
+        get() = captchaTransitionId != null
+
     val stepNumber: Int
         get() = when (step) {
             ElectoralRollStep.State -> 1

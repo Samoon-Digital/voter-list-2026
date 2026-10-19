@@ -95,6 +95,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.withResumed
 import com.samoondigital.yojnaplus.R
 import com.samoondigital.yojnaplus.ads.InlineBanner
 import com.samoondigital.yojnaplus.ads.rememberInlineBanner
@@ -135,6 +137,7 @@ fun PdfScreen(
     LaunchedEffect(Unit) {
         InterstitialAdManager.preload(context.applicationContext)
     }
+    CaptchaTransitionEffect(uiState, viewModel::completeCaptchaTransition)
     LaunchedEffect(uiState.step, uiState.isDownloading, uiState.completedCount, uiState.failedCount) {
         if (
             !openedDownloads &&
@@ -208,15 +211,31 @@ fun PdfScreen(
         LanguageBottomSheet(
             uiState = uiState,
             onDismiss = viewModel::dismissLanguageSheet,
-            onSelected = { languageCode ->
-                InterstitialAdManager.showIfAvailable(
-                    activity = activity,
-                    placement = GeneralLanguagePlacement,
-                ) {
-                    viewModel.selectLanguage(languageCode)
+            onSelected = languageSelected@ { languageCode ->
+                val request = viewModel.beginCaptchaTransition(languageCode) ?: return@languageSelected
+                if (request.showInterstitial) {
+                    InterstitialAdManager.showIfAvailable(
+                        activity = activity,
+                        placement = GeneralLanguagePlacement,
+                        isRequestActive = { viewModel.isCaptchaTransitionActive(request.id) },
+                    ) {
+                        viewModel.onCaptchaInterstitialFinished(request.id)
+                    }
+                } else {
+                    viewModel.onCaptchaInterstitialFinished(request.id)
                 }
             },
         )
+    }
+}
+
+@Composable
+internal fun CaptchaTransitionEffect(uiState: ElectoralRollUiState, onReady: () -> Unit) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, uiState.captchaTransitionId, uiState.isCaptchaTransitionReady) {
+        if (uiState.captchaTransitionId != null && uiState.isCaptchaTransitionReady) {
+            lifecycleOwner.lifecycle.withResumed { onReady() }
+        }
     }
 }
 
@@ -453,7 +472,7 @@ internal fun PartsStep(
                 )
                 Button(
                     onClick = onProceed,
-                    enabled = uiState.selectedPartNumbers.isNotEmpty() && !uiState.isLoading,
+                    enabled = uiState.selectedPartNumbers.isNotEmpty() && !uiState.isLoading && !uiState.isPreparingCaptcha,
                     modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = actionDescription },
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),

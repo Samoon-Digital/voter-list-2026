@@ -34,6 +34,115 @@ class SelectionRequestDeviceTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
+    fun captchaIsRequestedOnlyOnceAfterAdCompletionAndForegroundContinuation() = runBlocking {
+        val captcha = DeferredResponse<CaptchaEncryptedDto>()
+        var captchaCalls = 0
+        val api = object : JourneyGateway() {
+            override suspend fun getCaptcha(purpose: String): CaptchaEncryptedDto {
+                captchaCalls++
+                return captcha.await()
+            }
+        }
+        withViewModel(api) { vm ->
+            prepareLanguageSelection(vm)
+            var requestId = 0L
+            main {
+                val request = requireNotNull(vm.beginCaptchaTransition("ENG"))
+                requestId = request.id
+                assertTrue(request.showInterstitial)
+                assertNull(vm.beginCaptchaTransition("ENG"))
+                assertTrue(vm.state.value.isPreparingCaptcha)
+                assertFalse(vm.state.value.isLanguageSheetVisible)
+                assertNull(vm.state.value.captcha)
+                vm.completeCaptchaTransition()
+                assertEquals(0, captchaCalls)
+                vm.onCaptchaInterstitialFinished(requestId)
+                assertEquals(0, captchaCalls)
+                assertEquals(ElectoralRollStep.Parts, vm.state.value.step)
+                vm.completeCaptchaTransition()
+                vm.onCaptchaInterstitialFinished(requestId)
+                vm.completeCaptchaTransition()
+            }
+            captcha.waitUntilStarted()
+            assertEquals(1, captchaCalls)
+            assertEquals(ElectoralRollStep.Captcha, vm.state.value.step)
+            assertEquals("ENG", vm.state.value.selectedLanguageCode)
+            assertEquals(setOf(1), vm.state.value.selectedPartNumbers)
+            assertEquals("test", vm.state.value.selectedState?.stateCd)
+            main { captcha.fail(IllegalStateException("Test finished")) }
+        }
+    }
+
+    @Test
+    fun backNavigationInvalidatesOldAdCallbackAndPreventsAnotherAdInSameJourney() = runBlocking {
+        var captchaCalls = 0
+        val api = object : JourneyGateway() {
+            override suspend fun getCaptcha(purpose: String): CaptchaEncryptedDto {
+                captchaCalls++
+                error("Unexpected captcha request")
+            }
+        }
+        withViewModel(api) { vm ->
+            prepareLanguageSelection(vm)
+            main {
+                val old = requireNotNull(vm.beginCaptchaTransition("ENG"))
+                vm.goBack()
+                assertFalse(vm.isCaptchaTransitionActive(old.id))
+                vm.onCaptchaInterstitialFinished(old.id)
+                vm.completeCaptchaTransition()
+                assertEquals(0, captchaCalls)
+                assertEquals(ElectoralRollStep.Assembly, vm.state.value.step)
+                vm.selectAssembly(AssemblyDto(1, "Test assembly"))
+                vm.togglePart(1)
+                vm.showLanguageSheet()
+                val next = requireNotNull(vm.beginCaptchaTransition("ENG"))
+                assertFalse(next.showInterstitial)
+                vm.onCaptchaInterstitialFinished(old.id)
+                assertFalse(vm.state.value.isCaptchaTransitionReady)
+                assertTrue(vm.isCaptchaTransitionActive(next.id))
+                assertEquals(0, captchaCalls)
+            }
+        }
+    }
+
+    @Test
+    fun unavailableAdContinuesWithoutWaitingAndLaterRetryDoesNotShowAnotherAd() = runBlocking {
+        var calls = 0
+        val api = object : JourneyGateway() {
+            override suspend fun getCaptcha(purpose: String): CaptchaEncryptedDto {
+                calls++
+                error("Offline test")
+            }
+        }
+        withViewModel(api) { vm ->
+            prepareLanguageSelection(vm)
+            main {
+                val request = requireNotNull(vm.beginCaptchaTransition("ENG"))
+                // The same continuation is used for dismissal, no-fill and show failure.
+                vm.onCaptchaInterstitialFinished(request.id)
+                vm.completeCaptchaTransition()
+                assertEquals(1, calls)
+                vm.refreshCaptcha()
+                assertEquals(2, calls)
+                vm.goBack()
+                vm.showLanguageSheet()
+                val retry = requireNotNull(vm.beginCaptchaTransition("ENG"))
+                assertFalse(retry.showInterstitial)
+            }
+        }
+    }
+
+    private fun prepareLanguageSelection(vm: ElectoralRollViewModel) = main {
+        vm.selectState(StateDto("test", "Test"))
+        vm.selectYear(LocalDate.now().year)
+        vm.selectRollType(JourneyRoll)
+        vm.selectDistrict(DistrictDto("district"))
+        vm.selectAssembly(AssemblyDto(1, "Test assembly"))
+        vm.togglePart(1)
+        vm.showLanguageSheet()
+    }
+
+    @Test
     fun oldAssemblyResultCannotReplaceNewDistrictOrFinishItsLoading() = runBlocking {
         val old = DeferredResponse<JsonElement>()
         val latest = DeferredResponse<JsonElement>()
@@ -200,5 +309,18 @@ class SelectionRequestDeviceTest {
         override suspend fun getAcLanguages(body: AcLanguageRequest): EciEnvelope<Map<String, String>> = error("Not used")
         override suspend fun getPublishPartList(body: EncryptedBody): EciEnvelope<List<PartDto>> = error("Not used")
         override suspend fun generatePublishedPdfs(body: EncryptedBody): EciEnvelope<List<JsonElement>> = error("Not used")
+    }
+
+    private open class JourneyGateway : TestGateway() {
+        override suspend fun getPublishErollType(
+            stateCd: String, year: String, misKey: String, acceptYek: String, acceptRotcev: String,
+        ) = EciEnvelope(payload = listOf(JourneyRoll))
+        override suspend fun getAcLanguages(body: AcLanguageRequest) = EciEnvelope(payload = mapOf("ENG" to "English"))
+        override suspend fun getPublishPartList(body: EncryptedBody) =
+            EciEnvelope(payload = listOf(PartDto(partNumber = 1, partName = "Test polling centre")))
+    }
+
+    private companion object {
+        val JourneyRoll = RollTypeDto("test", rollTypeRefId = "test", pdfGenType = "test", displayName = "Test roll")
     }
 }

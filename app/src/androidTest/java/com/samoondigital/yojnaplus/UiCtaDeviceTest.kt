@@ -33,6 +33,12 @@ import com.samoondigital.yojnaplus.feature.pdf.PartsStep
 import com.samoondigital.yojnaplus.feature.pdf.StateStep
 import com.samoondigital.yojnaplus.feature.pdf.SelectionToolbar
 import com.samoondigital.yojnaplus.feature.pdf.CaptchaStep
+import com.samoondigital.yojnaplus.feature.pdf.CaptchaTransitionEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import java.util.concurrent.atomic.AtomicInteger
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollStep
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -52,6 +58,55 @@ import org.junit.Test
 class UiCtaDeviceTest {
     @get:Rule val compose = createComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
+
+    @Test
+    fun captchaTransitionWaitsForForegroundAndDoesNotRepeatOnAnotherResume() {
+        val owner = object : LifecycleOwner {
+            override val lifecycle = LifecycleRegistry(this)
+        }
+        val calls = AtomicInteger()
+        compose.runOnIdle { owner.lifecycle.currentState = Lifecycle.State.CREATED }
+        compose.setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                CaptchaTransitionEffect(
+                    ElectoralRollUiState(captchaTransitionId = 1, isCaptchaTransitionReady = true),
+                    onReady = { calls.incrementAndGet() },
+                )
+            }
+        }
+        compose.runOnIdle {
+            assertEquals(0, calls.get())
+            owner.lifecycle.currentState = Lifecycle.State.STARTED
+        }
+        compose.runOnIdle {
+            assertEquals(0, calls.get())
+            owner.lifecycle.currentState = Lifecycle.State.RESUMED
+        }
+        compose.waitUntil(5_000) { calls.get() == 1 }
+        compose.runOnIdle {
+            owner.lifecycle.currentState = Lifecycle.State.STARTED
+            owner.lifecycle.currentState = Lifecycle.State.RESUMED
+        }
+        compose.runOnIdle { assertEquals(1, calls.get()) }
+    }
+
+    @Test
+    fun cancellingPendingCaptchaBeforeForegroundPreventsItsContinuation() {
+        val owner = object : LifecycleOwner {
+            override val lifecycle = LifecycleRegistry(this)
+        }
+        val state = mutableStateOf(ElectoralRollUiState(captchaTransitionId = 1, isCaptchaTransitionReady = true))
+        val calls = AtomicInteger()
+        compose.runOnIdle { owner.lifecycle.currentState = Lifecycle.State.CREATED }
+        compose.setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                CaptchaTransitionEffect(state.value, onReady = { calls.incrementAndGet() })
+            }
+        }
+        compose.runOnIdle { state.value = ElectoralRollUiState() }
+        compose.runOnIdle { owner.lifecycle.currentState = Lifecycle.State.RESUMED }
+        compose.runOnIdle { assertEquals(0, calls.get()) }
+    }
 
     @Test
     fun privacyChoicesEntryIsVisibleAndClickableOnlyWhenRequired() {
