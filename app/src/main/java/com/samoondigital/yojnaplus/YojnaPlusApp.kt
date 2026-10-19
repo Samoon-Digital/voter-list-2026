@@ -9,6 +9,7 @@ import android.util.Log
 import com.samoondigital.yojnaplus.ads.AdManager
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
+import com.samoondigital.yojnaplus.core.analytics.AppscopeTracker
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -19,6 +20,7 @@ class YojnaPlusApp : Application() {
             Log.d(Tag, "secondary-process-init-skipped process=${currentProcessName().orEmpty()}")
             return
         }
+        AppscopeTracker.initialize(this)
         AdManager.initialize(this)
         AppOpenAdManager.register(this)
         InterstitialAdManager.preload(this)

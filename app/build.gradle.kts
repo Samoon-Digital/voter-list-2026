@@ -31,6 +31,17 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+val appscopeProperties = Properties().apply {
+    val propertiesFile = rootProject.file("local.properties")
+    if (propertiesFile.exists()) propertiesFile.inputStream().use { load(it) }
+}
+val appscopeTrackingKey = providers.gradleProperty("APPSCOPE_TRACKING_KEY")
+    .orElse(providers.environmentVariable("APPSCOPE_TRACKING_KEY"))
+    .getOrElse(appscopeProperties.getProperty("appscope.tracking.key", ""))
+require(appscopeTrackingKey.isEmpty() || appscopeTrackingKey.matches(Regex("[a-f0-9]{48}"))) {
+    "APPSCOPE_TRACKING_KEY must be a 48-character hexadecimal tracking key."
+}
+
 android {
     namespace = ProductionPackageName
     compileSdk = 36
@@ -42,6 +53,10 @@ android {
         targetSdk = 36
         versionCode = 25
         versionName = "3.3.8"
+
+        buildConfigField("String", "APPSCOPE_ENDPOINT", "\"https://appscope-tracking.alimailsamun.workers.dev/api/track\"")
+        buildConfigField("String", "APPSCOPE_APP_ID", "\"app_b8662a3d3b8c9dc5ab23d3f3\"")
+        buildConfigField("String", "APPSCOPE_TRACKING_KEY", "\"$appscopeTrackingKey\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -115,6 +130,7 @@ dependencies {
     // Core / Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)

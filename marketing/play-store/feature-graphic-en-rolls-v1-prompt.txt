@@ -1,0 +1,16 @@
+Generation mode: Built-in image_gen tool, variation of feature-graphic-hi-v1.png.
+Final export: 1024 x 500 pixels, opaque RGB PNG.
+
+Use case: ads-marketing, design variation and text-localization.
+Asset: Google Play feature graphic, requested final canvas 1024x500 pixels, opaque landscape, aspect ratio 2.048:1.
+Reference image: the attached local purple Hindi feature graphic is a STYLE AND COMPOSITION REFERENCE. Create a second English-language version showing the five actual available roll variants. Retain the same premium purple-indigo background, elegant white PDF document illustration, download badge, typographic clarity and restrained professional style. Produce the banner itself, not a mockup on another surface.
+Brand colors: #3D2EAE, #2A1F86, #E7E5F6, white. No new brand colors. Subtle gradient and only one understated curved background shape.
+Layout: left roughly 63% has editorial text and five understated rounded outline labels in a tidy 2-row grid; right roughly 29% has the PDF illustration. Keep all essential content well within 55px margins. Visually uncluttered, legible when reduced to 1024x500. Reduce the enormous headline from the reference sufficiently to leave generous breathing room for the list type labels, without losing clear hierarchy.
+EXACT TEXT:
+Large white main headline, two lines: "Voter List" then "2026".
+Medium supporting line below headline: "Find your polling booth PDF".
+Five labels, all individually clear, arranged in TWO ROWS: first row two labels "SIR Draft 2026" and "SIR Final 2026"; second row three labels "Supplement-2" and "Supplement-3" and "Supplement-4". These labels are informational, subtle lavender outlines or very light translucent fill, not bright call-to-action buttons. Do not add a sixth label.
+A small readable qualifier below these labels: "Where available".
+Small readable footer near bottom left: "Independent app • Not a government app".
+Right-side illustration: preserve the reference's sophisticated white document with folded top corner, lavender backing sheet and soft dimensional shadows. Document heading reads exactly "Electoral Roll"; below it only abstract rows/table marks, no voter names or real data. Purple "PDF" label near document bottom and the same clear white download arrow on purple circular badge.
+No other text, no extra features, no phone frame, no logos or governmental symbols, no install button, no badges, no people, no watermark. Exact English spelling, five distinct list labels, balanced whitespace, premium professional store listing graphic.

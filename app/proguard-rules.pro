@@ -20,3 +20,8 @@
 -dontwarn org.bouncycastle.jsse.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
+
+# WorkManager creates the analytics worker by its persisted class name.
+-keep class com.samoondigital.yojnaplus.core.analytics.AppscopeSyncWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}

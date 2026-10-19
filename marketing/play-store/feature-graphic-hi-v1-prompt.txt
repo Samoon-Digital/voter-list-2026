@@ -1,0 +1,15 @@
+Generation mode: Built-in image_gen tool.
+Final export: 1024 x 500 pixels, opaque RGB PNG.
+
+Use case: ads-marketing.
+Asset type: Final Google Play Store feature graphic for an existing Indian Android app, Voter List 2026. Create ONE finished Hindi landscape banner, exact requested canvas 1024 x 500 pixels (aspect ratio 2.048:1), opaque background, edge-to-edge artwork. This is the finished graphic itself, not a mockup photographed on a surface.
+Brand palette from actual app: deep indigo #2A1F86, primary purple-indigo #3D2EAE, pale lavender #E7E5F6 and white #F9FAFB. Refined restrained smooth gradient from darker left to slightly lighter right, with one extremely subtle broad abstract curved shape at the far right. Professional, trustworthy, minimal, polished Indian utility app advertising design. No neon, no excessive decoration.
+Composition: generous negative space, clear hierarchy readable at small preview sizes. Left approximately 62% contains the exact main headline, very large bold beautiful properly shaped Devanagari sans serif comparable to Noto Sans Devanagari, white. It reads on two thoughtfully balanced lines if needed, with "वोटर लिस्ट" as the dominant line and "2026" immediately below in large type. Beneath, one concise supporting action line in pale white, smaller but clearly readable, can wrap into two lines if necessary. Maintain at least 60 pixels clear margins, all essential text and visual entirely inside central safe area. Do not let right illustration compete with text.
+Right approximately 30%: one elegant upright white PDF document with a subtle folded corner and refined dimensional soft shadow, slightly offset lavender backing sheet. Front document contains only the exact Hindi label "मतदाता सूची", a few abstract purple line/table marks implying a document without any voter names or private information, and a small purple "PDF" tag. A simple clear white download arrow on an indigo circular badge overlaps the lower-right of the document. Illustration sophisticated and crisp, mostly flat with subtle depth; no smartphone frame.
+Text verbatim, render correctly with exact Hindi orthography:
+Main headline: "वोटर लिस्ट" and "2026"
+Supporting line: "मतदान केंद्र चुनें, PDF डाउनलोड करें"
+Small footer bottom-left, readable and understated: "स्वतंत्र ऐप • सरकारी ऐप नहीं"
+Document heading: "मतदाता सूची"
+Document label: "PDF"
+No additional text, no fake install/download button, no SIR/feature list, no national emblem, no ECI logo, no flags, no certification seals, no store badge, no people, no real personal data, no watermarks, no decorative English slogans. Only the exact text specified. Strong editorial alignment, meticulous spacing, uncluttered premium professional result.
