@@ -25,3 +25,8 @@
 -keep class com.samoondigital.yojnaplus.core.analytics.AppscopeSyncWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
+
+# WorkManager 2.9 instantiates input mergers through their no-argument constructor.
+-keepclassmembers class * extends androidx.work.InputMerger {
+    public <init>();
+}

@@ -51,8 +51,8 @@ android {
         applicationId = ProductionPackageName
         minSdk = 26
         targetSdk = 36
-        versionCode = 25
-        versionName = "3.3.8"
+        versionCode = 26
+        versionName = "3.3.9"
 
         buildConfigField("String", "APPSCOPE_ENDPOINT", "\"https://appscope-tracking.alimailsamun.workers.dev/api/track\"")
         buildConfigField("String", "APPSCOPE_APP_ID", "\"app_b8662a3d3b8c9dc5ab23d3f3\"")
