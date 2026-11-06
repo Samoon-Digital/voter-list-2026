@@ -6,23 +6,23 @@ import android.content.Context
 import android.os.Build
 import android.os.Process
 import android.util.Log
-import com.samoondigital.yojnaplus.ads.AdManager
-import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
 import com.samoondigital.yojnaplus.core.analytics.AppscopeTracker
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class YojnaPlusApp : Application() {
-    override fun onCreate() {
-        super.onCreate()
+    private var deferredStartupInitialized = false
+
+    /** Main-thread initialization after app content has had a frame to render. */
+    fun initializeDeferredStartup() {
+        if (deferredStartupInitialized) return
         if (!isMainProcess()) {
             Log.d(Tag, "secondary-process-init-skipped process=${currentProcessName().orEmpty()}")
             return
         }
+        deferredStartupInitialized = true
         AppscopeTracker.initialize(this)
-        AdManager.initialize(this)
-        AppOpenAdManager.register(this)
         InterstitialAdManager.preload(this)
     }
 

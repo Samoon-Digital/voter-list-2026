@@ -2,27 +2,24 @@ package com.samoondigital.yojnaplus
 
 import android.app.Activity
 import android.os.Bundle
-import android.os.SystemClock
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManager
@@ -33,19 +30,22 @@ import com.google.android.play.core.install.model.UpdateAvailability
 import com.samoondigital.yojnaplus.ads.AdManager
 import com.samoondigital.yojnaplus.ads.AppOpenAdManager
 import com.samoondigital.yojnaplus.ads.ConsentManager
+import com.samoondigital.yojnaplus.ads.StartupAdPhase
 import com.samoondigital.yojnaplus.core.navigation.AppNavHost
 import com.samoondigital.yojnaplus.core.ui.components.AppHeaderSystemBarEffect
 import com.samoondigital.yojnaplus.core.ui.theme.VoterList2026Theme
 import com.samoondigital.yojnaplus.feature.splash.StartupSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
-    private lateinit var appUpdateManager: AppUpdateManager
+    private val appUpdateManager: AppUpdateManager by lazy { AppUpdateManagerFactory.create(this) }
     private var immediateUpdateFlowStarted = false
+    private var firstFrameWorkStarted by mutableStateOf(false)
+    private var consentFlowComplete = false
+    private var deferredStartupStarted = false
 
     private val immediateUpdateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
@@ -62,63 +62,62 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         restoreDefaultSystemBarLayout()
-        appUpdateManager = AppUpdateManagerFactory.create(this)
-        checkForImmediateUpdate()
+        if (savedInstanceState != null) AppOpenAdManager.skipStartup("activity-restored")
         setContent {
-            val showColdStartSplash = remember { savedInstanceState == null }
-            val splashStartedAtMs = rememberSaveable { SystemClock.elapsedRealtime() }
-            var showStartupSplash by rememberSaveable {
-                mutableStateOf(showColdStartSplash)
+            if (!firstFrameWorkStarted) {
+                StartupSplashScreen()
+                return@setContent
             }
-            var renderAppContent by rememberSaveable {
-                mutableStateOf(!showColdStartSplash)
+            val uiState by viewModel.state.collectAsStateWithLifecycle()
+            val startupPhase by AppOpenAdManager.startupPhase.collectAsStateWithLifecycle()
+            LaunchedEffect(uiState.isThemeReady) {
+                if (uiState.isThemeReady) AppOpenAdManager.onAppReady(this@MainActivity, consentFlowComplete)
             }
-            LaunchedEffect(showColdStartSplash) {
-                if (showColdStartSplash) {
-                    withFrameNanos { }
-                    renderAppContent = true
-                }
+            if (!uiState.isThemeReady || startupPhase != StartupAdPhase.Finished) {
+                StartupSplashScreen()
+                return@setContent
             }
-            LaunchedEffect(showColdStartSplash) {
-                if (showColdStartSplash) {
-                    delay(SplashHoldMs)
-                }
-                showStartupSplash = false
-                AppOpenAdManager.onColdStartSplashFinished()
-            }
+
             val systemDark = isSystemInDarkTheme()
-            val darkMode by viewModel.darkMode.collectAsStateWithLifecycle()
-            VoterList2026Theme(darkTheme = darkMode ?: systemDark) {
+            VoterList2026Theme(darkTheme = uiState.darkMode ?: systemDark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        if (renderAppContent) {
-                            AppNavHost()
-                        }
-                        if (showStartupSplash) {
-                            StartupSplashScreen(
-                                versionName = BuildConfig.VERSION_NAME,
-                                startedAtMs = splashStartedAtMs,
-                                durationMs = SplashHoldMs,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
+                    AppNavHost()
                 }
-                // The splash owns system-bar styling until it has left the composition.
-                if (!showStartupSplash) {
-                    AppHeaderSystemBarEffect()
+                AppHeaderSystemBarEffect()
+            }
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+                window.decorView.post {
+                    if (!isFinishing && !isDestroyed) initializeDeferredStartup()
                 }
             }
         }
-        ConsentManager.gatherConsent(this) {
-            AdManager.allowAdRequests()
+        // Post from pre-draw so the lightweight frame is drawn before SDK/consent work starts.
+        window.decorView.doOnPreDraw {
+            window.decorView.post {
+                if (isFinishing || isDestroyed) return@post
+                Log.d(Tag, "first-frame-drawn action=prioritize-startup-ad")
+                AppOpenAdManager.preload(application)
+                ConsentManager.gatherConsent(this, onComplete = { consentFlowComplete = true }) {
+                    AdManager.allowAdRequests()
+                }
+                firstFrameWorkStarted = true
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
         restoreDefaultSystemBarLayout()
-        resumeImmediateUpdateIfNeeded()
+        if (deferredStartupStarted) resumeImmediateUpdateIfNeeded()
+    }
+
+    private fun initializeDeferredStartup() {
+        if (deferredStartupStarted) return
+        deferredStartupStarted = true
+        Log.d(Tag, "content-ready action=initialize-deferred-startup")
+        (application as YojnaPlusApp).initializeDeferredStartup()
+        checkForImmediateUpdate()
     }
 
     private fun restoreDefaultSystemBarLayout() {
@@ -180,6 +179,5 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val Tag = "InAppUpdate"
-        const val SplashHoldMs = 4_000L
     }
 }
