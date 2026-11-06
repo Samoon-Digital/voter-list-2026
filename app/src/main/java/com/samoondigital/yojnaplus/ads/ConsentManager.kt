@@ -36,10 +36,10 @@ object ConsentManager {
         }
     }
 
-    fun gatherConsent(activity: Activity, onComplete: () -> Unit = {}, onAdsAllowed: () -> Unit) {
+    fun gatherConsent(activity: Activity, onComplete: (Boolean) -> Unit = {}, onAdsAllowed: () -> Unit) {
         if (AdManager.areAdsTemporarilyDisabled()) {
             Log.d(Tag, "ads-temporarily-disabled consent-skipped")
-            onComplete()
+            onComplete(false)
             return
         }
         val information = UserMessagingPlatform.getConsentInformation(activity)
@@ -56,14 +56,14 @@ object ConsentManager {
                         Log.w(Tag, "consent-form error code=${it.errorCode} message=${it.message}")
                     }
                     if (information.canRequestAds()) onAdsAllowed()
-                    onComplete()
+                    onComplete(information.canRequestAds())
                 }
             },
             { requestError ->
                 updatePrivacyOptions(information)
                 Log.w(Tag, "consent-info error code=${requestError.errorCode} message=${requestError.message}")
                 if (information.canRequestAds()) onAdsAllowed()
-                onComplete()
+                onComplete(information.canRequestAds())
             },
         )
         updatePrivacyOptions(information)

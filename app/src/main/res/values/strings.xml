@@ -74,6 +74,9 @@
     <string name="ui_pdf_ready">डाउनलोड की हुई PDF</string>
     <string name="ui_rename_title">PDF का नाम बदलें</string>
     <string name="ui_splash_loading">ऐप खुल रहा है…</string>
+    <string name="ui_splash_ad_notice">This action may contain an ad.</string>
+    <string name="ui_splash_footer">स्वतंत्र सूचना ऐप</string>
+    <string name="ui_splash_version">Version %1$s</string>
     <string name="ui_delete_title">PDF हटाएँ?</string>
     <string name="ui_delete_message">%1$s फोन से भी हट जाएगी।</string>
     <string name="ui_guide_list">राज्य, साल और सूची का प्रकार चुनें</string>

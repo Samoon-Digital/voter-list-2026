@@ -16,8 +16,9 @@ import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
 import com.google.android.libraries.ads.mobile.sdk.common.AdRequest
 import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
 import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
+import java.lang.ref.WeakReference
 
-/** One startup opportunity per process. Home visibility and activity resumes never show ads. */
+/** One bounded startup opportunity per process. Home and later resumes cannot open a new one. */
 object AppOpenAdManager {
     private const val Tag = "AdMobAppOpen"
     private const val Format = "app-open-startup"
@@ -31,8 +32,12 @@ object AppOpenAdManager {
     private var cancelPendingLoad: (() -> Unit)? = null
     private var externalAdShowing = false
     private var externalAdSuppressUntilMs = 0L
+    private var timeout: Runnable? = null
+    private var hostActivity: WeakReference<Activity>? = null
+    private var appReady = false
+    private var consentReady = false
 
-    /** Called after the first loading frame, before theme preparation or deferred startup work. */
+    /** Start SDK initialization in parallel with the first frame; consent still gates ad requests. */
     internal fun preload(application: Application) {
         if (AdManager.areAdsTemporarilyDisabled()) {
             skipStartup("ads-disabled")
@@ -41,22 +46,25 @@ object AppOpenAdManager {
         AdManager.initialize(application)
         if (!gate.startLoading()) return
         Log.d(Tag, "startup-request-queued")
-        cancelPendingLoad = AdManager.loadWhenReady(Format, AdUnitIds.appOpen, gate::acceptsLoadedAd) {
+        cancelPendingLoad = AdManager.loadWhenReady(
+            Format, AdUnitIds.appOpen, { gate.acceptsLoadedAd(SystemClock.elapsedRealtime()) },
+        ) {
             try {
                 AppOpenAd.load(
                     AdRequest.Builder(AdUnitIds.appOpen).build(),
                     object : AdLoadCallback<AppOpenAd> {
                         override fun onAdLoaded(ad: AppOpenAd) {
                             mainHandler.post {
-                                if (!gate.acceptsLoadedAd()) {
+                                if (!gate.acceptsLoadedAd(SystemClock.elapsedRealtime())) {
                                     ad.destroy()
-                                    Log.d(Tag, "startup-load-discarded reason=content-ready")
+                                    if (gate.expire(SystemClock.elapsedRealtime())) releasePendingAd()
+                                    Log.d(Tag, "startup-load-discarded reason=window-closed")
                                     return@post
                                 }
                                 startupAd = ad
                                 loadedAtMs = SystemClock.elapsedRealtime()
                                 AdManager.onAdLoaded(Format, AdUnitIds.appOpen, ad.getResponseInfo())
-                                // Loading an ad must never trigger a late show over app content.
+                                tryShow()
                             }
                         }
 
@@ -75,24 +83,53 @@ object AppOpenAdManager {
         }
     }
 
-    /** Decide once when real app preparation finishes; never wait for an ad to load. */
+    /** Count the six seconds from visible loading, without resetting the clock on recreation. */
+    internal fun onFirstFrame() {
+        if (!gate.startWindow(SystemClock.elapsedRealtime())) return
+        Log.d(Tag, "startup-window-opened maxWaitMs=${gate.remainingWaitMs(SystemClock.elapsedRealtime())}")
+        timeout = Runnable {
+            if (gate.expire(SystemClock.elapsedRealtime())) {
+                releasePendingAd()
+                Log.d(Tag, "startup-finished action=skip reason=deadline")
+            }
+        }.also { mainHandler.postDelayed(it, gate.remainingWaitMs(SystemClock.elapsedRealtime())) }
+    }
+
+    /** Readiness signals can arrive in any order; loading continues until the six-second deadline. */
     internal fun onAppReady(activity: Activity, consentFlowComplete: Boolean) {
         if (gate.phase.value != StartupAdPhase.Preparing) return
+        hostActivity = WeakReference(activity)
+        appReady = true
+        consentReady = consentFlowComplete
+        tryShow()
+    }
+
+    internal fun onHostResumed(activity: Activity) {
+        if (hostActivity?.get() === activity) tryShow()
+    }
+
+    private fun tryShow() {
+        if (gate.phase.value != StartupAdPhase.Preparing) return
+        val activity = hostActivity?.get()
         val ad = startupAd
         val fresh = ad != null && SystemClock.elapsedRealtime() - loadedAtMs < MaxAdAgeMs
         val resumed = (activity as? LifecycleOwner)?.lifecycle?.currentState
             ?.isAtLeast(Lifecycle.State.RESUMED) == true
-        val eligible = consentFlowComplete && resumed && !activity.isFinishing && !activity.isDestroyed &&
+        val eligible = appReady && consentReady && resumed &&
+            !activity.isFinishing && !activity.isDestroyed &&
             !externalAdShowing && SystemClock.elapsedRealtime() >= externalAdSuppressUntilMs
-        val shouldShow = gate.onAppReady(adAvailable = fresh, eligible = eligible)
-        cancelPendingLoad?.invoke()
-        cancelPendingLoad = null
-        startupAd = null
-        if (!shouldShow || ad == null) {
-            ad?.destroy()
-            Log.d(Tag, "startup-finished action=skip adReady=$fresh eligible=$eligible")
+        val shouldShow = gate.tryShow(fresh, eligible, SystemClock.elapsedRealtime())
+        if (gate.phase.value == StartupAdPhase.Finished) {
+            releasePendingAd()
+            Log.d(Tag, "startup-finished action=skip reason=deadline")
             return
         }
+        if (!shouldShow || ad == null || activity == null) return
+        cancelPendingLoad?.invoke()
+        cancelPendingLoad = null
+        timeout?.let(mainHandler::removeCallbacks)
+        timeout = null
+        startupAd = null
 
         fun finish() {
             if (gate.phase.value != StartupAdPhase.Showing) return
@@ -102,6 +139,7 @@ object AppOpenAdManager {
                 ViewCompat.requestApplyInsets(activity.window.decorView)
             }
             gate.finish()
+            hostActivity = null
         }
         ad.adEventCallback = object : AppOpenAdEventCallback {
             override fun onAdShowedFullScreenContent() {
@@ -136,11 +174,18 @@ object AppOpenAdManager {
     internal fun skipStartup(reason: String) {
         if (gate.phase.value != StartupAdPhase.Preparing) return
         gate.finish()
+        releasePendingAd()
+        Log.d(Tag, "startup-finished action=skip reason=$reason")
+    }
+
+    private fun releasePendingAd() {
+        timeout?.let(mainHandler::removeCallbacks)
+        timeout = null
         cancelPendingLoad?.invoke()
         cancelPendingLoad = null
         startupAd?.destroy()
         startupAd = null
-        Log.d(Tag, "startup-finished action=skip reason=$reason")
+        hostActivity = null
     }
 
     fun onExternalFullScreenAdWillShow() {

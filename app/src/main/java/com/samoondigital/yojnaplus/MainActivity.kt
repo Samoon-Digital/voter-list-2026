@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
     private val appUpdateManager: AppUpdateManager by lazy { AppUpdateManagerFactory.create(this) }
     private var immediateUpdateFlowStarted = false
     private var firstFrameWorkStarted by mutableStateOf(false)
-    private var consentFlowComplete = false
+    private var consentFlowComplete by mutableStateOf(false)
     private var deferredStartupStarted = false
 
     private val immediateUpdateLauncher = registerForActivityResult(
@@ -61,20 +61,20 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        AppOpenAdManager.preload(application)
         restoreDefaultSystemBarLayout()
-        if (savedInstanceState != null) AppOpenAdManager.skipStartup("activity-restored")
         setContent {
             if (!firstFrameWorkStarted) {
-                StartupSplashScreen()
+                StartupSplashScreen(versionName = BuildConfig.VERSION_NAME)
                 return@setContent
             }
             val uiState by viewModel.state.collectAsStateWithLifecycle()
             val startupPhase by AppOpenAdManager.startupPhase.collectAsStateWithLifecycle()
-            LaunchedEffect(uiState.isThemeReady) {
+            LaunchedEffect(uiState.isThemeReady, consentFlowComplete) {
                 if (uiState.isThemeReady) AppOpenAdManager.onAppReady(this@MainActivity, consentFlowComplete)
             }
             if (!uiState.isThemeReady || startupPhase != StartupAdPhase.Finished) {
-                StartupSplashScreen()
+                StartupSplashScreen(versionName = BuildConfig.VERSION_NAME)
                 return@setContent
             }
 
@@ -92,15 +92,19 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        // Post from pre-draw so the lightweight frame is drawn before SDK/consent work starts.
+        // Overlap the consent request with rendering instead of adding its network latency afterwards.
+        ConsentManager.gatherConsent(this, onComplete = { adsAllowed ->
+            consentFlowComplete = true
+            if (!adsAllowed) AppOpenAdManager.skipStartup("consent-unavailable")
+        }) {
+            AdManager.allowAdRequests()
+        }
+        // Only the visible loading frame starts the bounded six-second wait.
         window.decorView.doOnPreDraw {
             window.decorView.post {
                 if (isFinishing || isDestroyed) return@post
-                Log.d(Tag, "first-frame-drawn action=prioritize-startup-ad")
-                AppOpenAdManager.preload(application)
-                ConsentManager.gatherConsent(this, onComplete = { consentFlowComplete = true }) {
-                    AdManager.allowAdRequests()
-                }
+                Log.d(Tag, "first-frame-drawn action=open-startup-window")
+                AppOpenAdManager.onFirstFrame()
                 firstFrameWorkStarted = true
             }
         }
@@ -109,7 +113,13 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         restoreDefaultSystemBarLayout()
+        AppOpenAdManager.onHostResumed(this)
         if (deferredStartupStarted) resumeImmediateUpdateIfNeeded()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) AppOpenAdManager.skipStartup("host-backgrounded")
     }
 
     private fun initializeDeferredStartup() {
