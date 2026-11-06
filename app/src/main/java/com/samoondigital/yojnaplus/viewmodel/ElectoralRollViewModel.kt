@@ -42,7 +42,8 @@ class ElectoralRollViewModel @Inject constructor(
     private var captchaRequestId = 0L
     private var captchaTransitionSequence = 0L
     private var pendingCaptchaLanguage: String? = null
-    private var journeyInterstitialAttempted = false
+    private val downloadCompletion = DownloadCompletionTransition()
+    internal val downloadCompletionState = downloadCompletion.state
 
     private val _state = MutableStateFlow(ElectoralRollUiState())
     val state: StateFlow<ElectoralRollUiState> = _state.asStateFlow()
@@ -182,12 +183,7 @@ class ElectoralRollViewModel @Inject constructor(
         ) return null
 
         cancelCaptchaRequest()
-        val request = CaptchaTransitionRequest(
-            id = ++captchaTransitionSequence,
-            showInterstitial = !journeyInterstitialAttempted,
-        )
-        // Consume this opportunity even if no ad is ready. Back/retry must not add another interruption.
-        journeyInterstitialAttempted = true
+        val request = CaptchaTransitionRequest(id = ++captchaTransitionSequence)
         pendingCaptchaLanguage = code
         _state.update {
             it.copy(isLanguageSheetVisible = false, captchaTransitionId = request.id, isCaptchaTransitionReady = false)
@@ -199,13 +195,13 @@ class ElectoralRollViewModel @Inject constructor(
         _state.value.captchaTransitionId == id && pendingCaptchaLanguage != null &&
             _state.value.step == ElectoralRollStep.Parts
 
-    fun onCaptchaInterstitialFinished(id: Long) {
+    fun markCaptchaTransitionReady(id: Long) {
         if (isCaptchaTransitionActive(id)) {
             _state.update { it.copy(isCaptchaTransitionReady = true) }
         }
     }
 
-    // Called by the visible route only after both the ad and the foreground lifecycle are ready.
+    // Called by the visible route only when the foreground lifecycle is ready.
     fun completeCaptchaTransition() {
         val current = _state.value
         val id = current.captchaTransitionId ?: return
@@ -218,6 +214,17 @@ class ElectoralRollViewModel @Inject constructor(
         pendingCaptchaLanguage = null
         _state.update { it.copy(captchaTransitionId = null, isCaptchaTransitionReady = false) }
     }
+
+    fun beginDownloadCompletionTransition(): Long? = downloadCompletion.begin(_state.value)
+
+    fun isDownloadCompletionActive(id: Long): Boolean = downloadCompletion.isActive(id, _state.value)
+
+    fun onDownloadCompletionAdFinished(id: Long) = downloadCompletion.finishAd(id, _state.value)
+
+    fun consumeDownloadCompletionNavigation(id: Long): Boolean =
+        downloadCompletion.consumeNavigation(id, _state.value)
+
+    fun cancelDownloadCompletionTransition() = downloadCompletion.cancel()
 
     fun refreshCaptcha(): Job {
         captchaJob?.cancel()
@@ -250,6 +257,7 @@ class ElectoralRollViewModel @Inject constructor(
 
     fun startDownloads() {
         if (downloadJob?.isActive == true) return
+        downloadCompletion.cancel()
         downloadJob = viewModelScope.launch {
             downloadSelectedPdfs(retryOnlyFailed = false)
         }
@@ -257,6 +265,7 @@ class ElectoralRollViewModel @Inject constructor(
 
     fun retryDownloads() {
         if (downloadJob?.isActive == true) return
+        downloadCompletion.cancel()
         downloadJob = viewModelScope.launch {
             val hasFileIds = _state.value.downloadItems.any {
                 it.status == DownloadStatus.Failed && it.fileId != null
@@ -270,6 +279,7 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     fun cancelDownloads() = viewModelScope.launch {
+        downloadCompletion.cancel()
         downloadJob?.cancelAndJoin()
         _state.update { current ->
             current.copy(
@@ -588,6 +598,7 @@ class ElectoralRollViewModel @Inject constructor(
     }
 
     private fun cancelSelectionRequests() {
+        downloadCompletion.cancel()
         selectionRequestId++
         selectionJob?.cancel()
         selectionJob = null
@@ -629,11 +640,16 @@ class ElectoralRollViewModel @Inject constructor(
         }.also { selectionJob = it }
     }
 
+    override fun onCleared() {
+        downloadCompletion.cancel()
+        super.onCleared()
+    }
+
     private fun Throwable.userMessage(fallback: String): String =
         message?.takeIf { it.isNotBlank() } ?: fallback
 }
 
-data class CaptchaTransitionRequest(val id: Long, val showInterstitial: Boolean)
+data class CaptchaTransitionRequest(val id: Long)
 
 enum class ElectoralRollStep {
     State,
@@ -716,6 +732,10 @@ data class ElectoralRollUiState(
 
     val completedCount: Int
         get() = downloadItems.count { it.status == DownloadStatus.Completed }
+
+    val isSuccessfulDownloadBatch: Boolean
+        get() = step == ElectoralRollStep.Success && !isDownloading && downloadItems.isNotEmpty() &&
+            downloadItems.all { it.status == DownloadStatus.Completed }
 
     val failedCount: Int
         get() = downloadItems.count { it.status == DownloadStatus.Failed }

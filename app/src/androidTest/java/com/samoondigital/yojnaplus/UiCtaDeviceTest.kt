@@ -3,6 +3,7 @@ package com.samoondigital.yojnaplus
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
@@ -34,6 +35,10 @@ import com.samoondigital.yojnaplus.feature.pdf.StateStep
 import com.samoondigital.yojnaplus.feature.pdf.SelectionToolbar
 import com.samoondigital.yojnaplus.feature.pdf.CaptchaStep
 import com.samoondigital.yojnaplus.feature.pdf.CaptchaTransitionEffect
+import com.samoondigital.yojnaplus.feature.pdf.ForegroundTransitionEffect
+import com.samoondigital.yojnaplus.viewmodel.DownloadCompletionTransition
+import com.samoondigital.yojnaplus.viewmodel.DownloadStatus
+import com.samoondigital.yojnaplus.viewmodel.ElectoralRollDownloadItem
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -58,6 +63,50 @@ import org.junit.Test
 class UiCtaDeviceTest {
     @get:Rule val compose = createComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
+
+    @Test
+    fun completedBatchWaitsForAdAndForegroundAndDoesNotNavigateTwiceAfterRecreation() {
+        val owner = object : LifecycleOwner {
+            override val lifecycle = LifecycleRegistry(this)
+        }
+        val transition = DownloadCompletionTransition()
+        val batch = ElectoralRollUiState(
+            step = ElectoralRollStep.Success,
+            downloadItems = listOf(ElectoralRollDownloadItem(1, "Saved PDF", status = DownloadStatus.Completed)),
+        )
+        val calls = AtomicInteger()
+        val generation = mutableStateOf(0)
+        var id = 0L
+        compose.runOnIdle {
+            owner.lifecycle.currentState = Lifecycle.State.CREATED
+            id = requireNotNull(transition.begin(batch))
+        }
+        compose.setContent {
+            val state = transition.state.collectAsState().value
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                androidx.compose.runtime.key(generation.value) {
+                    ForegroundTransitionEffect(state.id, state.ready) {
+                        state.id?.let { if (transition.consumeNavigation(it, batch)) calls.incrementAndGet() }
+                    }
+                }
+            }
+        }
+        compose.runOnIdle {
+            assertEquals(0, calls.get())
+            transition.finishAd(id, batch)
+        }
+        compose.runOnIdle {
+            assertEquals(0, calls.get())
+            owner.lifecycle.currentState = Lifecycle.State.RESUMED
+        }
+        compose.waitUntil(5_000) { calls.get() == 1 }
+        compose.runOnIdle {
+            generation.value++
+            owner.lifecycle.currentState = Lifecycle.State.STARTED
+            owner.lifecycle.currentState = Lifecycle.State.RESUMED
+        }
+        compose.runOnIdle { assertEquals(1, calls.get()) }
+    }
 
     @Test
     fun captchaTransitionWaitsForForegroundAndDoesNotRepeatOnAnotherResume() {

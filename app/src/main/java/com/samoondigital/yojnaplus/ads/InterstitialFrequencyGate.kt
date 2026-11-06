@@ -1,18 +1,16 @@
 package com.samoondigital.yojnaplus.ads
 
-/** Accessed on the main thread; callers supply monotonic elapsed time. */
-internal class InterstitialFrequencyGate(private val cooldownMillis: Long = 120_000L) {
+/** Main-thread guard against stacked ads. There is no time-based cooldown. */
+internal class InterstitialFrequencyGate {
     private var showing = false
-    private var lastFinishedAt: Long? = null
 
-    fun tryStart(now: Long): Boolean {
-        if (showing || lastFinishedAt?.let { now - it < cooldownMillis } == true) return false
+    fun tryStart(): Boolean {
+        if (showing) return false
         showing = true
         return true
     }
 
-    fun finish(now: Long) {
+    fun finish() {
         showing = false
-        lastFinishedAt = now
     }
 }

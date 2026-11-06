@@ -94,6 +94,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.withResumed
@@ -112,9 +113,12 @@ import com.samoondigital.yojnaplus.viewmodel.ElectoralRollDownloadItem
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollStep
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollUiState
 import com.samoondigital.yojnaplus.viewmodel.ElectoralRollViewModel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 
-private const val GeneralLanguagePlacement = "general-voter-list-language-to-captcha"
+private const val DownloadCompletionPlacement = "pdf-batch-complete-to-downloads"
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -127,10 +131,16 @@ fun PdfScreen(
     val uiState by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
-    var openedDownloads by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val completion by viewModel.downloadCompletionState.collectAsStateWithLifecycle()
 
     fun handleBack() {
         if (!viewModel.goBack()) onBack()
+    }
+
+    fun openDownloads() {
+        viewModel.cancelDownloadCompletionTransition()
+        onDownloadsComplete()
     }
 
     BackHandler(onBack = ::handleBack)
@@ -138,15 +148,25 @@ fun PdfScreen(
         InterstitialAdManager.preload(context.applicationContext)
     }
     CaptchaTransitionEffect(uiState, viewModel::completeCaptchaTransition)
-    LaunchedEffect(uiState.step, uiState.isDownloading, uiState.completedCount, uiState.failedCount) {
-        if (
-            !openedDownloads &&
-            uiState.step == ElectoralRollStep.Success &&
-            !uiState.isDownloading &&
-            uiState.completedCount > 0 &&
-            uiState.failedCount == 0
-        ) {
-            openedDownloads = true
+    LaunchedEffect(viewModel, lifecycleOwner, activity) {
+        // Observe completion even while stopped so background downloads never schedule a resume ad.
+        viewModel.state.map { it.isSuccessfulDownloadBatch }.distinctUntilChanged().collect { completed ->
+            if (!completed) return@collect
+            val id = viewModel.beginDownloadCompletionTransition() ?: return@collect
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                InterstitialAdManager.showIfAvailable(
+                    activity = activity,
+                    placement = DownloadCompletionPlacement,
+                    isRequestActive = { viewModel.isDownloadCompletionActive(id) },
+                ) { viewModel.onDownloadCompletionAdFinished(id) }
+            } else {
+                viewModel.onDownloadCompletionAdFinished(id)
+            }
+        }
+    }
+    ForegroundTransitionEffect(completion.id, completion.ready) {
+        val id = completion.id
+        if (id != null && viewModel.consumeDownloadCompletionNavigation(id)) {
             onDownloadsComplete()
         }
     }
@@ -157,7 +177,7 @@ fun PdfScreen(
             SelectionToolbar(
                 uiState = uiState,
                 onBack = ::handleBack,
-                onOpenDownloads = onDownloadsComplete,
+                onOpenDownloads = ::openDownloads,
             )
         },
     ) { padding ->
@@ -200,7 +220,7 @@ fun PdfScreen(
                     )
                     ElectoralRollStep.Success -> SuccessStep(
                         uiState = uiState,
-                        onOpenDownloads = onDownloadsComplete,
+                        onOpenDownloads = ::openDownloads,
                     )
                 }
             }
@@ -213,17 +233,7 @@ fun PdfScreen(
             onDismiss = viewModel::dismissLanguageSheet,
             onSelected = languageSelected@ { languageCode ->
                 val request = viewModel.beginCaptchaTransition(languageCode) ?: return@languageSelected
-                if (request.showInterstitial) {
-                    InterstitialAdManager.showIfAvailable(
-                        activity = activity,
-                        placement = GeneralLanguagePlacement,
-                        isRequestActive = { viewModel.isCaptchaTransitionActive(request.id) },
-                    ) {
-                        viewModel.onCaptchaInterstitialFinished(request.id)
-                    }
-                } else {
-                    viewModel.onCaptchaInterstitialFinished(request.id)
-                }
+                viewModel.markCaptchaTransitionReady(request.id)
             },
         )
     }
@@ -231,9 +241,14 @@ fun PdfScreen(
 
 @Composable
 internal fun CaptchaTransitionEffect(uiState: ElectoralRollUiState, onReady: () -> Unit) {
+    ForegroundTransitionEffect(uiState.captchaTransitionId, uiState.isCaptchaTransitionReady, onReady)
+}
+
+@Composable
+internal fun ForegroundTransitionEffect(id: Long?, ready: Boolean, onReady: () -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, uiState.captchaTransitionId, uiState.isCaptchaTransitionReady) {
-        if (uiState.captchaTransitionId != null && uiState.isCaptchaTransitionReady) {
+    LaunchedEffect(lifecycleOwner, id, ready) {
+        if (id != null && ready) {
             lifecycleOwner.lifecycle.withResumed { onReady() }
         }
     }

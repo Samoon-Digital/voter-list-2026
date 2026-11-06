@@ -34,7 +34,7 @@ class SelectionRequestDeviceTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
-    fun captchaIsRequestedOnlyOnceAfterAdCompletionAndForegroundContinuation() = runBlocking {
+    fun captchaIsRequestedOnlyOnceAfterLanguageSelectionAndForegroundContinuation() = runBlocking {
         val captcha = DeferredResponse<CaptchaEncryptedDto>()
         var captchaCalls = 0
         val api = object : JourneyGateway() {
@@ -49,18 +49,17 @@ class SelectionRequestDeviceTest {
             main {
                 val request = requireNotNull(vm.beginCaptchaTransition("ENG"))
                 requestId = request.id
-                assertTrue(request.showInterstitial)
                 assertNull(vm.beginCaptchaTransition("ENG"))
                 assertTrue(vm.state.value.isPreparingCaptcha)
                 assertFalse(vm.state.value.isLanguageSheetVisible)
                 assertNull(vm.state.value.captcha)
                 vm.completeCaptchaTransition()
                 assertEquals(0, captchaCalls)
-                vm.onCaptchaInterstitialFinished(requestId)
+                vm.markCaptchaTransitionReady(requestId)
                 assertEquals(0, captchaCalls)
                 assertEquals(ElectoralRollStep.Parts, vm.state.value.step)
                 vm.completeCaptchaTransition()
-                vm.onCaptchaInterstitialFinished(requestId)
+                vm.markCaptchaTransitionReady(requestId)
                 vm.completeCaptchaTransition()
             }
             captcha.waitUntilStarted()
@@ -74,7 +73,7 @@ class SelectionRequestDeviceTest {
     }
 
     @Test
-    fun backNavigationInvalidatesOldAdCallbackAndPreventsAnotherAdInSameJourney() = runBlocking {
+    fun backNavigationInvalidatesOldCaptchaTransitionBeforeAnotherSelection() = runBlocking {
         var captchaCalls = 0
         val api = object : JourneyGateway() {
             override suspend fun getCaptcha(purpose: String): CaptchaEncryptedDto {
@@ -88,7 +87,7 @@ class SelectionRequestDeviceTest {
                 val old = requireNotNull(vm.beginCaptchaTransition("ENG"))
                 vm.goBack()
                 assertFalse(vm.isCaptchaTransitionActive(old.id))
-                vm.onCaptchaInterstitialFinished(old.id)
+                vm.markCaptchaTransitionReady(old.id)
                 vm.completeCaptchaTransition()
                 assertEquals(0, captchaCalls)
                 assertEquals(ElectoralRollStep.Assembly, vm.state.value.step)
@@ -96,8 +95,8 @@ class SelectionRequestDeviceTest {
                 vm.togglePart(1)
                 vm.showLanguageSheet()
                 val next = requireNotNull(vm.beginCaptchaTransition("ENG"))
-                assertFalse(next.showInterstitial)
-                vm.onCaptchaInterstitialFinished(old.id)
+                assertTrue(next.id > old.id)
+                vm.markCaptchaTransitionReady(old.id)
                 assertFalse(vm.state.value.isCaptchaTransitionReady)
                 assertTrue(vm.isCaptchaTransitionActive(next.id))
                 assertEquals(0, captchaCalls)
@@ -106,7 +105,7 @@ class SelectionRequestDeviceTest {
     }
 
     @Test
-    fun unavailableAdContinuesWithoutWaitingAndLaterRetryDoesNotShowAnotherAd() = runBlocking {
+    fun languageSelectionContinuesWithoutAdAndCaptchaRetryStillWorks() = runBlocking {
         var calls = 0
         val api = object : JourneyGateway() {
             override suspend fun getCaptcha(purpose: String): CaptchaEncryptedDto {
@@ -118,8 +117,8 @@ class SelectionRequestDeviceTest {
             prepareLanguageSelection(vm)
             main {
                 val request = requireNotNull(vm.beginCaptchaTransition("ENG"))
-                // The same continuation is used for dismissal, no-fill and show failure.
-                vm.onCaptchaInterstitialFinished(request.id)
+                // Confirm language immediately; the foreground lifecycle starts the CAPTCHA request.
+                vm.markCaptchaTransitionReady(request.id)
                 vm.completeCaptchaTransition()
                 assertEquals(1, calls)
                 vm.refreshCaptcha()
@@ -127,7 +126,7 @@ class SelectionRequestDeviceTest {
                 vm.goBack()
                 vm.showLanguageSheet()
                 val retry = requireNotNull(vm.beginCaptchaTransition("ENG"))
-                assertFalse(retry.showInterstitial)
+                assertTrue(retry.id > request.id)
             }
         }
     }

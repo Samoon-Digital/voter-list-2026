@@ -5,26 +5,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class InterstitialFrequencyGateTest {
-    @Test fun firstAdIsAllowedAndConcurrentShowsAreBlocked() {
+    @Test fun concurrentInterstitialsRemainBlocked() {
         val gate = InterstitialFrequencyGate()
-        assertTrue(gate.tryStart(0))
-        assertFalse(gate.tryStart(1))
-        assertFalse(gate.tryStart(300_000))
+        assertTrue(gate.tryStart())
+        repeat(3) { assertFalse(gate.tryStart()) }
     }
 
-    @Test fun twoMinuteCooldownStartsAfterTheAdFinishes() {
+    @Test fun anotherCompletedBatchDoesNotHaveToWaitForACooldown() {
         val gate = InterstitialFrequencyGate()
-        assertTrue(gate.tryStart(1_000))
-        gate.finish(301_000)
-        assertFalse(gate.tryStart(420_999))
-        assertTrue(gate.tryStart(421_000))
-    }
-
-    @Test fun anotherJourneyCannotBypassCooldown() {
-        val gate = InterstitialFrequencyGate()
-        assertTrue(gate.tryStart(100))
-        gate.finish(200)
-        repeat(3) { assertFalse(gate.tryStart(60_200)) }
-        assertTrue(gate.tryStart(120_200))
+        repeat(3) {
+            assertTrue(gate.tryStart())
+            gate.finish()
+        }
     }
 }

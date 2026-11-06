@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.util.Log
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -59,8 +58,8 @@ object InterstitialAdManager {
                 onContinue()
                 return@post
             }
-            if (!frequencyGate.tryStart(SystemClock.elapsedRealtime())) {
-                Log.d(Tag, "show-skipped placement=$placement reason=cooldown-or-showing")
+            if (!frequencyGate.tryStart()) {
+                Log.d(Tag, "show-skipped placement=$placement reason=already-showing")
                 onContinue()
                 return@post
             }
@@ -70,7 +69,7 @@ object InterstitialAdManager {
             val continued = AtomicBoolean(false)
             fun finishOnce() {
                 if (!continued.compareAndSet(false, true)) return
-                frequencyGate.finish(SystemClock.elapsedRealtime())
+                frequencyGate.finish()
                 if (!activity.isDestroyed) activity.restoreDefaultSystemBarLayout()
                 AppOpenAdManager.onExternalFullScreenAdFinished()
                 preload(activity.applicationContext)
