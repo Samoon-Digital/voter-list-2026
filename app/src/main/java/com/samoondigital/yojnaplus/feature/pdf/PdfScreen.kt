@@ -1,7 +1,6 @@
 package com.samoondigital.yojnaplus.feature.pdf
 
 import android.app.Activity
-import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -86,6 +85,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
@@ -99,6 +99,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.withResumed
 import com.samoondigital.yojnaplus.R
+import com.samoondigital.yojnaplus.core.graphics.SampledBitmapDecoder
 import com.samoondigital.yojnaplus.ads.InlineBanner
 import com.samoondigital.yojnaplus.ads.rememberInlineBanner
 import com.samoondigital.yojnaplus.ads.InterstitialAdManager
@@ -866,10 +867,13 @@ private fun PartChoiceCard(part: PartDto, selected: Boolean, onClick: () -> Unit
 
 @Composable
 private fun CaptchaImage(base64Captcha: String?) {
-    val bitmap = remember(base64Captcha) {
+    val density = LocalDensity.current
+    val widthPx = with(density) { 160.dp.roundToPx() }
+    val heightPx = with(density) { 60.dp.roundToPx() }
+    val bitmap = remember(base64Captcha, widthPx, heightPx) {
         runCatching {
             val bytes = Base64.decode(base64Captcha.orEmpty(), Base64.DEFAULT)
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            SampledBitmapDecoder.decodeByteArray(bytes, widthPx, heightPx)
         }.getOrNull()
     }
 

@@ -1,6 +1,15 @@
 import java.util.Properties
 import java.io.FileInputStream
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.android.build.api.instrumentation.AsmClassVisitorFactory
+import com.android.build.api.instrumentation.ClassContext
+import com.android.build.api.instrumentation.ClassData
+import com.android.build.api.instrumentation.FramesComputationMode
+import com.android.build.api.instrumentation.InstrumentationParameters
+import com.android.build.api.instrumentation.InstrumentationScope
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 
 val ProductionPackageName = "com.samoondigital.yojnaplus"
 val ProductionAdMobAppId = "ca-app-pub-1638673809508848~3940017763"
@@ -44,15 +53,19 @@ require(appscopeTrackingKey.isEmpty() || appscopeTrackingKey.matches(Regex("[a-f
 
 android {
     namespace = ProductionPackageName
-    compileSdk = 36
-    compileSdkExtension = 19
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         applicationId = ProductionPackageName
         minSdk = 26
-        targetSdk = 36
-        versionCode = 26
-        versionName = "3.3.9"
+        targetSdk = 37
+        versionCode = 27
+        versionName = "3.3.10"
 
         buildConfigField("String", "APPSCOPE_ENDPOINT", "\"https://appscope-tracking.alimailsamun.workers.dev/api/track\"")
         buildConfigField("String", "APPSCOPE_APP_ID", "\"app_b8662a3d3b8c9dc5ab23d3f3\"")
@@ -124,6 +137,60 @@ kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
     }
+}
+
+androidComponents.onVariants { variant ->
+    // Pdf-Viewer 2.4.0 has no decoder hook. Patch only its disk-cache decode call,
+    // retaining the upstream renderer, cache policy, lifecycle and zoom behavior.
+    variant.instrumentation.transformClassesWith(
+        PdfCacheSamplingVisitorFactory::class.java,
+        InstrumentationScope.ALL,
+    ) {}
+    variant.instrumentation.setAsmFramesComputationMode(
+        FramesComputationMode.COMPUTE_FRAMES_FOR_INSTRUMENTED_METHODS,
+    )
+}
+
+abstract class PdfCacheSamplingVisitorFactory : AsmClassVisitorFactory<InstrumentationParameters.None> {
+    override fun isInstrumentable(classData: ClassData): Boolean =
+        classData.className == "com.rajat.pdfviewer.util.CacheManager"
+
+    override fun createClassVisitor(classContext: ClassContext, nextClassVisitor: ClassVisitor): ClassVisitor =
+        object : ClassVisitor(Opcodes.ASM9, nextClassVisitor) {
+            private var replacements = 0
+
+            override fun visitMethod(
+                access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?,
+            ): MethodVisitor {
+                val delegate = super.visitMethod(access, name, descriptor, signature, exceptions)
+                if (name != "decodeBitmapFromDiskCache") return delegate
+                return object : MethodVisitor(Opcodes.ASM9, delegate) {
+                    override fun visitMethodInsn(opcode: Int, owner: String, name: String, descriptor: String, isInterface: Boolean) {
+                        if (opcode == Opcodes.INVOKESTATIC && owner == "android/graphics/BitmapFactory" &&
+                            name == "decodeFile" && descriptor == "(Ljava/lang/String;)Landroid/graphics/Bitmap;"
+                        ) {
+                            super.visitVarInsn(Opcodes.ALOAD, 0)
+                            super.visitFieldInsn(Opcodes.GETFIELD, "com/rajat/pdfviewer/util/CacheManager", "context", "Landroid/content/Context;")
+                            super.visitMethodInsn(
+                                Opcodes.INVOKESTATIC,
+                                "com/samoondigital/yojnaplus/core/graphics/SampledBitmapDecoder",
+                                "decodePdfCacheFile",
+                                "(Ljava/lang/String;Landroid/content/Context;)Landroid/graphics/Bitmap;",
+                                false,
+                            )
+                            replacements++
+                        } else {
+                            super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
+                        }
+                    }
+                }
+            }
+
+            override fun visitEnd() {
+                check(replacements == 1) { "Pdf-Viewer cache decoder changed; review the bitmap sampling bridge." }
+                super.visitEnd()
+            }
+        }
 }
 
 dependencies {
