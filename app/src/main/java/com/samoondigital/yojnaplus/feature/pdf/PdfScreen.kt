@@ -994,18 +994,14 @@ private fun DownloadItemRow(item: ElectoralRollDownloadItem) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = item.status.label(item.error),
+                text = if (item.status == DownloadStatus.Downloading) {
+                    stringResource(R.string.ui_status_downloading, item.progress)
+                } else {
+                    item.status.label(item.error)
+                },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (item.status == DownloadStatus.Downloading) {
-                LinearProgressIndicator(
-                    progress = { item.progress / 100f },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                )
-            }
         }
     }
 }
